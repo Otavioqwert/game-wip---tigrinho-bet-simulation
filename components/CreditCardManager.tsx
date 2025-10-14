@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import type { RenegotiationTier, SymbolKey, Inventory } from '../types';
 import { ITEM_PENALTY_VALUES } from '../constants';
@@ -14,10 +15,12 @@ interface CreditCardModalProps {
     renegotiate: (tier: RenegotiationTier) => void;
     takeCreditCardLoan: (amount: number) => void;
     currentInstallment: number;
+    handlePayInstallment: () => void;
+    bal: number;
 }
 
 const CreditCardModal: React.FC<CreditCardModalProps> = ({
-    isOpen, onClose, debt, limit, renegotiationTier, payOffDebt, renegotiate, takeCreditCardLoan, currentInstallment
+    isOpen, onClose, debt, limit, renegotiationTier, payOffDebt, renegotiate, takeCreditCardLoan, currentInstallment, handlePayInstallment, bal
 }) => {
     const [loanAmount, setLoanAmount] = useState<number>(0);
     
@@ -74,21 +77,29 @@ const CreditCardModal: React.FC<CreditCardModalProps> = ({
                                     </span>
                                 </p>
                             </div>
-                             <button onClick={payOffDebt} disabled={debt <= 0} className={`${modalBtnClasses} w-full bg-green-500 text-black hover:bg-green-400`}>
+                            <div className="flex gap-2">
+                                <button onClick={handlePayInstallment} disabled={bal < currentInstallment} className={`${modalBtnClasses} flex-1 bg-yellow-500 text-black hover:bg-yellow-400`}>
+                                    Pagar Parcela
+                                </button>
+                                <button onClick={payOffDebt} disabled={bal < debt} className={`${modalBtnClasses} flex-1 bg-green-500 text-black hover:bg-green-400`}>
                                     Quitar Dívida Total
-                            </button>
+                                </button>
+                            </div>
                         </div>
                         <div>
                             <h4 className="font-bold text-lg text-yellow-300">Renegociar</h4>
                             <p className="text-sm text-gray-400 mb-2">Altere seu plano de pagamento. Juros maiores para prazos mais longos.</p>
                             <div className="bg-black/20 p-3 rounded-lg space-y-2">
                                 <p className="text-center text-sm">Plano Atual: {installmentDenominator}x / {interestRate}% juros</p>
-                                <div className="flex gap-2">
-                                    <button onClick={() => renegotiate(1)} disabled={renegotiationTier >= 1} className={`${modalBtnClasses} flex-1 bg-sky-600 hover:bg-sky-500`}>
-                                        48 Parcelas (21% Juros)
+                                <div className="flex flex-col gap-2">
+                                    <button onClick={() => renegotiate(0)} disabled={renegotiationTier === 0} className={`${modalBtnClasses} w-full bg-sky-500 hover:bg-sky-400`}>
+                                        Plano Padrão: 24 Parcelas (15% Juros)
                                     </button>
-                                    <button onClick={() => renegotiate(2)} disabled={renegotiationTier >= 2} className={`${modalBtnClasses} flex-1 bg-sky-700 hover:bg-sky-600`}>
-                                        60 Parcelas (29% Juros)
+                                    <button onClick={() => renegotiate(1)} disabled={renegotiationTier === 1} className={`${modalBtnClasses} w-full bg-sky-600 hover:bg-sky-500`}>
+                                        Plano Longo: 48 Parcelas (21% Juros)
+                                    </button>
+                                    <button onClick={() => renegotiate(2)} disabled={renegotiationTier === 2} className={`${modalBtnClasses} w-full bg-sky-700 hover:bg-sky-600`}>
+                                        Plano Estendido: 60 Parcelas (29% Juros)
                                     </button>
                                 </div>
                             </div>
@@ -253,13 +264,16 @@ interface CreditCardManagerWrapperProps {
     renegotiateCreditCard: (tier: RenegotiationTier) => void;
     takeCreditCardLoan: (amount: number) => void;
     currentInstallment: number;
+    handlePayInstallment: () => void;
+    bal: number;
 }
 
 const CreditCardManager: React.FC<CreditCardManagerWrapperProps> = (props) => {
     const { 
         creditCardLevel, creditCardDebt, openCreditCardModal, isCreditCardModalOpen,
         closeCreditCardModal, creditLimit, renegotiationTier,
-        payOffCreditCardDebt, renegotiateCreditCard, takeCreditCardLoan, currentInstallment
+        payOffCreditCardDebt, renegotiateCreditCard, takeCreditCardLoan, currentInstallment,
+        handlePayInstallment, bal
     } = props;
 
     if (creditCardLevel === 0) return null;
@@ -288,6 +302,8 @@ const CreditCardManager: React.FC<CreditCardManagerWrapperProps> = (props) => {
                 renegotiate={renegotiateCreditCard}
                 takeCreditCardLoan={takeCreditCardLoan}
                 currentInstallment={currentInstallment}
+                handlePayInstallment={handlePayInstallment}
+                bal={bal}
             />
         </>
     );

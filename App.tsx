@@ -79,6 +79,8 @@ const App: React.FC = () => {
                 renegotiateCreditCard={game.renegotiateCreditCard}
                 takeCreditCardLoan={game.takeCreditCardLoan}
                 currentInstallment={game.currentInstallment}
+                handlePayInstallment={game.handlePayInstallment}
+                bal={game.bal}
             />
              <PaymentDueModal 
                 isOpen={game.isPaymentDueModalOpen}

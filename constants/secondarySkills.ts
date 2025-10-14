@@ -133,6 +133,7 @@ export const SECONDARY_SKILLS: Record<SecondarySkillId, SecondarySkill> = {
         description: (level) => `Multiplica todos os ganhos por ${Math.pow(1.005, level).toFixed(6)}. Este efeito é cumulativo com outros bônus.`,
         tier: 3,
         dependencies: [{id: 'decelerometer', level: 7}],
+        // FIX: Corrected the 'getCost' function signature to accept the 'level' parameter.
         getCost: (level) => 10000 * Math.pow(2, level),
         costType: 'pa',
         maxLevel: 10,

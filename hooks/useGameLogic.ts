@@ -1,3 +1,4 @@
+
 // FIX: Implemented the main game logic hook to aggregate all other hooks and provide game state and actions to the App component.
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useGameState } from './useGameState';
@@ -211,11 +212,17 @@ export const useGameLogic = () => {
     }, [gameState.bal, gameState.creditCardDebt, gameState.setBal, gameState.setCreditCardDebt, gameState.setPaymentDueDate, gameState.setMissedPayments, showMsg]);
 
     const renegotiateCreditCard = useCallback((tier: RenegotiationTier) => {
-        if (gameState.renegotiationTier >= tier) return showMsg("Plano de renegociação já é igual ou superior.", 3000, true);
+        if (gameState.renegotiationTier === tier) return showMsg("Este já é o seu plano atual.", 3000, true);
+        
         gameState.setRenegotiationTier(tier);
-        const installments = tier === 1 ? 48 : 60;
-        const interest = tier === 1 ? 21 : 29;
-        showMsg(`Dívida renegociada para ${installments} parcelas com ${interest}% de juros.`, 4000, true);
+        
+        const installmentsMap = [24, 48, 60];
+        const interestMap = [15, 21, 29];
+        
+        const installments = installmentsMap[tier];
+        const interest = interestMap[tier];
+        
+        showMsg(`Plano de pagamento alterado para ${installments} parcelas com ${interest}% de juros.`, 4000, true);
     }, [gameState.renegotiationTier, gameState.setRenegotiationTier, showMsg]);
 
 
