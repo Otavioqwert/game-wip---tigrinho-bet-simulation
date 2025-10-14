@@ -69,7 +69,7 @@ const ShopsTab: React.FC<ShopsTabProps> = (props) => {
                     </button>
                 ))}
             </div>
-            <div className="bg-black/20 rounded-b-lg rounded-tr-lg p-4 min-h-[350px]">
+            <div className="bg-black/20 rounded-b-lg rounded-tr-lg p-4">
                 {shopActiveTab === 0 && <SymbolShop {...props} isCometUnlocked={isCometUnlocked} />}
                 {shopActiveTab === 1 && <MultiplierShop {...props} isCometUnlocked={isCometUnlocked} />}
                 {shopActiveTab === 2 && <PanificadoraShop {...props} />}

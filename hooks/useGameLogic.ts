@@ -152,6 +152,7 @@ export const useGameLogic = () => {
     // --- Snake Minigame Upgrades ---
     const snakeUpgrades = useSnakeUpgrades({
         bal: gameState.bal,
+        setBal: gameState.setBal,
         handleSpend: handleSpend,
         snakeUpgrades: gameState.snakeUpgrades,
         setSnakeUpgrades: gameState.setSnakeUpgrades,

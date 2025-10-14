@@ -90,7 +90,7 @@ export const useShopLogic = (props: ShopLogicProps) => {
             price = (SYM[sym]?.v || 0) * Math.pow(1.5, currentMult) * priceIncreaseModifier;
         }
         
-        const finalPrice = isFinite(price) ? Number(price.toFixed(2)) : null;
+        const finalPrice = isFinite(price) ? price : null;
         if (finalPrice === null) return null;
 
         return finalPrice * economiaCostMultiplier;

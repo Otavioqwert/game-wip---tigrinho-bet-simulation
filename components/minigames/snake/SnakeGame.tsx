@@ -20,10 +20,11 @@ interface SnakeGameProps {
         initialLength: number;
         lives: number;
         goldenAppleChance: number;
-        frenzyChance: number;
+        frenzyChances: number[];
         applePointBonus: number;
     };
     totalScoreMultiplier: number;
+    resetSnakeUpgrades: () => void;
 }
 
 const getInitialSnake = (length: number) => {
@@ -31,7 +32,7 @@ const getInitialSnake = (length: number) => {
 };
 
 const SnakeGame: React.FC<SnakeGameProps> = (props) => {
-    const { onClose, bal, snakeUpgrades, buySnakeUpgrade, snakeGameSettings, totalScoreMultiplier } = props;
+    const { onClose, bal, snakeUpgrades, buySnakeUpgrade, snakeGameSettings, totalScoreMultiplier, resetSnakeUpgrades } = props;
     
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [snake, setSnake] = useState(() => getInitialSnake(snakeGameSettings.initialLength));
@@ -45,12 +46,29 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
 
     const generateFood = useCallback(() => {
         setFood(prevFood => {
-            const newFoodItems: Food[] = [];
-            const numToGenerate = (Math.random() < snakeGameSettings.frenzyChance) ? 2 : 1;
+            let applesToAdd = 0;
+            const roll = Math.random();
+            const chances = snakeGameSettings.frenzyChances; // e.g. [0.1, 0.025, ...] for +1 to +5 apples
+            let cumulativeProb = 0;
+
+            const tierChances = [chances[4], chances[3], chances[2], chances[1], chances[0]]; // Check for rare outcomes first
+            const numApples = [5, 4, 3, 2, 1];
+
+            for(let i = 0; i < tierChances.length; i++) {
+                cumulativeProb += tierChances[i];
+                if(roll < cumulativeProb) {
+                    applesToAdd = numApples[i];
+                    break;
+                }
+            }
             
+            const numToGenerate = 1 + applesToAdd;
+            
+            const newFoodItems: Food[] = [];
+            const existingPositions = [...snake, ...prevFood, ...newFoodItems];
+
             for(let i = 0; i < numToGenerate; i++) {
                 let newFoodPosition;
-                const existingPositions = [...snake, ...prevFood, ...newFoodItems];
                 do {
                     newFoodPosition = {
                         x: Math.floor(Math.random() * GRID_SIZE),
@@ -62,10 +80,11 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                     ...newFoodPosition,
                     type: Math.random() < snakeGameSettings.goldenAppleChance ? 'golden' : 'normal'
                 });
+                existingPositions.push(newFoodPosition);
             }
             return [...prevFood, ...newFoodItems];
         });
-    }, [snake, snakeGameSettings.frenzyChance, snakeGameSettings.goldenAppleChance]);
+    }, [snake, snakeGameSettings.frenzyChances, snakeGameSettings.goldenAppleChance]);
 
     useEffect(() => {
         if (food.length === 0) {
@@ -182,7 +201,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
 
     return (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="relative bg-gradient-to-br from-gray-800 to-black rounded-2xl p-6 shadow-2xl border-4 border-green-500 w-full max-w-lg text-white text-center">
+            <div className="relative bg-gradient-to-br from-gray-800 to-black rounded-2xl p-6 shadow-2xl border-4 border-green-500 w-full max-w-lg text-white text-center max-h-full overflow-y-auto">
                 <h2 className="text-3xl font-bold text-green-400 mb-2">Snake Game</h2>
                 <div className="flex justify-between items-center mb-2 px-4 text-lg">
                     <span>Vidas: <span className="font-bold text-red-400">{'❤️'.repeat(lives)}</span></span>
@@ -192,16 +211,16 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                 <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} className="bg-gray-900 rounded-lg mx-auto mb-4 border-2 border-green-700" />
 
                 {gameOver && (
-                    <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-2xl p-6">
-                        <div className="w-full max-w-md">
+                    <div className="absolute inset-0 bg-black/80 flex flex-col items-center rounded-2xl p-6 overflow-y-auto">
+                        <div className="w-full max-w-md my-auto">
                             <h3 className="text-4xl font-bold text-red-500 mb-4">Fim de Jogo!</h3>
                             <div className="flex gap-1 mb-2">
                                 <button onClick={() => setGameOverTab('result')} className={tabBtnClasses(gameOverTab === 'result')}>Resultado</button>
                                 <button onClick={() => setGameOverTab('upgrades')} className={tabBtnClasses(gameOverTab === 'upgrades')}>Upgrades</button>
                             </div>
-                            <div className="bg-black/30 rounded-b-lg rounded-tr-lg p-4 min-h-[300px]">
+                            <div className="bg-black/30 rounded-b-lg rounded-tr-lg p-4">
                                 {gameOverTab === 'result' ? (
-                                    <div className="flex flex-col items-center justify-center h-full">
+                                    <div className="flex flex-col items-center justify-center min-h-[250px]">
                                         <p className="text-2xl mb-2">Você coletou <span className="font-bold text-yellow-300">{score}</span> maçãs.</p>
                                         <p className="text-3xl font-bold text-green-400 mb-6">Ganhos Finais: ${finalWinnings.toFixed(2)}</p>
                                         <button 
@@ -216,6 +235,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                                         bal={bal}
                                         snakeUpgrades={snakeUpgrades}
                                         buySnakeUpgrade={buySnakeUpgrade}
+                                        resetSnakeUpgrades={resetSnakeUpgrades}
                                     />
                                 )}
                             </div>

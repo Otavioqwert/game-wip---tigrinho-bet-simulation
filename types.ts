@@ -83,4 +83,5 @@ export interface SnakeUpgrade {
     description: (level: number) => string;
     efeitoMaximo?: number;
     minimo?: number;
+    costs?: number[];
 }

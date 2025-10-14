@@ -16,11 +16,11 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     id: 'comboMaster',
     nome: "Mestre do Combo",
     tipo: "pontuacao",
-    custoInicial: 250,
+    custoInicial: 500, // CHANGED
     efeitoPorNivel: 0.05,
     efeitoMaximo: 0.50,
     crescimento: 1.3,
-    maxLevel: 10,
+    maxLevel: 5, // CHANGED
     description: (level) => `Cada maçã coletada vale ${((level * 0.05) * 100).toFixed(0)}% a mais de pontos (máx 50%).`
   },
   premiumMultiplier: {
@@ -28,10 +28,10 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     nome: "Multiplicador Premium",
     tipo: "pontuacao",
     custoInicial: 500,
-    efeitoPorNivel: 0.10,
+    efeitoPorNivel: 0.01, // CHANGED
     crescimento: 1.4,
-    maxLevel: 10,
-    description: (level) => `Multiplica seus ganhos totais em ${((level * 0.10) * 100).toFixed(0)}% (acumulativo).`
+    maxLevel: 999, // CHANGED
+    description: (level) => `Multiplica seus ganhos totais em ${((level * 0.01) * 100).toFixed(0)}% (acumulativo).`
   },
 
   // Gameplay
@@ -61,11 +61,12 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     id: 'secondChance',
     nome: "Segunda Chance",
     tipo: "gameplay",
-    custoInicial: 800,
+    custoInicial: 0, // Not used
     efeitoPorNivel: 1,
-    crescimento: 1.6,
+    crescimento: 1.0, // Not used
     maxLevel: 2,
-    description: (level) => `Ganhe ${level} vida(s) extra por jogo.`
+    description: (level) => `Ganhe ${level} vida(s) extra por jogo.`,
+    costs: [2500, 18500],
   },
 
   // Especial
@@ -74,11 +75,11 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     nome: "Maçã Dourada",
     tipo: "especial",
     custoInicial: 400,
-    efeitoPorNivel: 0.10,
+    efeitoPorNivel: 0.01, // CHANGED
     efeitoMaximo: 0.50,
-    crescimento: 1.35,
-    maxLevel: 5,
-    description: (level) => `${((level * 0.10) * 100).toFixed(0)}% de chance de uma maçã dourada aparecer, valendo 5x mais pontos.`
+    crescimento: 1.15, // CHANGED
+    maxLevel: 50, // CHANGED
+    description: (level) => `${((level * 0.01) * 100).toFixed(0)}% de chance de uma maçã dourada aparecer, valendo 5x mais pontos.`
   },
   turboCash: {
     id: 'turboCash',
@@ -96,15 +97,17 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     nome: "Frenesi de Maçãs",
     tipo: "especial",
     custoInicial: 600,
-    efeitoPorNivel: 0.05,
-    efeitoMaximo: 0.25,
+    efeitoPorNivel: 0, // Complex effect
     crescimento: 1.45,
     maxLevel: 5,
-    description: (level) => `${((level * 0.05) * 100).toFixed(0)}% de chance de duas maçãs aparecerem de uma vez.`
+    description: (level) => `Chance de gerar maçãs extras. Nv ${level}: +1(${(level*10).toFixed(2)}%), +2(${(level*2.5).toFixed(2)}%), +3(${(level*0.62).toFixed(2)}%), +4(${(level*0.16).toFixed(2)}%), +5(${(level*0.04).toFixed(2)}%)`
   }
 };
 
 export const calculateSnakeUpgradeCost = (upgrade: SnakeUpgrade, level: number): number => {
+  if (upgrade.costs && level < upgrade.costs.length) {
+    return upgrade.costs[level];
+  }
   return Math.floor(upgrade.custoInicial * Math.pow(upgrade.crescimento, level));
 };
 

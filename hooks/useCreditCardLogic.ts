@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+// Fix: Import React to resolve 'Cannot find namespace React' error for type annotations.
+import React, { useEffect, useRef } from 'react';
 import type { RenegotiationTier } from '../types';
 
 interface CreditCardLogicProps {

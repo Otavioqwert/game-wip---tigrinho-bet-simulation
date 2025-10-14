@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { MID } from '../../constants';
 import type { SymbolKey, MidSymbolKey } from '../../types';
@@ -25,7 +26,7 @@ const MultiplierShop: React.FC<MultiplierShopProps> = (props) => {
                 return true;
             }).map(k => {
                 const price = multPrice(k);
-                const currVal = midMultiplierValue(k).toFixed(2);
+                const currVal = midMultiplierValue(k).toFixed(4);
                 return (
                     <div key={k} className="flex justify-between items-center bg-yellow-500/10 p-2 rounded-md">
                         <div><span className="text-2xl">{k}</span> {currVal}x ({mult[k]} ups)</div>

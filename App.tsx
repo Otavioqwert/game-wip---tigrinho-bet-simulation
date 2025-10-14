@@ -57,7 +57,7 @@ const App: React.FC = () => {
 
 
     return (
-        <div className={`min-h-screen flex flex-col items-center font-sans text-white bg-gradient-to-br ${BG_CLASS} transition-all duration-500 py-8 px-4`}>
+        <div className={`h-screen flex flex-col items-center font-sans text-white bg-gradient-to-br ${BG_CLASS} transition-all duration-500 py-4 sm:py-8 px-4 overflow-hidden`}>
             {game.isSnakeGameActive && <SnakeGame
                 onClose={game.endSnakeGame}
                 bal={game.bal}
@@ -65,6 +65,7 @@ const App: React.FC = () => {
                 buySnakeUpgrade={game.buySnakeUpgrade}
                 snakeGameSettings={game.snakeGameSettings}
                 totalScoreMultiplier={game.totalIncomeMultiplier * game.scoreMultiplier}
+                resetSnakeUpgrades={game.resetSnakeUpgrades}
             />}
             <CreditCardManager
                 creditCardLevel={game.creditCardLevel}
@@ -115,7 +116,7 @@ const App: React.FC = () => {
 
             {/* Main Content Area Wrapper for Pan and Zoom */}
             <div 
-                className={`w-full ${isPrestigeView ? 'max-w-7xl' : 'max-w-2xl'} min-h-[700px] overflow-hidden transition-all duration-300`}
+                className={`w-full ${isPrestigeView ? 'max-w-7xl' : 'max-w-2xl'} flex-grow overflow-hidden transition-all duration-300`}
                 {...panHandlers}
             >
                 <div
@@ -144,7 +145,7 @@ const App: React.FC = () => {
 
                             {/* Main Content Area */}
                             <main 
-                                className="bg-black/30 rounded-b-lg rounded-tr-lg p-4 flex-grow"
+                                className="bg-black/30 rounded-b-lg rounded-tr-lg p-4 flex-grow overflow-y-auto"
                                 onTouchStart={handleTouchStart}
                                 onTouchMove={handleTouchMove}
                                 onTouchEnd={handleTouchEnd}

@@ -130,7 +130,7 @@ export const SECONDARY_SKILLS: Record<SecondarySkillId, SecondarySkill> = {
     hydra: {
         id: 'hydra',
         name: 'Hidra',
-        description: (level) => `Multiplica todos os ganhos por ${Math.pow(1.005, level).toFixed(4)}. Este efeito é cumulativo com outros bônus.`,
+        description: (level) => `Multiplica todos os ganhos por ${Math.pow(1.005, level).toFixed(6)}. Este efeito é cumulativo com outros bônus.`,
         tier: 3,
         dependencies: [{id: 'decelerometer', level: 7}],
         getCost: (level) => 10000 * Math.pow(2, level),
