@@ -34,6 +34,17 @@ export const PANI_INCREMENT: Record<MidSymbolKey, number> = {'🍭':0.02,'🍦':
 export const MIDMAX = 10;
 export const LOAN_BLOCK_BASE = 30;
 
+// --- Item Penalty Values ---
+export const ITEM_PENALTY_VALUES: Record<Extract<SymbolKey, '☄️' | '🍀' | '🐯' | '⭐' | '💎' | '💵'>, number> = {
+    '☄️': 100,
+    '🍀': 5,
+    '🐯': 40,
+    '⭐': 50,
+    '💎': 20,
+    '💵': 10
+};
+
+
 // --- Scratch Card Constants ---
 export const SCRATCH_CARD_TIERS = [
     { name: 'Bronze', cost: 1 },

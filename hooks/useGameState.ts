@@ -3,7 +3,11 @@ import { INITIAL_INVENTORY, INITIAL_MULTIPLIERS } from '../constants';
 import type { Inventory, Multipliers, PanificadoraLevels, RoiSaldo, SymbolKey, RenegotiationTier } from '../types';
 
 const SAVE_KEY = 'tigrinho-save-game';
-const SAVE_VERSION = 14; // Incremented version for new momento state
+const SAVE_VERSION = 15; // Incremented version for new credit card state
+
+export interface ItemPenalty {
+    amount: number;
+}
 
 export interface SavedState {
     bal: number;
@@ -24,6 +28,11 @@ export interface SavedState {
     maxMomentoReached: number;
     creditCardDebt: number;
     renegotiationTier: RenegotiationTier;
+    // New state for interactive credit card payments
+    missedPayments: number;
+    paymentDueDate: number | null;
+    isBettingLocked: boolean;
+    itemPenaltyDue: ItemPenalty | null;
 }
 
 const getInitialState = (): SavedState => ({
@@ -45,6 +54,10 @@ const getInitialState = (): SavedState => ({
     maxMomentoReached: 0,
     creditCardDebt: 0,
     renegotiationTier: 0,
+    missedPayments: 0,
+    paymentDueDate: null,
+    isBettingLocked: false,
+    itemPenaltyDue: null,
 });
 
 const parseAndMigrateSaveData = (encodedState: string): SavedState | null => {
@@ -114,6 +127,10 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
     const [maxMomentoReached, setMaxMomentoReached] = useState(getInitialState().maxMomentoReached);
     const [creditCardDebt, setCreditCardDebt] = useState(getInitialState().creditCardDebt);
     const [renegotiationTier, setRenegotiationTier] = useState<RenegotiationTier>(getInitialState().renegotiationTier);
+    const [missedPayments, setMissedPayments] = useState(getInitialState().missedPayments);
+    const [paymentDueDate, setPaymentDueDate] = useState(getInitialState().paymentDueDate);
+    const [isBettingLocked, setIsBettingLocked] = useState(getInitialState().isBettingLocked);
+    const [itemPenaltyDue, setItemPenaltyDue] = useState(getInitialState().itemPenaltyDue);
 
 
     const loadState = (state: SavedState) => {
@@ -135,6 +152,10 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
         setMaxMomentoReached(state.maxMomentoReached || 0);
         setCreditCardDebt(state.creditCardDebt || 0);
         setRenegotiationTier(state.renegotiationTier || 0);
+        setMissedPayments(state.missedPayments || 0);
+        setPaymentDueDate(state.paymentDueDate || null);
+        setIsBettingLocked(state.isBettingLocked || false);
+        setItemPenaltyDue(state.itemPenaltyDue || null);
     };
     
     const softReset = useCallback((newPrestigeData: { points: number, level: number, initialBal: number }) => {
@@ -153,13 +174,13 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
     }, [skillLevels, secondarySkillLevels, showMsg]);
 
     const exportState = useCallback((): string => {
-        const gameState: SavedState = { bal, betVal, inv, mult, roiSaldo, panificadoraLevel, estrelaPrecoAtual, prestigePoints, prestigeLevel, skillLevels, secondarySkillLevels, snakeUpgrades, scratchCardPurchaseCounts, unluckyPot, momento, maxMomentoReached, creditCardDebt, renegotiationTier };
+        const gameState: SavedState = { bal, betVal, inv, mult, roiSaldo, panificadoraLevel, estrelaPrecoAtual, prestigePoints, prestigeLevel, skillLevels, secondarySkillLevels, snakeUpgrades, scratchCardPurchaseCounts, unluckyPot, momento, maxMomentoReached, creditCardDebt, renegotiationTier, missedPayments, paymentDueDate, isBettingLocked, itemPenaltyDue };
         const jsonState = JSON.stringify(gameState);
         const binaryString = unescape(encodeURIComponent(jsonState));
         const checksum = binaryString.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const encodedData = btoa(binaryString);
         return `V${SAVE_VERSION}:${checksum}:${encodedData}`;
-    }, [bal, betVal, inv, mult, roiSaldo, panificadoraLevel, estrelaPrecoAtual, prestigePoints, prestigeLevel, skillLevels, secondarySkillLevels, snakeUpgrades, scratchCardPurchaseCounts, unluckyPot, momento, maxMomentoReached, creditCardDebt, renegotiationTier]);
+    }, [bal, betVal, inv, mult, roiSaldo, panificadoraLevel, estrelaPrecoAtual, prestigePoints, prestigeLevel, skillLevels, secondarySkillLevels, snakeUpgrades, scratchCardPurchaseCounts, unluckyPot, momento, maxMomentoReached, creditCardDebt, renegotiationTier, missedPayments, paymentDueDate, isBettingLocked, itemPenaltyDue]);
 
     const saveGame = useCallback((isManual = false) => {
         try {
@@ -219,6 +240,10 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
         maxMomentoReached, setMaxMomentoReached,
         creditCardDebt, setCreditCardDebt,
         renegotiationTier, setRenegotiationTier,
+        missedPayments, setMissedPayments,
+        paymentDueDate, setPaymentDueDate,
+        isBettingLocked, setIsBettingLocked,
+        itemPenaltyDue, setItemPenaltyDue,
         softReset,
         saveGame, hardReset, exportState, importState
     };

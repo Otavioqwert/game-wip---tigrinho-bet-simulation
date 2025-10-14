@@ -8,7 +8,7 @@ import ShopsTab from './components/ShopsTab';
 import ConfigTab from './components/ConfigTab';
 import PrestigeTab from './components/prestige/PrestigeTab';
 import SnakeGame from './components/minigames/snake/SnakeGame';
-import CreditCardManager from './components/CreditCardManager';
+import CreditCardManager, { PaymentDueModal, ItemPenaltyModal } from './components/CreditCardManager';
 
 const App: React.FC = () => {
     const game = useGameLogic();
@@ -75,10 +75,25 @@ const App: React.FC = () => {
                 closeCreditCardModal={game.closeCreditCardModal}
                 creditLimit={game.creditLimit}
                 renegotiationTier={game.renegotiationTier}
-                payCreditCardInstallment={game.payCreditCardInstallment}
                 payOffCreditCardDebt={game.payOffCreditCardDebt}
                 renegotiateCreditCard={game.renegotiateCreditCard}
                 takeCreditCardLoan={game.takeCreditCardLoan}
+                currentInstallment={game.currentInstallment}
+            />
+             <PaymentDueModal 
+                isOpen={game.isPaymentDueModalOpen}
+                onClose={game.closePaymentDueModal}
+                onPay={game.handlePayInstallment}
+                onPostpone={game.handlePostponeInstallment}
+                debt={game.creditCardDebt}
+                installmentAmount={game.currentInstallment}
+            />
+            <ItemPenaltyModal 
+                isOpen={game.isItemPenaltyModalOpen}
+                onClose={game.closeItemPenaltyModal}
+                onPay={game.handlePayItemPenalty}
+                penalty={game.itemPenaltyDue}
+                inventory={game.inv}
             />
             <div className="fixed left-4 top-4 bg-black/35 p-2 rounded-lg flex items-center gap-2 border-2 border-yellow-500 shadow-lg z-10">
                 <button onClick={zoomOut} className="px-2 font-bold text-lg leading-none bg-yellow-500 text-stone-900 rounded disabled:opacity-50" disabled={scale <= 0.25}>-</button>

@@ -9,8 +9,8 @@ import { useSecondaryPrestigeSkills } from './useSecondaryPrestigeSkills';
 import { useScratchCardLogic } from './useScratchCardLogic';
 import { usePassiveIncome } from './usePassiveIncome';
 import { useSnakeUpgrades } from './useSnakeUpgrades';
-import { useCreditCardLogic } from './useCreditCardLogic';
-import type { SkillId, SecondarySkillId, RenegotiationTier } from '../types';
+import type { SkillId, SecondarySkillId, RenegotiationTier, SymbolKey } from '../types';
+import { ITEM_PENALTY_VALUES } from '../constants';
 
 export const useGameLogic = () => {
     // --- Message State ---
@@ -72,28 +72,116 @@ export const useGameLogic = () => {
     }, [gameState.bal, gameState.setBal, gameState.creditCardDebt, gameState.setCreditCardDebt, secondarySkills.creditLimit, creditCardLevel, showMsg]);
 
     const handleGain = useCallback((amount: number) => {
-        let toBal = amount;
-        if (gameState.creditCardDebt > 0) {
-            const payDebtAmount = Math.min(gameState.creditCardDebt, amount);
-            gameState.setCreditCardDebt(d => d - payDebtAmount);
-            toBal -= payDebtAmount;
-        }
-        if (toBal > 0) {
-            gameState.setBal(b => b + toBal);
-        }
-    }, [gameState.creditCardDebt, gameState.setCreditCardDebt, gameState.setBal]);
+        // PER USER REQUEST: Gains no longer automatically pay down debt.
+        gameState.setBal(b => b + amount);
+    }, [gameState.setBal]);
 
 
-    // --- Credit Card Logic ---
-    useCreditCardLogic({
-        bal: gameState.bal,
-        setBal: gameState.setBal,
-        creditCardDebt: gameState.creditCardDebt,
-        setCreditCardDebt: gameState.setCreditCardDebt,
-        renegotiationTier: gameState.renegotiationTier,
-        creditCardLevel: creditCardLevel,
-    });
+    // --- New Credit Card Logic ---
     const [isCreditCardModalOpen, setIsCreditCardModalOpen] = useState(false);
+    const [isPaymentDueModalOpen, setIsPaymentDueModalOpen] = useState(false);
+    const [isItemPenaltyModalOpen, setIsItemPenaltyModalOpen] = useState(false);
+
+    const currentInstallment = useMemo(() => {
+        if (gameState.creditCardDebt <= 0) return 0;
+        const installmentDenominator = [24, 48, 60][gameState.renegotiationTier];
+        return gameState.creditCardDebt / installmentDenominator;
+    }, [gameState.creditCardDebt, gameState.renegotiationTier]);
+
+    // Interest timer (every 300s)
+    useEffect(() => {
+        if (creditCardLevel === 0) return;
+        const interval = setInterval(() => {
+            if (gameState.creditCardDebt > 0) {
+                const interestRate = [0.15, 0.21, 0.29][gameState.renegotiationTier];
+                gameState.setCreditCardDebt(d => d * (1 + interestRate));
+            }
+        }, 300000); // 300 seconds
+        return () => clearInterval(interval);
+    }, [creditCardLevel, gameState.creditCardDebt, gameState.renegotiationTier, gameState.setCreditCardDebt]);
+
+    // Payment Due timer (every 60s)
+    useEffect(() => {
+        if (creditCardLevel === 0 || gameState.isBettingLocked || isPaymentDueModalOpen || isItemPenaltyModalOpen) return;
+
+        if (gameState.creditCardDebt > 0 && gameState.paymentDueDate === null) {
+            gameState.setPaymentDueDate(Date.now() + 60000);
+        } else if (gameState.creditCardDebt <= 0 && gameState.paymentDueDate !== null) {
+            gameState.setPaymentDueDate(null);
+        }
+
+        const timer = setInterval(() => {
+            if (gameState.paymentDueDate && Date.now() >= gameState.paymentDueDate) {
+                setIsPaymentDueModalOpen(true);
+                gameState.setPaymentDueDate(null);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [creditCardLevel, gameState.creditCardDebt, gameState.paymentDueDate, gameState.isBettingLocked, isPaymentDueModalOpen, isItemPenaltyModalOpen, gameState.setPaymentDueDate]);
+    
+    const handlePayInstallment = useCallback(() => {
+        if (gameState.bal < currentInstallment) {
+            return showMsg("Saldo insuficiente para pagar a parcela.", 2000, true);
+        }
+        gameState.setBal(b => b - currentInstallment);
+        gameState.setCreditCardDebt(d => d - currentInstallment);
+        gameState.setMissedPayments(0);
+        gameState.setPaymentDueDate(Date.now() + 60000);
+        setIsPaymentDueModalOpen(false);
+        showMsg("Parcela paga com sucesso!", 2000, true);
+    }, [gameState, currentInstallment, showMsg]);
+    
+    const handlePostponeInstallment = useCallback(() => {
+        const newMissedCount = gameState.missedPayments + 1;
+        gameState.setCreditCardDebt(d => d + currentInstallment); // Add installment to debt
+        gameState.setMissedPayments(newMissedCount);
+        setIsPaymentDueModalOpen(false);
+        showMsg("Parcela adiada. O valor foi somado à sua dívida.", 3000, true);
+
+        if (newMissedCount >= 2) {
+            const penaltyAmount = currentInstallment * 2; // Penalty is two installments
+            gameState.setItemPenaltyDue({ amount: penaltyAmount });
+            gameState.setIsBettingLocked(true);
+            setIsItemPenaltyModalOpen(true);
+            showMsg("Duas parcelas atrasadas! Apostas bloqueadas até pagar a multa com itens.", 5000, true);
+        } else {
+            gameState.setPaymentDueDate(Date.now() + 60000);
+        }
+    }, [gameState, currentInstallment, showMsg]);
+
+    const handlePayItemPenalty = useCallback((items: Partial<Record<SymbolKey, number>>) => {
+        if (!gameState.itemPenaltyDue) return;
+
+        let totalValue = 0;
+        for (const key in items) {
+            const symbol = key as keyof typeof ITEM_PENALTY_VALUES;
+            const count = items[symbol] || 0;
+            if (ITEM_PENALTY_VALUES[symbol]) {
+                totalValue += ITEM_PENALTY_VALUES[symbol] * count;
+            }
+        }
+
+        if (totalValue < gameState.itemPenaltyDue.amount) {
+            return showMsg("Valor dos itens insuficiente para pagar a multa.", 3000, true);
+        }
+
+        gameState.setInv(prevInv => {
+            const newInv = { ...prevInv };
+            for (const key in items) {
+                const symbol = key as SymbolKey;
+                newInv[symbol] = (newInv[symbol] || 0) - (items[symbol] || 0);
+            }
+            return newInv;
+        });
+
+        gameState.setItemPenaltyDue(null);
+        gameState.setIsBettingLocked(false);
+        gameState.setMissedPayments(0);
+        gameState.setPaymentDueDate(Date.now() + 60000);
+        setIsItemPenaltyModalOpen(false);
+        showMsg("Multa paga! Apostas desbloqueadas.", 3000, true);
+    }, [gameState, showMsg]);
 
     const takeCreditCardLoan = useCallback((amount: number) => {
         const availableCredit = secondarySkills.creditLimit - gameState.creditCardDebt;
@@ -101,25 +189,15 @@ export const useGameLogic = () => {
         if (amount > availableCredit) return showMsg("Valor excede seu limite de crédito disponível.", 2000, true);
 
         gameState.setCreditCardDebt(d => d + amount);
-        gameState.setBal(b => b + amount); // Direct gain, not through handleGain
+        gameState.setBal(b => b + amount);
         showMsg(`Empréstimo de $${amount.toFixed(2)} realizado!`, 3000, true);
-    }, [secondarySkills.creditLimit, gameState.creditCardDebt, gameState.setBal, gameState.setCreditCardDebt, showMsg]);
-
-    const payCreditCardInstallment = useCallback(() => {
-        const debt = gameState.creditCardDebt;
-        if (debt <= 0) return showMsg("Você não tem dívidas.", 2000, true);
-
-        const installmentDenominator = [24, 48, 60][gameState.renegotiationTier];
-        const payment = debt / installmentDenominator;
-
-        if (gameState.bal < payment) return showMsg("Saldo insuficiente.", 2000, true);
         
-        gameState.setBal(b => b - payment);
-        gameState.setCreditCardDebt(d => d - payment);
-        showMsg(`Parcela de $${payment.toFixed(2)} paga!`, 2000, true);
-        // TODO: Reset 60s timer if possible in a future update
-    }, [gameState.bal, gameState.creditCardDebt, gameState.renegotiationTier, gameState.setBal, gameState.setCreditCardDebt, showMsg]);
-    
+        if(gameState.paymentDueDate === null) {
+            gameState.setPaymentDueDate(Date.now() + 60000);
+        }
+
+    }, [secondarySkills.creditLimit, gameState.creditCardDebt, gameState.setBal, gameState.setCreditCardDebt, gameState.paymentDueDate, gameState.setPaymentDueDate, showMsg]);
+
     const payOffCreditCardDebt = useCallback(() => {
         const debt = gameState.creditCardDebt;
         if (debt <= 0) return showMsg("Você não tem dívidas.", 2000, true);
@@ -127,8 +205,10 @@ export const useGameLogic = () => {
 
         gameState.setBal(b => b - debt);
         gameState.setCreditCardDebt(0);
+        gameState.setPaymentDueDate(null);
+        gameState.setMissedPayments(0);
         showMsg(`Dívida de $${debt.toFixed(2)} quitada!`, 3000, true);
-    }, [gameState.bal, gameState.creditCardDebt, gameState.setBal, gameState.setCreditCardDebt, showMsg]);
+    }, [gameState.bal, gameState.creditCardDebt, gameState.setBal, gameState.setCreditCardDebt, gameState.setPaymentDueDate, gameState.setMissedPayments, showMsg]);
 
     const renegotiateCreditCard = useCallback((tier: RenegotiationTier) => {
         if (gameState.renegotiationTier >= tier) return showMsg("Plano de renegociação já é igual ou superior.", 3000, true);
@@ -320,8 +400,15 @@ export const useGameLogic = () => {
         isCreditCardModalOpen,
         openCreditCardModal: () => setIsCreditCardModalOpen(true),
         closeCreditCardModal: () => setIsCreditCardModalOpen(false),
+        isPaymentDueModalOpen,
+        closePaymentDueModal: () => setIsPaymentDueModalOpen(false),
+        isItemPenaltyModalOpen,
+        closeItemPenaltyModal: () => setIsItemPenaltyModalOpen(false),
+        currentInstallment,
+        handlePayInstallment,
+        handlePostponeInstallment,
+        handlePayItemPenalty,
         takeCreditCardLoan,
-        payCreditCardInstallment,
         payOffCreditCardDebt,
         renegotiateCreditCard,
     };

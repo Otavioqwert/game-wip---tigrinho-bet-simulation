@@ -23,6 +23,7 @@ interface SlotMachineProps {
     handleQuickSpin: () => boolean;
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     isBankrupt: boolean;
+    isBettingLocked: boolean;
 }
 
 const SlotMachine: React.FC<SlotMachineProps> = (props) => {
@@ -34,9 +35,9 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
         stoppingColumns,
         winMsg,
         extraMsg,
-        bal,
         isPoolInvalid,
         isBankrupt,
+        isBettingLocked
     } = props;
     
     return (
@@ -51,9 +52,10 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
                     ⚠️ Roleta travada! Adicione símbolos pela Loja.
                 </div>
             )}
-             {isBankrupt && (
+             {(isBankrupt || isBettingLocked) && (
                 <div className="bg-gradient-to-r from-red-600 to-red-800 text-white rounded-lg p-2 mb-3 font-bold shadow-lg shadow-red-500/40 text-center text-md w-full max-w-sm">
-                     LIMITE ATINGIDO! Apostas bloqueadas.
+                     {isBankrupt ? 'LIMITE ATINGIDO!' : 'PAGAMENTO ATRASADO!'} Apostas bloqueadas.
+                     {isBettingLocked && ' Pague a multa para desbloquear.'}
                 </div>
             )}
             <div className="w-full max-w-sm bg-black/50 rounded-2xl p-4 sm:p-5 mb-5 inner-neon-border">

@@ -16,6 +16,7 @@ interface ControlsProps {
     handleQuickSpin: () => boolean;
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     isBankrupt: boolean;
+    isBettingLocked: boolean;
 }
 
 const SlotMachineControls: React.FC<ControlsProps> = (props) => {
@@ -33,6 +34,7 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
         handleQuickSpin,
         showMsg,
         isBankrupt,
+        isBettingLocked,
     } = props;
     
     const quickSpinIntervalRef = useRef<number | null>(null);
@@ -63,7 +65,7 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
         if (!handleQuickSpin()) {
             if (febreDocesAtivo) {
                 showMsg("Sem giros grátis!", 1500, true);
-            } else if (bal < betVal && !isBankrupt) { // Be more specific with message
+            } else if (bal < betVal && !isBankrupt) { 
                 showMsg("Saldo/Crédito insuficiente!", 1500, true);
             }
             return;
@@ -113,16 +115,17 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
 
     const btnClasses = "py-3 px-4 font-bold text-stone-900 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl shadow-lg shadow-yellow-500/25 transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none";
     const isControlsDisabled = isSpinning || quickSpinQueue > 0;
+    const isBettingDisabled = isBankrupt || isBettingLocked;
 
     return (
         <div className="w-full max-w-sm">
             <div className="flex flex-col gap-2.5 mb-4">
                 <button 
                     onClick={handleSpin} 
-                    disabled={isControlsDisabled || isBankrupt || isPoolInvalid || (!febreDocesAtivo && bal < betVal)} 
+                    disabled={isControlsDisabled || isBettingDisabled || isPoolInvalid || (!febreDocesAtivo && bal < betVal)} 
                     className={`${btnClasses} text-xl h-16`}
                 >
-                    🎰 GIRAR
+                    {isBettingDisabled ? '⛓️ BLOQUEADO ⛓️' : '🎰 GIRAR'}
                 </button>
                 <div className="grid grid-cols-3 gap-2.5">
                     <button 
@@ -153,7 +156,7 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
                         onMouseLeave={() => stopQuickSpin()}
                         onTouchStart={(e) => { e.preventDefault(); startQuickSpin(); }}
                         onTouchEnd={() => stopQuickSpin()}
-                        disabled={isSpinning || isPoolInvalid || isBankrupt} 
+                        disabled={isSpinning || isPoolInvalid || isBettingDisabled} 
                         className={`${btnClasses} relative !bg-sky-500 !from-sky-400 !to-sky-600 text-white ${isQuickSpinPressed ? 'scale-95 brightness-90' : ''}`}
                     >
                         Rápido
