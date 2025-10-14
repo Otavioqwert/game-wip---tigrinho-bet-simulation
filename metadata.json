@@ -1,0 +1,5 @@
+{
+  "name": "(backup 4) Tigrinho idle simulator - wip",
+  "description": "A slot machine game based on the popular 'Tigrinho' theme, converted to a modern React application. Players manage their balance, bets, and inventory of symbols to maximize their Return on Investment (ROI). The game features complex mechanics like debt management, item shops, multipliers, and a special 'Febre Doce' mode.",
+  "requestFramePermissions": []
+}
