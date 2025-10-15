@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { SCRATCH_CARD_TIERS } from '../../constants';
 import type { ScratchCardTier, ScratchCardCell } from '../../types';
 
@@ -8,10 +8,21 @@ interface ScratchCardShopProps {
     activeCard: { tier: ScratchCardTier; grid: ScratchCardCell[] } | null;
     getScratchCardPrice: (tierIndex: number) => number;
     buyScratchCard: (tierIndex: number) => void;
+    buyMultipleScratchCards: (tierIndex: number, quantity: number) => void;
 }
 
 const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
-    const { unluckyPot, activeCard, getScratchCardPrice, buyScratchCard } = props;
+    const { unluckyPot, activeCard, getScratchCardPrice, buyScratchCard, buyMultipleScratchCards } = props;
+    const [quantities, setQuantities] = useState<Record<number, number>>({});
+
+    const handleQuantityChange = (tierIndex: number, value: string) => {
+        const num = parseInt(value, 10);
+        setQuantities(prev => ({
+            ...prev,
+            [tierIndex]: isNaN(num) || num < 1 ? 1 : num
+        }));
+    };
+    
     const shopBtnClasses = "py-1.5 px-3 font-semibold text-stone-900 bg-yellow-400 rounded-md transition-all hover:bg-yellow-300 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-400";
 
     return (
@@ -22,19 +33,42 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
             </div>
             {SCRATCH_CARD_TIERS.map((tier, index) => {
                 const currentPrice = getScratchCardPrice(index);
+                const quantity = quantities[index] || 1;
+
                 return (
-                    <div key={tier.name} className="flex justify-between items-center bg-yellow-500/10 p-2 rounded-md">
-                        <div>
-                            <span className="font-bold text-yellow-400">Raspatinha {tier.name}</span>
-                            <span className="block text-sm text-gray-300">$ {currentPrice.toFixed(2)}</span>
+                    <div key={tier.name} className="bg-yellow-500/10 p-2 rounded-md">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <span className="font-bold text-yellow-400">Raspatinha {tier.name}</span>
+                                <span className="block text-sm text-gray-300">$ {currentPrice.toFixed(2)}</span>
+                            </div>
+                            <button 
+                                onClick={() => buyScratchCard(index)} 
+                                disabled={unluckyPot < currentPrice || !!activeCard} 
+                                className={shopBtnClasses}
+                            >
+                                Comprar 1
+                            </button>
                         </div>
-                        <button 
-                            onClick={() => buyScratchCard(index)} 
-                            disabled={unluckyPot < currentPrice || !!activeCard} 
-                            className={shopBtnClasses}
-                        >
-                            Comprar
-                        </button>
+                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-yellow-500/20">
+                           <div className="flex items-center gap-2">
+                                <span className="text-sm">Qtd:</span>
+                                <input
+                                    type="number"
+                                    value={quantity}
+                                    onChange={(e) => handleQuantityChange(index, e.target.value)}
+                                    min="1"
+                                    className="w-16 bg-black/50 text-white p-1 rounded border border-gray-600 text-center"
+                                />
+                           </div>
+                            <button
+                                onClick={() => buyMultipleScratchCards(index, quantity)}
+                                disabled={!!activeCard}
+                                className={`${shopBtnClasses} !bg-sky-500 !text-white`}
+                            >
+                                Comprar Várias
+                            </button>
+                        </div>
                     </div>
                 )
             })}

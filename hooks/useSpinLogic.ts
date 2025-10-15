@@ -26,10 +26,10 @@ interface SpinLogicProps {
     cashbackMultiplier: number;
     creditLimit: number;
     // Momento props
-    momento: number;
-    setMomento: React.Dispatch<React.SetStateAction<number>>;
-    maxMomentoReached: number;
-    setMaxMomentoReached: React.Dispatch<React.SetStateAction<number>>;
+    momentoLevel: number;
+    setMomentoLevel: React.Dispatch<React.SetStateAction<number>>;
+    momentoProgress: number;
+    setMomentoProgress: React.Dispatch<React.SetStateAction<number>>;
     setRoiSaldo: React.Dispatch<React.SetStateAction<RoiSaldo>>;
     // Economy handlers
     handleSpend: (cost: number) => boolean;
@@ -125,7 +125,7 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                 
                 if (winSymbol === '⭐' && isCaminhoEstelarActive && spinPool.length > 0) {
                     let bonusWin = 0;
-                    for (let i = 0; i < 30; i++) {
+                    for (let i = 0; i < 90; i++) {
                         const s1 = spinPool[Math.floor(Math.random() * spinPool.length)];
                         const s2 = spinPool[Math.floor(Math.random() * spinPool.length)];
                         const s3 = spinPool[Math.floor(Math.random() * spinPool.length)];
@@ -219,7 +219,7 @@ export const useSpinLogic = (props: SpinLogicProps) => {
 
             if (allStopped) {
                 setTimeout(() => {
-                    const { totalIncomeMultiplier, febreDocesAtivo, betValFebre, betVal, febreDocesGiros, handleGain, setFebreDocesAtivo, setFebreDocesGiros, showMsg, setWinMsg, restoreOriginalState, setUnluckyPot, momento, setMomento, maxMomentoReached, setMaxMomentoReached, setInv, setRoiSaldo } = propsRef.current;
+                    const { totalIncomeMultiplier, febreDocesAtivo, betValFebre, betVal, febreDocesGiros, handleGain, setFebreDocesAtivo, setFebreDocesGiros, showMsg, setWinMsg, restoreOriginalState, setUnluckyPot, momentoLevel, setMomentoLevel, momentoProgress, setMomentoProgress, setInv, setRoiSaldo } = propsRef.current;
                     setStoppingColumns([false, false, false]);
                     const result = getSpinResult(animationState.current.finalGrid, animationState.current.spinPool);
                     const finalWinnings = result.totalWin * totalIncomeMultiplier;
@@ -230,48 +230,48 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                     
                     const currentSpinBet = febreDocesAtivo ? betValFebre : betVal;
                     if (!febreDocesAtivo) {
-                        // Momento Logic
+                        // --- New Momento Logic ---
                         const netGain = finalWinnings - currentSpinBet;
-                        const newMomento = momento + netGain;
+                        let currentLevel = momentoLevel;
+                        let newProgress = momentoProgress + netGain;
+                        let threshold = (currentLevel + 1) * 100;
+                        const rewards: Partial<Record<MidSymbolKey, number>> = {};
+                        let levelsGained = 0;
 
-                        const previousMaxThreshold = Math.floor(maxMomentoReached / 100);
-                        const newPotentialThreshold = Math.floor(newMomento / 100);
-                        
-                        if (newPotentialThreshold > previousMaxThreshold) {
-                            const thresholdsCrossed = newPotentialThreshold - previousMaxThreshold;
-                            const rewards: Partial<Record<MidSymbolKey, number>> = {};
-                            for (let i = 0; i < thresholdsCrossed; i++) {
-                                const randomCandy = MID[Math.floor(Math.random() * MID.length)] as MidSymbolKey;
-                                rewards[randomCandy] = (rewards[randomCandy] || 0) + 1;
+                        if (newProgress > 0) {
+                            while (newProgress >= threshold) {
+                                newProgress -= threshold;
+                                const candiesToAward = currentLevel + 1;
+                                for (let i = 0; i < candiesToAward; i++) {
+                                    const randomCandy = MID[Math.floor(Math.random() * MID.length)] as MidSymbolKey;
+                                    rewards[randomCandy] = (rewards[randomCandy] || 0) + 1;
+                                }
+                                currentLevel++;
+                                levelsGained++;
+                                threshold = (currentLevel + 1) * 100;
                             }
+                        }
 
-                            const rewardMsgParts = (Object.keys(rewards) as MidSymbolKey[]).map(
-                                candy => `+${rewards[candy]} ${candy}`
-                            );
-                            showMsg(`Momento Bônus! ${rewardMsgParts.join(', ')}`, 3000, true);
+                        if (levelsGained > 0) {
+                            const rewardMsgParts = (Object.keys(rewards) as MidSymbolKey[]).map(candy => `+${rewards[candy]} ${candy}`);
+                            showMsg(`Momento Nível ${currentLevel}! Recompensa: ${rewardMsgParts.join(', ')}`, 4000, true);
 
                             setInv(prevInv => {
                                 const newInv = { ...prevInv };
-                                for (const candy in rewards) {
-                                    newInv[candy as MidSymbolKey] = (newInv[candy as MidSymbolKey] || 0) + rewards[candy as MidSymbolKey]!;
-                                }
+                                for (const candy in rewards) { newInv[candy as MidSymbolKey] = (newInv[candy as MidSymbolKey] || 0) + rewards[candy as MidSymbolKey]!; }
                                 return newInv;
                             });
 
                             setRoiSaldo(prevSaldo => {
                                 const newSaldo = { ...prevSaldo };
-                                for (const candy in rewards) {
-                                    newSaldo[candy as MidSymbolKey] = (newSaldo[candy as MidSymbolKey] || 0) + rewards[candy as MidSymbolKey]!;
-                                }
+                                for (const candy in rewards) { newSaldo[candy as MidSymbolKey] = (newSaldo[candy as MidSymbolKey] || 0) + rewards[candy as MidSymbolKey]!; }
                                 return newSaldo;
                             });
+                            setMomentoLevel(currentLevel);
                         }
                         
-                        setMomento(newMomento);
-
-                        if (newMomento > maxMomentoReached) {
-                            setMaxMomentoReached(newMomento);
-                        }
+                        setMomentoProgress(newProgress);
+                        // --- End Momento Logic ---
 
                         // Unlucky Pot
                         if (finalWinnings < currentSpinBet * 2) {

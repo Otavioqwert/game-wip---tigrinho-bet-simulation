@@ -13,7 +13,7 @@ export const SKILLS: Record<SkillId, Skill> = {
     caminhoEstelar: {
         id: 'caminhoEstelar',
         name: 'Caminho Estelar',
-        description: () => `Concede +3 ⭐. Acertos de linha com ⭐ ativam um bônus: 30 sorteios de 3 símbolos da roleta são feitos. Cada trio correspondente concede 5% do valor de sua linha.`,
+        description: () => `Concede +3 ⭐. Acertos de linha com ⭐ ativam um bônus: 90 sorteios de 3 símbolos da roleta são feitos. Cada trio correspondente concede 5% do valor de sua linha.`,
         tier: 2,
         dependencies: [{ id: 'grandeGanho', level: 5 }],
         getCost: () => 500,

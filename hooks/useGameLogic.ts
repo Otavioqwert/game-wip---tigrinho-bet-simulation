@@ -1,4 +1,3 @@
-
 // FIX: Implemented the main game logic hook to aggregate all other hooks and provide game state and actions to the App component.
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useGameState } from './useGameState';
@@ -300,10 +299,10 @@ export const useGameLogic = () => {
         setUnluckyPot: gameState.setUnluckyPot,
         cashbackMultiplier: secondarySkills.cashbackMultiplier,
         creditLimit: secondarySkills.creditLimit,
-        momento: gameState.momento,
-        setMomento: gameState.setMomento,
-        maxMomentoReached: gameState.maxMomentoReached,
-        setMaxMomentoReached: gameState.setMaxMomentoReached,
+        momentoLevel: gameState.momentoLevel,
+        setMomentoLevel: gameState.setMomentoLevel,
+        momentoProgress: gameState.momentoProgress,
+        setMomentoProgress: gameState.setMomentoProgress,
         setRoiSaldo: gameState.setRoiSaldo,
         handleSpend,
         handleGain,

@@ -149,7 +149,8 @@ const App: React.FC = () => {
                                 betVal={game.betVal}
                                 betValFebre={game.betValFebre}
                                 febreDocesAtivo={game.febreDocesAtivo}
-                                momento={game.momento}
+                                momentoLevel={game.momentoLevel}
+                                momentoProgress={game.momentoProgress}
                             />
                             {/* Main Tabs Navigation */}
                             <div className="flex gap-1 mb-2">
@@ -168,7 +169,7 @@ const App: React.FC = () => {
                                 onTouchEnd={handleTouchEnd}
                             >
                                 {mainActiveTab === 0 && <SlotMachine {...game} />}
-                                {mainActiveTab === 1 && <InventoryTab inv={game.inv} roiSaldo={game.roiSaldo} momento={game.momento} />}
+                                {mainActiveTab === 1 && <InventoryTab inv={game.inv} roiSaldo={game.roiSaldo} momentoLevel={game.momentoLevel} momentoProgress={game.momentoProgress} />}
                                 {mainActiveTab === 2 && <ShopsTab {...game} />}
                                 {mainActiveTab === 3 && <ConfigTab {...game} />}
                             </main>

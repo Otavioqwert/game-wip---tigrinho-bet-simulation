@@ -3,7 +3,7 @@ import { INITIAL_INVENTORY, INITIAL_MULTIPLIERS } from '../constants';
 import type { Inventory, Multipliers, PanificadoraLevels, RoiSaldo, SymbolKey, RenegotiationTier } from '../types';
 
 const SAVE_KEY = 'tigrinho-save-game';
-const SAVE_VERSION = 15; // Incremented version for new credit card state
+const SAVE_VERSION = 16; // Incremented version for new momento state
 
 export interface ItemPenalty {
     amount: number;
@@ -24,8 +24,8 @@ export interface SavedState {
     snakeUpgrades: Record<string, number>;
     scratchCardPurchaseCounts: Record<number, number>;
     unluckyPot: number;
-    momento: number;
-    maxMomentoReached: number;
+    momentoLevel: number;
+    momentoProgress: number;
     creditCardDebt: number;
     renegotiationTier: RenegotiationTier;
     // New state for interactive credit card payments
@@ -50,8 +50,8 @@ const getInitialState = (): SavedState => ({
     snakeUpgrades: {},
     scratchCardPurchaseCounts: {},
     unluckyPot: 0,
-    momento: 0,
-    maxMomentoReached: 0,
+    momentoLevel: 0,
+    momentoProgress: 0,
     creditCardDebt: 0,
     renegotiationTier: 0,
     missedPayments: 0,
@@ -87,8 +87,14 @@ const parseAndMigrateSaveData = (encodedState: string): SavedState | null => {
         const jsonData = decodeURIComponent(escape(decodedBinaryString));
         let parsedState: Partial<SavedState> = JSON.parse(jsonData);
 
-        if (saveVersion < SAVE_VERSION) {
-            // Future migration logic can be added here
+        if (saveVersion < 16) {
+             // Migrate from old momento to new system if loading an old save
+            if (typeof (parsedState as any).momento === 'number') {
+                delete (parsedState as any).momento;
+                delete (parsedState as any).maxMomentoReached;
+                parsedState.momentoLevel = 0;
+                parsedState.momentoProgress = 0;
+            }
         }
         
         // Ensure bal is not negative from older saves
@@ -123,8 +129,8 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
     const [snakeUpgrades, setSnakeUpgrades] = useState<Record<string, number>>(getInitialState().snakeUpgrades);
     const [scratchCardPurchaseCounts, setScratchCardPurchaseCounts] = useState<Record<number, number>>(getInitialState().scratchCardPurchaseCounts);
     const [unluckyPot, setUnluckyPot] = useState<number>(getInitialState().unluckyPot);
-    const [momento, setMomento] = useState(getInitialState().momento);
-    const [maxMomentoReached, setMaxMomentoReached] = useState(getInitialState().maxMomentoReached);
+    const [momentoLevel, setMomentoLevel] = useState(getInitialState().momentoLevel);
+    const [momentoProgress, setMomentoProgress] = useState(getInitialState().momentoProgress);
     const [creditCardDebt, setCreditCardDebt] = useState(getInitialState().creditCardDebt);
     const [renegotiationTier, setRenegotiationTier] = useState<RenegotiationTier>(getInitialState().renegotiationTier);
     const [missedPayments, setMissedPayments] = useState(getInitialState().missedPayments);
@@ -148,8 +154,8 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
         setSnakeUpgrades(state.snakeUpgrades || {});
         setScratchCardPurchaseCounts(state.scratchCardPurchaseCounts || {});
         setUnluckyPot(state.unluckyPot || 0);
-        setMomento(state.momento || 0);
-        setMaxMomentoReached(state.maxMomentoReached || 0);
+        setMomentoLevel(state.momentoLevel || 0);
+        setMomentoProgress(state.momentoProgress || 0);
         setCreditCardDebt(state.creditCardDebt || 0);
         setRenegotiationTier(state.renegotiationTier || 0);
         setMissedPayments(state.missedPayments || 0);
@@ -174,13 +180,13 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
     }, [skillLevels, secondarySkillLevels, showMsg]);
 
     const exportState = useCallback((): string => {
-        const gameState: SavedState = { bal, betVal, inv, mult, roiSaldo, panificadoraLevel, estrelaPrecoAtual, prestigePoints, prestigeLevel, skillLevels, secondarySkillLevels, snakeUpgrades, scratchCardPurchaseCounts, unluckyPot, momento, maxMomentoReached, creditCardDebt, renegotiationTier, missedPayments, paymentDueDate, isBettingLocked, itemPenaltyDue };
+        const gameState: SavedState = { bal, betVal, inv, mult, roiSaldo, panificadoraLevel, estrelaPrecoAtual, prestigePoints, prestigeLevel, skillLevels, secondarySkillLevels, snakeUpgrades, scratchCardPurchaseCounts, unluckyPot, momentoLevel, momentoProgress, creditCardDebt, renegotiationTier, missedPayments, paymentDueDate, isBettingLocked, itemPenaltyDue };
         const jsonState = JSON.stringify(gameState);
         const binaryString = unescape(encodeURIComponent(jsonState));
         const checksum = binaryString.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const encodedData = btoa(binaryString);
         return `V${SAVE_VERSION}:${checksum}:${encodedData}`;
-    }, [bal, betVal, inv, mult, roiSaldo, panificadoraLevel, estrelaPrecoAtual, prestigePoints, prestigeLevel, skillLevels, secondarySkillLevels, snakeUpgrades, scratchCardPurchaseCounts, unluckyPot, momento, maxMomentoReached, creditCardDebt, renegotiationTier, missedPayments, paymentDueDate, isBettingLocked, itemPenaltyDue]);
+    }, [bal, betVal, inv, mult, roiSaldo, panificadoraLevel, estrelaPrecoAtual, prestigePoints, prestigeLevel, skillLevels, secondarySkillLevels, snakeUpgrades, scratchCardPurchaseCounts, unluckyPot, momentoLevel, momentoProgress, creditCardDebt, renegotiationTier, missedPayments, paymentDueDate, isBettingLocked, itemPenaltyDue]);
 
     const saveGame = useCallback((isManual = false) => {
         try {
@@ -236,8 +242,8 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
         snakeUpgrades, setSnakeUpgrades,
         scratchCardPurchaseCounts, setScratchCardPurchaseCounts,
         unluckyPot, setUnluckyPot,
-        momento, setMomento,
-        maxMomentoReached, setMaxMomentoReached,
+        momentoLevel, setMomentoLevel,
+        momentoProgress, setMomentoProgress,
         creditCardDebt, setCreditCardDebt,
         renegotiationTier, setRenegotiationTier,
         missedPayments, setMissedPayments,

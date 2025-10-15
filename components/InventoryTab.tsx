@@ -5,12 +5,14 @@ import { MID } from '../constants';
 interface InventoryTabProps {
     inv: Inventory;
     roiSaldo: RoiSaldo;
-    momento: number;
+    momentoLevel: number;
+    momentoProgress: number;
 }
 
-const InventoryTab: React.FC<InventoryTabProps> = ({ inv, roiSaldo, momento }) => {
-    const momentoProgress = momento < 0 ? 0 : (momento % 100);
-    const nextThreshold = Math.floor(momento / 100) * 100 + 100;
+const InventoryTab: React.FC<InventoryTabProps> = ({ inv, roiSaldo, momentoLevel, momentoProgress }) => {
+    const nextThreshold = (momentoLevel + 1) * 100;
+    const displayProgress = Math.max(0, momentoProgress);
+    const progressPercent = Math.min(100, (displayProgress / nextThreshold) * 100);
 
     return (
         <div>
@@ -19,13 +21,13 @@ const InventoryTab: React.FC<InventoryTabProps> = ({ inv, roiSaldo, momento }) =
             <div className="bg-black/20 rounded-xl p-3 mb-6 space-y-4">
                 <div>
                     <div className="flex justify-between items-center mb-1">
-                        <span className="font-bold text-lg text-purple-300">Momento</span>
-                        <span className="text-gray-300">{momento.toFixed(2)} / {nextThreshold}</span>
+                        <span className="font-bold text-lg text-purple-300">Momento Nível {momentoLevel}</span>
+                        <span className="text-gray-300">{momentoProgress.toFixed(2)} / {nextThreshold}</span>
                     </div>
                     <div className="w-full bg-gray-800 rounded-full h-4 border-2 border-purple-700 overflow-hidden">
                         <div
                             className="bg-gradient-to-r from-purple-500 to-fuchsia-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${momentoProgress}%` }}
+                            style={{ width: `${progressPercent}%` }}
                         ></div>
                     </div>
                 </div>

@@ -10,6 +10,7 @@ import PanificadoraShop from './shops/PanificadoraShop';
 import ScratchCardShop from './shops/ScratchCardShop';
 import MinigamesShop from './shops/MinigamesShop';
 import ScratchCardModal from './shops/ScratchCardModal';
+import BulkScratchResultModal from './shops/BulkScratchResultModal';
 
 // This interface remains largely the same, as it needs to pass down all the props.
 interface ShopsTabProps {
@@ -35,10 +36,14 @@ interface ShopsTabProps {
     closeCard: () => void;
     isSnakeGameUnlocked: boolean;
     startSnakeGame: () => void;
+    // Bulk buy props
+    bulkResult: { count: number, cost: number, winnings: number } | null;
+    buyMultipleScratchCards: (tierIndex: number, quantity: number) => void;
+    closeBulkResultModal: () => void;
 }
 
 const ShopsTab: React.FC<ShopsTabProps> = (props) => {
-    const { activeCard, winnings, revealSquare, revealAll, closeCard, isSnakeGameUnlocked, getSkillLevel } = props;
+    const { activeCard, winnings, revealSquare, revealAll, closeCard, isSnakeGameUnlocked, getSkillLevel, bulkResult, closeBulkResultModal } = props;
     const [shopActiveTab, setShopActiveTab] = useState(0);
 
     const tabBtnClasses = (isActive: boolean) => `flex-1 p-2 rounded-t-lg font-bold cursor-pointer transition-colors text-sm sm:text-base ${isActive ? 'bg-yellow-500 text-stone-900' : 'bg-yellow-500/20 text-white hover:bg-yellow-500/30'}`;
@@ -59,6 +64,13 @@ const ShopsTab: React.FC<ShopsTabProps> = (props) => {
                     revealSquare={revealSquare}
                     revealAll={revealAll}
                     closeCard={closeCard}
+                />
+            )}
+
+            {bulkResult && (
+                <BulkScratchResultModal
+                    result={bulkResult}
+                    onClose={closeBulkResultModal}
                 />
             )}
 
