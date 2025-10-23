@@ -68,6 +68,17 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     description: (level) => `Ganhe ${level} vida(s) extra por jogo.`,
     costs: [2500, 18500],
   },
+  paralamas: {
+    id: 'paralamas',
+    nome: "Paralamas",
+    tipo: "gameplay",
+    custoInicial: 0, // Not used
+    efeitoPorNivel: 1,
+    crescimento: 1, // Not used
+    maxLevel: 3,
+    description: (level) => `Permite bater na parede ${level} vez(es). As cargas são restauradas após coletar 10 maçãs.`,
+    costs: [1000, 10000, 50000],
+  },
 
   // Especial
   goldenApple: {
@@ -113,6 +124,6 @@ export const calculateSnakeUpgradeCost = (upgrade: SnakeUpgrade, level: number):
 
 export const SNAKE_UPGRADE_LAYOUT: Record<SnakeUpgradeType, SnakeUpgradeId[]> = {
     pontuacao: ['basicMultiplier', 'comboMaster', 'premiumMultiplier'],
-    gameplay: ['slowSpeed', 'smallerStart', 'secondChance'],
+    gameplay: ['slowSpeed', 'smallerStart', 'secondChance', 'paralamas'],
     especial: ['goldenApple', 'turboCash', 'frenzy']
 };

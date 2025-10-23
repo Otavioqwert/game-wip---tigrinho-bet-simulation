@@ -92,7 +92,8 @@ export const useSnakeUpgrades = (props: SnakeUpgradesProps) => {
         applePointBonus: Math.min(
             SNAKE_UPGRADES.comboMaster.efeitoMaximo || 0.5,
             getUpgradeLevel('comboMaster') * SNAKE_UPGRADES.comboMaster.efeitoPorNivel
-        )
+        ),
+        paralamasCharges: getUpgradeLevel('paralamas'),
     };
     
     return {

@@ -21,6 +21,7 @@ interface SnakeGameProps {
         goldenAppleChance: number;
         frenzyChances: number[];
         applePointBonus: number;
+        paralamasCharges: number;
     };
     totalScoreMultiplier: number;
     resetSnakeUpgrades: () => void;
@@ -55,6 +56,8 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
     const [lives, setLives] = useState(snakeGameSettings.lives);
     const [gameOverTab, setGameOverTab] = useState('result');
     const [canvasSize, setCanvasSize] = useState(400);
+    const [paralamasChargesUsed, setParalamasChargesUsed] = useState(0);
+    const [applesSinceLastReset, setApplesSinceLastReset] = useState(0);
 
     // Refs for animation and game state
     const animationFrameRef = useRef<number>();
@@ -115,6 +118,13 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             generateFood();
         }
     }, [food.length, generateFood, gameOver]);
+    
+    useEffect(() => {
+        if (applesSinceLastReset >= 10 && paralamasChargesUsed > 0) {
+            setParalamasChargesUsed(0);
+            setApplesSinceLastReset(0);
+        }
+    }, [applesSinceLastReset, paralamasChargesUsed]);
 
     const changeDirection = useCallback((newDir: Direction) => {
         if (gameOver) return;
@@ -171,11 +181,53 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
 
                 const eatenFoodIndex = food.findIndex(f => f.x === newHead.x && f.y === newHead.y);
                 const isEating = eatenFoodIndex !== -1;
+
+                const isWallCollision = newHead.x < 0 || newHead.x >= GRID_SIZE || newHead.y < 0 || newHead.y >= GRID_SIZE;
+                const availableCharges = snakeGameSettings.paralamasCharges - paralamasChargesUsed;
+
+                if (isWallCollision && availableCharges > 0) {
+                    setParalamasChargesUsed(c => c + 1);
+                    setApplesSinceLastReset(0);
+                    
+                    let newDirection: Direction = 'RIGHT';
+                    
+                    if (newHead.y < 0) { // Top wall
+                        newHead.y = 2;
+                        newDirection = Math.random() < 0.5 ? 'LEFT' : 'RIGHT';
+                    } else if (newHead.y >= GRID_SIZE) { // Bottom wall
+                        newHead.y = GRID_SIZE - 3;
+                        newDirection = Math.random() < 0.5 ? 'LEFT' : 'RIGHT';
+                    } else if (newHead.x < 0) { // Left wall
+                        newHead.x = 2;
+                        newDirection = Math.random() < 0.5 ? 'UP' : 'DOWN';
+                    } else { // Right wall
+                        newHead.x = GRID_SIZE - 3;
+                        newDirection = Math.random() < 0.5 ? 'UP' : 'DOWN';
+                    }
+                    
+                    directionRef.current = newDirection;
+
+                    const newSnakeBody: SnakeSegment[] = [newHead];
+                    let lastSegment = newHead;
+                    for (let i = 1; i < prevSnake.length; i++) {
+                        let nextX = lastSegment.x;
+                        let nextY = lastSegment.y;
+                        switch (newDirection) {
+                            case 'UP': nextY++; break;
+                            case 'DOWN': nextY--; break;
+                            case 'LEFT': nextX++; break;
+                            case 'RIGHT': nextX--; break;
+                        }
+                        const nextSegment = { x: nextX, y: nextY };
+                        newSnakeBody.push(nextSegment);
+                        lastSegment = nextSegment;
+                    }
+                    return newSnakeBody;
+                }
                 
                 const snakeToCheck = isEating ? prevSnake : prevSnake.slice(0, prevSnake.length - 1);
                 const isSelfCollision = snakeToCheck.some(segment => segment.x === newHead.x && segment.y === newHead.y);
-                const isWallCollision = newHead.x < 0 || newHead.x >= GRID_SIZE || newHead.y < 0 || newHead.y >= GRID_SIZE;
-
+                
                 if (isWallCollision || isSelfCollision) {
                     if (lives > 1) {
                         setLives(l => l - 1);
@@ -197,6 +249,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                     setScore(s => s + 1);
                     setInternalScore(s => s + scoreIncrease);
                     setFood(f => f.filter((_, i) => i !== eatenFoodIndex));
+                    setApplesSinceLastReset(a => a + 1);
                 } else {
                     newSnake.pop();
                 }
@@ -332,7 +385,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             ctx.beginPath(); ctx.arc(eye2.x, eye2.y, eyeSize * 0.5, 0, Math.PI * 2); ctx.fill();
         }
 
-    }, [snake, food, gameOver, lives, canvasSize, CELL_SIZE, snakeGameSettings]);
+    }, [snake, food, gameOver, lives, canvasSize, CELL_SIZE, snakeGameSettings, paralamasChargesUsed]);
 
     useEffect(() => {
         prevSnakeRef.current = snake;
@@ -356,10 +409,16 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <div className="relative bg-gradient-to-br from-gray-800 to-black rounded-2xl p-4 shadow-2xl border-4 border-green-500 w-full h-full text-white text-center flex flex-col items-center justify-center overflow-hidden gap-2">
                 <h2 className="text-3xl font-bold text-green-400">Snake Game</h2>
-                <div className="flex justify-between items-center w-full max-w-md text-lg">
-                    <span>Vidas: <span className="font-bold text-red-400">{'❤️'.repeat(lives)}</span></span>
-                    <span>Maçãs: <span className="font-bold text-yellow-400">{score}</span></span>
-                    <span>Ganhos: <span className="font-bold text-green-400">${finalWinnings.toFixed(2)}</span></span>
+                <div className="grid grid-cols-2 gap-x-4 w-full max-w-md text-lg">
+                    <span className="text-left">Vidas: <span className="font-bold text-red-400">{'❤️'.repeat(lives)}</span></span>
+                    <span className="text-right">Maçãs: <span className="font-bold text-yellow-400">{score}</span></span>
+                     {snakeGameSettings.paralamasCharges > 0 && (
+                        <span className="text-left col-span-2 text-base">
+                            Paralamas: <span className="font-bold text-cyan-400">{'🛡️'.repeat(snakeGameSettings.paralamasCharges - paralamasChargesUsed)}</span>
+                            {paralamasChargesUsed > 0 && <span className="text-sm text-gray-400"> (Próxima em {10 - applesSinceLastReset} maçãs)</span>}
+                        </span>
+                    )}
+                    <span className="text-center col-span-2 mt-1">Ganhos: <span className="font-bold text-green-400">${finalWinnings.toFixed(2)}</span></span>
                 </div>
                 <canvas ref={canvasRef} width={canvasSize} height={canvasSize} className="bg-gray-900 rounded-lg border-2 border-green-700" />
 
