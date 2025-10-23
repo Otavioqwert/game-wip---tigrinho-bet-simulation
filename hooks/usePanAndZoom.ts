@@ -2,125 +2,149 @@ import React, { useState, useCallback, useRef } from 'react';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 10;
-const PAN_SENSITIVITY = 0.8; // Reduced sensitivity for smoother movement
 const CLICK_DRAG_THRESHOLD = 5; // Pixels to move before it's considered a drag
 
 export const usePanAndZoom = () => {
     const [scale, setScale] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [isGrabbing, setIsGrabbing] = useState(false);
-    const isPanning = useRef(false);
-    const lastPos = useRef({ x: 0, y: 0 });
-    const startPos = useRef({ x: 0, y: 0 }); // Track initial mousedown position to differentiate click from drag
+    const [isPanModeActive, setIsPanModeActive] = useState(false);
+    
+    // Using a single ref for the entire pan state to avoid stale closures
+    const panState = useRef({
+        isPanning: false,
+        isMouseDown: false,
+        startPos: { x: 0, y: 0 },
+        lastPos: { x: 0, y: 0 },
+    });
 
     const resetPan = useCallback(() => {
         setOffset({ x: 0, y: 0 });
     }, []);
 
+    const togglePanMode = useCallback(() => {
+        setIsPanModeActive(prev => {
+            if (prev) { // If turning off pan mode
+                setIsGrabbing(false);
+                panState.current.isMouseDown = false;
+                panState.current.isPanning = false;
+            }
+            return !prev;
+        });
+    }, []);
+
     const handleWheel = useCallback((e: React.WheelEvent) => {
         e.preventDefault();
-
-        // Determine if the cursor is in the top half of the screen
-        const isTopHalf = e.clientY < window.innerHeight / 2;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const zoomFactor = 1.1;
         
-        // Invert scroll direction for zoom if in the top half
-        const scrollDirection = isTopHalf ? -Math.sign(e.deltaY) : Math.sign(e.deltaY);
+        const newScale = e.deltaY < 0 ? scale * zoomFactor : scale / zoomFactor;
+        const clampedScale = Math.min(Math.max(newScale, MIN_ZOOM), MAX_ZOOM);
 
-        setScale(prev => {
-            let newScale;
-            // Negative scroll direction (scroll up in bottom, scroll down in top) zooms in
-            if (scrollDirection < 0) {
-                newScale = prev + 0.01;
-            } 
-            // Positive scroll direction (scroll down in bottom, scroll up in top) zooms out
-            else if (scrollDirection > 0) {
-                newScale = prev - 0.01;
-            }
-            else {
-                return prev; // No scroll
-            }
+        if (clampedScale === scale) return;
 
-            const clampedScale = Math.min(Math.max(newScale, MIN_ZOOM), MAX_ZOOM);
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
 
-            // Reset pan only when crossing the 1x threshold downwards to avoid unnecessary updates
-            if (clampedScale <= 1 && prev > 1) { 
-                resetPan();
-            }
-            
-            return clampedScale;
-        });
-    }, [resetPan]);
+        const newOffsetX = mouseX - (mouseX - offset.x) * (clampedScale / scale);
+        const newOffsetY = mouseY - (mouseY - offset.y) * (clampedScale / scale);
+
+        setScale(clampedScale);
+        
+        if (clampedScale <= 1 && scale > 1) { 
+            resetPan();
+        } else if (clampedScale > 1) {
+            setOffset({ x: newOffsetX, y: newOffsetY });
+        }
+    }, [scale, offset, resetPan]);
     
-    const startPan = (x: number, y: number) => {
+    const startPan = (point: { clientX: number, clientY: number }) => {
         if (scale <= 1) return;
-        isPanning.current = true;
+        panState.current.isMouseDown = true;
+        panState.current.startPos = { x: point.clientX, y: point.clientY };
+        panState.current.lastPos = { x: point.clientX, y: point.clientY };
         setIsGrabbing(true);
-        lastPos.current = { x, y };
-        startPos.current = { x, y };
     };
 
-    const handlePan = (x: number, y: number) => {
-        if (!isPanning.current) return;
-        const dx = (x - lastPos.current.x) * PAN_SENSITIVITY;
-        const dy = (y - lastPos.current.y) * PAN_SENSITIVITY;
-        setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
-        lastPos.current = { x, y };
+    const handlePan = (point: { clientX: number, clientY: number }) => {
+        if (!panState.current.isMouseDown) return;
+
+        if (!panState.current.isPanning) {
+            const movedX = Math.abs(point.clientX - panState.current.startPos.x);
+            const movedY = Math.abs(point.clientY - panState.current.startPos.y);
+            if (movedX > CLICK_DRAG_THRESHOLD || movedY > CLICK_DRAG_THRESHOLD) {
+                panState.current.isPanning = true;
+            }
+        }
+        
+        if (panState.current.isPanning) {
+            const dx = point.clientX - panState.current.lastPos.x;
+            const dy = point.clientY - panState.current.lastPos.y;
+            setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+        }
+
+        panState.current.lastPos = { x: point.clientX, y: point.clientY };
     };
 
     const endPan = () => {
-        if (!isPanning.current) return;
-        isPanning.current = false;
+        panState.current.isMouseDown = false;
+        panState.current.isPanning = false;
         setIsGrabbing(false);
     };
     
     const panHandlers = {
         onWheel: handleWheel,
         onMouseDown: (e: React.MouseEvent) => {
-            // Pan with right mouse button (button === 2)
-            if (e.button !== 2) return;
-            if ((e.target as HTMLElement).closest('button, a, input')) return;
-            startPan(e.clientX, e.clientY);
+            if (!isPanModeActive || e.button !== 0 || (e.target as HTMLElement).closest('button, a, input')) return;
+            e.preventDefault();
+            startPan(e);
         },
-        onMouseMove: (e: React.MouseEvent) => handlePan(e.clientX, e.clientY),
+        onMouseMove: (e: React.MouseEvent) => {
+            if (!isPanModeActive) return;
+            handlePan(e);
+        },
         onMouseUp: (e: React.MouseEvent) => {
-            if (e.button !== 2) return;
+            if (!isPanModeActive || e.button !== 0) return;
             endPan();
         },
-        onMouseLeave: endPan,
-        onContextMenu: (e: React.MouseEvent) => {
-            // Prevent context menu only if it was a drag, not a simple click
-            const movedX = Math.abs(e.clientX - startPos.current.x);
-            const movedY = Math.abs(e.clientY - startPos.current.y);
-            if (movedX > CLICK_DRAG_THRESHOLD || movedY > CLICK_DRAG_THRESHOLD) {
-                e.preventDefault();
-            }
+        onMouseLeave: () => {
+            if (!isPanModeActive) return;
+            endPan();
         },
         onTouchStart: (e: React.TouchEvent) => {
-            if ((e.target as HTMLElement).closest('button, a, input')) return;
+            if (!isPanModeActive || (e.target as HTMLElement).closest('button, a, input')) return;
             if (scale <= 1) return; // Allow tab swipe when not zoomed
             if (e.touches.length === 1) {
-                startPan(e.touches[0].clientX, e.touches[0].clientY)
+                startPan(e.touches[0]);
             }
         },
         onTouchMove: (e: React.TouchEvent) => {
+            if (!isPanModeActive) return;
             if (e.touches.length === 1) {
-                handlePan(e.touches[0].clientX, e.touches[0].clientY)
+                handlePan(e.touches[0]);
             }
         },
-        onTouchEnd: endPan,
+        onTouchEnd: () => {
+            if (!isPanModeActive) return;
+            endPan();
+        },
     };
     
-    const zoomIn = useCallback(() => setScale(s => Math.min(s * 1.2, MAX_ZOOM)), []);
+    const zoomIn = useCallback(() => setScale(s => Math.min(s * 1.25, MAX_ZOOM)), []);
     const zoomOut = useCallback(() => {
         setScale(s => {
-            const newScale = Math.max(s / 1.2, MIN_ZOOM);
+            const newScale = Math.max(s / 1.25, MIN_ZOOM);
             if (newScale <= 1) resetPan();
             return newScale;
-        })
+        });
     }, [resetPan]);
 
-    const transform = `translate(${offset.x}px, ${offset.y}px) scale(${scale})`;
-    const cursor = scale > 1 ? (isGrabbing ? 'grabbing' : 'grab') : 'auto';
+    const style = {
+        transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+        cursor: isPanModeActive && scale > 1 ? (isGrabbing ? 'grabbing' : 'grab') : 'auto',
+        touchAction: 'none',
+        userSelect: isGrabbing ? 'none' : 'auto'
+    } as const;
 
-    return { transform, scale, zoomIn, zoomOut, panHandlers, cursor };
+    return { style, scale, zoomIn, zoomOut, panHandlers, isPanModeActive, togglePanMode };
 };
