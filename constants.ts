@@ -47,31 +47,38 @@ export const ITEM_PENALTY_VALUES: Record<Extract<SymbolKey, '☄️' | '🍀' | 
 
 
 // --- Scratch Card Constants ---
-// New Progression: Costs scale geometrically, Multipliers scale slightly faster to reward saving up.
+
+// Inflation: Additive price increase per purchase per tier.
+// Tier 0 increases $0.05, Tier 6 increases $15.00
+export const SCRATCH_CARD_INFLATION = [0.05, 0.12, 0.30, 0.75, 2.00, 5.00, 15.00];
+
+// Progression: Powers of 2 costs with INCREASING Efficiency.
+// Efficiency = Multiplier / Cost.
 export const SCRATCH_CARD_TIERS: ScratchCardTier[] = [
-    { name: 'Bronze',       cost: 25,       multiplier: 1 },    // Base
-    { name: 'Prata',        cost: 100,      multiplier: 4.5 },  // 12.5% Bonus Efficiency
-    { name: 'Ouro',         cost: 500,      multiplier: 24 },   // 20% Bonus Efficiency
-    { name: 'Platina',      cost: 2500,     multiplier: 125 },  // 25% Bonus Efficiency
-    { name: 'Diamante',     cost: 10000,    multiplier: 550 },  // 37.5% Bonus Efficiency
-    { name: 'Mestre',       cost: 50000,    multiplier: 3000 }, // 50% Bonus Efficiency
-    { name: 'Grão-Mestre',  cost: 250000,   multiplier: 16000 },// 60% Bonus Efficiency
+    { name: 'Bronze',       cost: 1,     multiplier: 1 },      // Eff: 1.0
+    { name: 'Prata',        cost: 2,     multiplier: 2.2 },    // Eff: 1.1
+    { name: 'Ouro',         cost: 4,     multiplier: 4.8 },    // Eff: 1.2
+    { name: 'Platina',      cost: 8,     multiplier: 10.4 },   // Eff: 1.3
+    { name: 'Diamante',     cost: 16,    multiplier: 22.4 },   // Eff: 1.4
+    { name: 'Mestre',       cost: 32,    multiplier: 48 },     // Eff: 1.5
+    { name: 'Grão-Mestre',  cost: 64,    multiplier: 102.4 },  // Eff: 1.6
 ];
 
-// Base prizes calibrated for the Tier 1 (Cost 25)
-// Max Win (Jackpot) is 100x cost. Min win is roughly 10% cost.
+// Base prizes calibrated for Cost 1 (PER SLOT - 6 slots total)
+// EV per slot = (100*0.0005) + (25*0.005) + (10*0.02) + (2*0.12) + (0.5*0.20)
+// EV per slot = 0.05 + 0.125 + 0.2 + 0.24 + 0.1 = 0.715
+// Total Card EV (6 slots) = 0.715 * 6 = 4.29 (429% RTP Base)
 export const SCRATCH_CARD_BASE_PRIZES = [
-    { value: 2500, probability: 0.001 },  // 0.1% - Jackpot (100x Cost)
-    { value: 500,  probability: 0.005 },  // 0.5% - Major Prize (20x Cost)
-    { value: 125,  probability: 0.025 },  // 2.5% - Big Prize (5x Cost)
-    { value: 50,   probability: 0.08 },   // 8%   - Double Up (2x Cost)
-    { value: 25,   probability: 0.15 },   // 15%  - Money Back (1x Cost)
-    { value: 5,    probability: 0.20 },   // 20%  - Consolation (0.2x Cost)
-    { value: 2,    probability: 0.25 },   // 25%  - Tiny (0.08x Cost)
+    { value: 100,  probability: 0.0005 }, // 0.05% - Jackpot (100x)
+    { value: 25,   probability: 0.0050 }, // 0.5%  - Grande (25x)
+    { value: 10,   probability: 0.0200 }, // 2.0%  - Médio (10x)
+    { value: 2,    probability: 0.1200 }, // 12%   - Dobro (2x)
+    { value: 0.5,  probability: 0.2000 }, // 20%   - Meio (0.5x)
+    { value: 0,    probability: 0.6545 }, // 65%   - Nada
 ];
 
-// Chance modifiers per tier (Higher tiers = slightly better luck)
-// Indices correspond to SCRATCH_CARD_TIERS
+// Chance modifiers per tier (Linear growth to slightly boost win rate on high tiers)
+// Increases the chance of hitting *any* winning prize per slot.
 export const SCRATCH_CARD_WIN_CHANCE_MODIFIERS = [
     0,      // Bronze
     0.01,   // Prata
@@ -83,4 +90,4 @@ export const SCRATCH_CARD_WIN_CHANCE_MODIFIERS = [
 ];
 
 // The base chance of a single cell winning for Tier 1
-export const SCRATCH_CARD_BASE_WIN_CHANCE = SCRATCH_CARD_BASE_PRIZES.reduce((sum, p) => sum + p.probability, 0); 
+export const SCRATCH_CARD_BASE_WIN_CHANCE = SCRATCH_CARD_BASE_PRIZES.filter(p => p.value > 0).reduce((sum, p) => sum + p.probability, 0);

@@ -3,7 +3,8 @@
 import React, { useState, useCallback } from 'react';
 import { 
     SCRATCH_CARD_TIERS, SCRATCH_CARD_BASE_PRIZES,
-    SCRATCH_CARD_WIN_CHANCE_MODIFIERS, SCRATCH_CARD_BASE_WIN_CHANCE 
+    SCRATCH_CARD_WIN_CHANCE_MODIFIERS, SCRATCH_CARD_BASE_WIN_CHANCE,
+    SCRATCH_CARD_INFLATION
 } from '../constants';
 import type { ScratchCardTier, ScratchCardCell } from '../types';
 
@@ -46,44 +47,47 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
     const [winnings, setWinnings] = useState<number | null>(null);
     const [bulkResult, setBulkResult] = useState<{ count: number, cost: number, winnings: number } | null>(null);
 
+    // Calculates the price of the Nth card (where N is current count + 1)
+    // Formula: Base Cost + (Count * Inflation Value)
     const getScratchCardPrice = useCallback((tierIndex: number, purchaseCountOverride?: number): number => {
         const tier = SCRATCH_CARD_TIERS[tierIndex];
         if (!tier) return Infinity;
+        
         const purchaseCount = purchaseCountOverride ?? (scratchCardPurchaseCounts[tierIndex] || 0);
-        // Price increases by 5% per purchase to prevent infinite farming of one tier
-        return tier.cost * Math.pow(1.05, purchaseCount);
+        const inflation = SCRATCH_CARD_INFLATION[tierIndex] || 0;
+        
+        return tier.cost + (purchaseCount * inflation);
     }, [scratchCardPurchaseCounts]);
     
     const generateSingleCardResult = (tierIndex: number) => {
         const tierWinChance = getTierWinChance(tierIndex);
         const currentTierPrizes = getTierPrizes(tierIndex);
         // We use the base sum for normalization of the roll logic within a winning outcome
-        const totalProbabilitySum = SCRATCH_CARD_BASE_PRIZES.reduce((acc, p) => acc + p.probability, 0);
+        // NOTE: Our probability list now includes a 0 value item for "loss" which affects the sum if included blindly.
+        // We only care about winning probabilities for the secondary roll.
+        const winningPrizes = currentTierPrizes.filter(p => p.value > 0);
+        const totalWinProbability = winningPrizes.reduce((acc, p) => acc + p.probability, 0);
 
         let totalWinnings = 0;
         for (let i = 0; i < 6; i++) {
             const randomRoll = Math.random();
             // First check if this cell is a winner at all
             if (randomRoll < tierWinChance) {
-                // Determine WHICH prize it is
-                let prizeRoll = Math.random() * totalProbabilitySum;
+                // Determine WHICH prize it is based on relative weights of winning prizes
+                let prizeRoll = Math.random() * totalWinProbability;
                 
-                for (let j = 0; j < currentTierPrizes.length; j++) {
-                    const prize = currentTierPrizes[j];
-                    // Map back to base probability for the weight check
-                    const baseProbability = SCRATCH_CARD_BASE_PRIZES[j].probability;
-                    prizeRoll -= baseProbability;
+                for (let j = 0; j < winningPrizes.length; j++) {
+                    const prize = winningPrizes[j];
+                    prizeRoll -= prize.probability;
                     if (prizeRoll <= 0) {
                         totalWinnings += prize.value;
                         break;
                     }
                 }
                 // Fallback to smallest prize if loop finishes (rounding errors)
-                if (totalWinnings === 0 && currentTierPrizes.length > 0) {
-                    // Check if we actually assigned a prize in the loop
-                     // Since we sum totalWinnings, checking if it changed is tricky inside the loop logic 
-                     // unless we set a flag. But logically, prizeRoll <= 0 catches it.
-                     // This fallback is rarely hit if math is right.
+                if (totalWinnings === 0 && winningPrizes.length > 0) {
+                     // Just in case
+                     totalWinnings += winningPrizes[winningPrizes.length - 1].value;
                 }
             }
         }
@@ -104,28 +108,29 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
 
         const tierWinChance = getTierWinChance(tierIndex);
         const currentTierPrizes = getTierPrizes(tierIndex);
-        const totalProbabilitySum = SCRATCH_CARD_BASE_PRIZES.reduce((acc, p) => acc + p.probability, 0);
+        
+        // Correct probability handling for cell generation
+        const winningPrizes = currentTierPrizes.filter(p => p.value > 0);
+        const totalWinProbability = winningPrizes.reduce((acc, p) => acc + p.probability, 0);
     
         const newGrid: ScratchCardCell[] = Array.from({ length: 6 }, () => {
             const randomRoll = Math.random();
             let cellPrizeValue = 0;
     
             if (randomRoll < tierWinChance) {
-                let prizeRoll = Math.random() * totalProbabilitySum;
+                let prizeRoll = Math.random() * totalWinProbability;
                 
-                for (let i = 0; i < currentTierPrizes.length; i++) {
-                    const prize = currentTierPrizes[i];
-                    const baseProbability = SCRATCH_CARD_BASE_PRIZES[i].probability;
-                    prizeRoll -= baseProbability;
+                for (let i = 0; i < winningPrizes.length; i++) {
+                    const prize = winningPrizes[i];
+                    prizeRoll -= prize.probability;
                     if (prizeRoll <= 0) {
                         cellPrizeValue = prize.value;
                         break;
                     }
                 }
                 // Fallback
-                if (cellPrizeValue === 0 && currentTierPrizes.length > 0) {
-                     // If for some reason we fell through (rare float precision), give the lowest prize
-                    cellPrizeValue = currentTierPrizes[currentTierPrizes.length - 1].value;
+                if (cellPrizeValue === 0 && winningPrizes.length > 0) {
+                    cellPrizeValue = winningPrizes[winningPrizes.length - 1].value;
                 }
             }
     
@@ -144,6 +149,7 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
         const tempPurchaseCounts = { ...scratchCardPurchaseCounts };
         const initialPurchaseCount = tempPurchaseCounts[tierIndex] || 0;
 
+        // Calculate total cost considering additive inflation for each card individually
         for (let i = 0; i < quantity; i++) {
             const currentPurchaseCount = initialPurchaseCount + i;
             const cardCost = getScratchCardPrice(tierIndex, currentPurchaseCount);

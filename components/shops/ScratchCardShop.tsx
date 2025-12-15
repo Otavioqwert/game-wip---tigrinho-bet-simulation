@@ -36,12 +36,11 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
 
     const prizeLabels = [
         "JACKPOT (100x)",
-        "Grande (20x)",
-        "Médio (5x)",
+        "Grande (25x)",
+        "Médio (10x)",
         "Dobro (2x)",
-        "Reembolso (1x)",
-        "Consolação (0.2x)",
-        "Troco (0.08x)"
+        "Metade (0.5x)",
+        "Nada (0x)"
     ];
 
     return (
@@ -58,10 +57,9 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
 
                 // Probability Calculations
                 const tierModifier = SCRATCH_CARD_WIN_CHANCE_MODIFIERS[index] || 0;
-                const tierWinChance = Math.min(1, Math.max(0, SCRATCH_CARD_BASE_WIN_CHANCE + tierModifier));
-                // The ratio of how much more likely this tier is to win compared to base
-                // Logic: (TierTotalChance / BaseTotalChance) * BasePrizeProb
-                const probRatio = tierWinChance / SCRATCH_CARD_BASE_WIN_CHANCE;
+                // Calculate win chance per slot (sum of all winning probabilities)
+                const baseWinChance = SCRATCH_CARD_BASE_PRIZES.filter(p => p.value > 0).reduce((acc, p) => acc + p.probability, 0);
+                const tierWinChance = Math.min(1, Math.max(0, baseWinChance + tierModifier));
 
                 return (
                     <div key={tier.name} className="bg-yellow-500/10 p-2 rounded-md border border-yellow-500/20">
@@ -74,7 +72,7 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                     onClick={() => setShowOddsFor(isOddsOpen ? null : index)}
                                     className="text-xs text-sky-400 underline mt-1 hover:text-sky-300"
                                 >
-                                    {isOddsOpen ? 'Ocultar Chances' : '📊 Ver Chances'}
+                                    {isOddsOpen ? 'Ocultar Chances' : '📊 Ver Chances (por slot)'}
                                 </button>
                             </div>
                             <button 
@@ -91,15 +89,16 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                 <table className="w-full text-left">
                                     <thead>
                                         <tr className="text-gray-400 border-b border-gray-600">
-                                            <th className="pb-1">Prêmio</th>
+                                            <th className="pb-1">Prêmio (x6 slots)</th>
                                             <th className="pb-1 text-right">Valor</th>
-                                            <th className="pb-1 text-right">Chance</th>
+                                            <th className="pb-1 text-right">Chance/Slot</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {SCRATCH_CARD_BASE_PRIZES.map((prize, pIdx) => {
+                                            if (prize.value === 0) return null; // Don't show "Nada" row in detail
                                             const val = prize.value * tier.multiplier;
-                                            const prob = (prize.probability * probRatio * 100).toFixed(2);
+                                            const prob = (prize.probability * 100).toFixed(2);
                                             const isJackpot = pIdx === 0;
                                             return (
                                                 <tr key={pIdx} className={isJackpot ? "text-yellow-300 font-bold" : "text-gray-300"}>
@@ -110,7 +109,7 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                             );
                                         })}
                                         <tr className="border-t border-gray-600 text-gray-400 font-bold">
-                                            <td className="pt-1">Chance Total</td>
+                                            <td className="pt-1">Chance Vitória/Slot</td>
                                             <td className="pt-1 text-right">-</td>
                                             <td className="pt-1 text-right">{(tierWinChance * 100).toFixed(1)}%</td>
                                         </tr>
