@@ -1,4 +1,5 @@
-import type { SymbolKey, SymbolMap, MidSymbolKey } from './types';
+
+import type { SymbolKey, SymbolMap, MidSymbolKey, ScratchCardTier } from './types';
 
 export const MID: MidSymbolKey[] = ['🍭','🍦','🍧'];
 export const EXTRA: SymbolKey[] = ['🍀','💵','💎','🐯','☄️'];
@@ -46,34 +47,40 @@ export const ITEM_PENALTY_VALUES: Record<Extract<SymbolKey, '☄️' | '🍀' | 
 
 
 // --- Scratch Card Constants ---
-export const SCRATCH_CARD_TIERS = [
-    { name: 'Bronze', cost: 1 },
-    { name: 'Prata', cost: 2 },
-    { name: 'Ouro', cost: 4 },
-    { name: 'Platina', cost: 8 },
-    { name: 'Diamante', cost: 16 },
-    { name: 'Mestre', cost: 32 },
-    { name: 'Grão-Mestre', cost: 64 },
+// New Progression: Costs scale geometrically, Multipliers scale slightly faster to reward saving up.
+export const SCRATCH_CARD_TIERS: ScratchCardTier[] = [
+    { name: 'Bronze',       cost: 25,       multiplier: 1 },    // Base
+    { name: 'Prata',        cost: 100,      multiplier: 4.5 },  // 12.5% Bonus Efficiency
+    { name: 'Ouro',         cost: 500,      multiplier: 24 },   // 20% Bonus Efficiency
+    { name: 'Platina',      cost: 2500,     multiplier: 125 },  // 25% Bonus Efficiency
+    { name: 'Diamante',     cost: 10000,    multiplier: 550 },  // 37.5% Bonus Efficiency
+    { name: 'Mestre',       cost: 50000,    multiplier: 3000 }, // 50% Bonus Efficiency
+    { name: 'Grão-Mestre',  cost: 250000,   multiplier: 16000 },// 60% Bonus Efficiency
 ];
 
-// Base prizes and probabilities for a single cell on a $1 card (Tier 1)
+// Base prizes calibrated for the Tier 1 (Cost 25)
+// Max Win (Jackpot) is 100x cost. Min win is roughly 10% cost.
 export const SCRATCH_CARD_BASE_PRIZES = [
-    { value: 100, probability: 0.0009 }, // 0.09%
-    { value: 25, probability: 0.0066 },  // 0.66%
-    { value: 10, probability: 0.0125 },  // 1.25%
-    { value: 5, probability: 0.03 },     // 3%
-    { value: 2, probability: 0.05 },     // 5%
-    { value: 1, probability: 0.10 },     // 10%
-    { value: 0.5, probability: 0.15 },   // 15%
+    { value: 2500, probability: 0.001 },  // 0.1% - Jackpot (100x Cost)
+    { value: 500,  probability: 0.005 },  // 0.5% - Major Prize (20x Cost)
+    { value: 125,  probability: 0.025 },  // 2.5% - Big Prize (5x Cost)
+    { value: 50,   probability: 0.08 },   // 8%   - Double Up (2x Cost)
+    { value: 25,   probability: 0.15 },   // 15%  - Money Back (1x Cost)
+    { value: 5,    probability: 0.20 },   // 20%  - Consolation (0.2x Cost)
+    { value: 2,    probability: 0.25 },   // 25%  - Tiny (0.08x Cost)
 ];
 
-// Additive value increase for prizes for each tier after the first
-// T2 adds 0.5, T3 adds 1 to T2's values, etc.
-export const SCRATCH_CARD_PRIZE_ADDITIONS = [0.5, 1, 2, 3, 6, 18]; // For Tiers 2-7
+// Chance modifiers per tier (Higher tiers = slightly better luck)
+// Indices correspond to SCRATCH_CARD_TIERS
+export const SCRATCH_CARD_WIN_CHANCE_MODIFIERS = [
+    0,      // Bronze
+    0.01,   // Prata
+    0.02,   // Ouro
+    0.025,  // Platina
+    0.03,   // Diamante
+    0.035,  // Mestre
+    0.04    // Grão-Mestre
+];
 
-// Percentage point modifiers for the total win chance PER CELL for each tier after the first
-// T2 is T1 - 1%, T3 is T2 - 0.5%, T4 is T3 + 1%, etc.
-export const SCRATCH_CARD_WIN_CHANCE_MODIFIERS = [-0.01, -0.005, 0.01, 0.0075, 0.005, 0.0025]; // For Tiers 2-7
-
-// The base chance of a single cell winning for Tier 1 is the sum of all probabilities
-export const SCRATCH_CARD_BASE_WIN_CHANCE = SCRATCH_CARD_BASE_PRIZES.reduce((sum, p) => sum + p.probability, 0); // Should be 0.35
+// The base chance of a single cell winning for Tier 1
+export const SCRATCH_CARD_BASE_WIN_CHANCE = SCRATCH_CARD_BASE_PRIZES.reduce((sum, p) => sum + p.probability, 0); 

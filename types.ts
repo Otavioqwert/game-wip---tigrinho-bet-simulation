@@ -61,6 +61,7 @@ export interface SecondarySkill {
 export interface ScratchCardTier {
     name: string;
     cost: number;
+    multiplier: number; // Multiplier relative to base prizes
 }
 
 export interface ScratchCardCell {

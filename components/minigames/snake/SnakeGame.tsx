@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { SnakeUpgradeId } from '../../../types';
 import SnakeUpgrades from './SnakeUpgrades';
@@ -60,7 +61,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
     const [applesSinceLastReset, setApplesSinceLastReset] = useState(0);
 
     // Refs for animation and game state
-    const animationFrameRef = useRef<number>();
+    const animationFrameRef = useRef<number>(0);
     const lastLogicUpdateTimeRef = useRef(0);
     const directionRef = useRef<Direction>('RIGHT');
     const prevSnakeRef = useRef<SnakeSegment[]>([]);
