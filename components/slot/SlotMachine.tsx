@@ -1,7 +1,10 @@
+
 import React from 'react';
 import Reel from './Reel';
 import SlotMachineControls from './SlotMachineControls';
-import type { RoiSaldo } from '../../types';
+import StarBonusOverlay from './StarBonusOverlay';
+import CoinFlipOverlay from './CoinFlipOverlay';
+import type { RoiSaldo, StarBonusState, CoinFlipState } from '../../types';
 
 interface SlotMachineProps {
     febreDocesAtivo: boolean;
@@ -24,6 +27,13 @@ interface SlotMachineProps {
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     isBankrupt: boolean;
     isBettingLocked: boolean;
+    // New Props for Star Bonus
+    starBonusState: StarBonusState;
+    closeStarBonus: () => void;
+    // New Props for Coin Flip
+    coinFlipState: CoinFlipState;
+    handleCoinGuess: (guess: 'heads' | 'tails') => void;
+    closeCoinFlip: () => void;
 }
 
 const SlotMachine: React.FC<SlotMachineProps> = (props) => {
@@ -37,11 +47,34 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
         extraMsg,
         isPoolInvalid,
         isBankrupt,
-        isBettingLocked
+        isBettingLocked,
+        starBonusState,
+        closeStarBonus,
+        coinFlipState,
+        handleCoinGuess,
+        closeCoinFlip
     } = props;
     
     return (
-        <div className="flex flex-col items-center justify-center h-full">
+        <div className="flex flex-col items-center justify-center h-full relative">
+            {/* Overlay for Star Bonus Animation */}
+            {starBonusState.isActive && (
+                <StarBonusOverlay 
+                    results={starBonusState.results}
+                    totalWin={starBonusState.totalWin}
+                    onComplete={closeStarBonus}
+                />
+            )}
+            
+            {/* Overlay for Coin Flip Minigame */}
+            {coinFlipState.isActive && (
+                <CoinFlipOverlay 
+                    coinState={coinFlipState}
+                    onGuess={handleCoinGuess}
+                    onComplete={closeCoinFlip}
+                />
+            )}
+
             {febreDocesAtivo && (
                 <div className="bg-gradient-to-r from-purple-400 to-pink-500 text-white rounded-lg p-2 mb-3 font-bold shadow-lg shadow-pink-500/40 text-center text-md w-full max-w-sm">
                     FEBRE DOCE 🔥 - {febreDocesGiros} Giros Grátis!

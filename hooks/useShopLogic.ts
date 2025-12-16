@@ -1,6 +1,6 @@
 
 import React, { useCallback } from 'react';
-import { SYM, MID, MIDMAX } from '../constants';
+import { SYM, MID, MIDMAX, SUGAR_CONVERSION } from '../constants';
 import type { SymbolKey, MidSymbolKey, Inventory, Multipliers, PanificadoraLevels, RoiSaldo, SkillId } from '../types';
 
 interface ShopLogicProps {
@@ -28,6 +28,10 @@ interface ShopLogicProps {
     startSnakeGame: () => void;
     // Economy handler
     handleSpend: (cost: number) => boolean;
+    // Furnace props
+    setSugar: React.Dispatch<React.SetStateAction<number>>;
+    // Momento Props for Meteor Lock
+    momentoLevel: number;
 }
 
 export const useShopLogic = (props: ShopLogicProps) => {
@@ -36,7 +40,8 @@ export const useShopLogic = (props: ShopLogicProps) => {
         panificadoraLevel, setPanificadoraLevel, estrelaPrecoAtual,
         setEstrelaPrecoAtual, midMultiplierValue, economiaCostMultiplier,
         getSkillLevel, showMsg,
-        cashbackMultiplier, priceIncreaseModifier, multUpgradeBonus, handleSpend
+        cashbackMultiplier, priceIncreaseModifier, multUpgradeBonus, handleSpend,
+        setSugar, momentoLevel
     } = props;
 
     // ===== FIX #1: PREÇO DO ITEM METEORO =====
@@ -46,11 +51,14 @@ export const useShopLogic = (props: ShopLogicProps) => {
         if (k === '☄️') {
             const basePrice = SYM[k]?.p || 50;
             const currentInventory = inv[k] || 0;
-            // Exponencial 1.25x por compra
-            // Progressão: $50 -> $64 -> $80 -> $100...
-            price = basePrice * Math.pow(1.25, currentInventory);
+            // UPDATE: Escala aumentada para 1.5x (era 1.25x)
+            price = basePrice * Math.pow(1.5, currentInventory);
         } else if (k === '⭐') {
             price = estrelaPrecoAtual;
+        } else if (k === '🪙') {
+            // Ficha Price: Starts at 1, +1 per purchase (Linear)
+            const count = inv[k] || 0;
+            price = 1 + count;
         } else {
             const midConfig = { '🍭': { b: 2, i: 0.2 }, '🍦': { b: 3, i: 0.3 }, '🍧': { b: 4, i: 0.4 } };
             
@@ -66,18 +74,27 @@ export const useShopLogic = (props: ShopLogicProps) => {
         
         const finalPrice = isFinite(price) ? price : (SYM[k]?.p || 0);
         // Aplica desconto global da árvore de habilidades (Caminho da Economia)
-        // NOTA: Para o meteoro, aplicamos apenas o desconto de economia, 
-        // o priceIncreaseModifier (Desacelerômetro) foi removido da fórmula do meteoro para manter a curva 1.25x pura ou pode ser aplicado no final.
-        // Aqui aplicamos no final para consistência, mas o meteoro já tem sua curva própria.
         return finalPrice * economiaCostMultiplier;
     }, [inv, estrelaPrecoAtual, economiaCostMultiplier, priceIncreaseModifier]);
 
     const buy = useCallback((k: SymbolKey) => {
+        // LOCK CHECK: Meteor requires Momento Level 10
+        if (k === '☄️' && momentoLevel < 10) {
+            // Visual feedback is handled in the UI component, but we double check logic here
+            return;
+        }
+
         const pr = getPrice(k);
         const cost = pr * (1 - cashbackMultiplier);
         
         if (handleSpend(cost)) {
             setInv(p => ({ ...p, [k]: (p[k] || 0) + 1 }));
+
+            // NEW: Add Sugar instead of Saldo Diabético
+            if (MID.includes(k as MidSymbolKey)) {
+                const sugarAmount = SUGAR_CONVERSION[k as MidSymbolKey] || 0;
+                setSugar(prev => prev + sugarAmount);
+            }
 
             if (k === '⭐') {
                 const priceIncrease = estrelaPrecoAtual; // dobra o preço base
@@ -85,7 +102,7 @@ export const useShopLogic = (props: ShopLogicProps) => {
                 setEstrelaPrecoAtual(p => p + modifiedIncrease);
             }
         }
-    }, [getPrice, cashbackMultiplier, handleSpend, setInv, estrelaPrecoAtual, setEstrelaPrecoAtual, priceIncreaseModifier]);
+    }, [getPrice, cashbackMultiplier, handleSpend, setInv, setSugar, estrelaPrecoAtual, setEstrelaPrecoAtual, priceIncreaseModifier, momentoLevel]);
 
     // ===== FIX #2: PREÇO DO MULTIPLICADOR =====
     const multPrice = useCallback((sym: SymbolKey): number | null => {
@@ -94,9 +111,8 @@ export const useShopLogic = (props: ShopLogicProps) => {
 
         if (sym === '☄️' && getSkillLevel('caminhoCometa') > 0) {
             // Linear $10, $20, $30...
-            // Evita exploit de redução de preço e mantém escala justa
             price = (Math.floor(currentMult) + 1) * 10;
-        } else if (sym === '⭐' || sym === '☄️') {
+        } else if (sym === '⭐' || sym === '☄️' || sym === '🪙') {
             return null;
         } else if (MID.includes(sym as MidSymbolKey)) {
             if (currentMult >= MIDMAX) return null;
@@ -118,21 +134,15 @@ export const useShopLogic = (props: ShopLogicProps) => {
         const cost = price * (1 - cashbackMultiplier);
 
         if (handleSpend(cost)) {
-            // Sempre +1% fixo (ou +1 nível)
-            // Removemos lógicas complexas que causavam explosão exponencial
             const increase = 1.0 * (1 + multUpgradeBonus);
             setMult(p => ({...p, [k]: (p[k] || 0) + increase}));
         }
     };
 
+    // DEPRECATED: Panificadora removed in v17
     const buyPanificadora = useCallback((d: MidSymbolKey) => {
-        const cost = 1 + Math.floor(((panificadoraLevel[d] || 0) + 1) / 3);
-        if ((roiSaldo[d] || 0) < cost) return showMsg(`Precisa de ${cost} ${d} no saldo diabético.`, 3000, true);
-        
-        setRoiSaldo(p => ({...p, [d]: (p[d] || 0) - cost}));
-        setPanificadoraLevel(p => ({...p, [d]: (p[d] || 0) + 1}));
-        showMsg(`${d} Panificadora +1 nível!`, 3000, true);
-    }, [panificadoraLevel, roiSaldo, showMsg, setRoiSaldo, setPanificadoraLevel]);
+       showMsg("A Panificadora foi fechada! Use a Fornalha.", 2000, true);
+    }, [showMsg]);
     
     return {
         getPrice,

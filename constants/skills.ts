@@ -1,3 +1,4 @@
+
 import type { Skill, SkillId, SkillDependency } from '../types';
 
 export const SKILLS: Record<SkillId, Skill> = {
@@ -19,10 +20,10 @@ export const SKILLS: Record<SkillId, Skill> = {
         getCost: () => 500,
         maxLevel: 1,
     },
-    caminhoCometa: {
-        id: 'caminhoCometa',
-        name: 'Caminho do Cometa',
-        description: () => `Desbloqueia o símbolo Cometa (☄️) com multiplicador base de 64x. O preço do ☄️ aumenta 50% por compra. Seu upgrade de multiplicador aumenta o valor atual em 1%.`,
+    caminhoFicha: {
+        id: 'caminhoFicha',
+        name: 'Caminho da Ficha',
+        description: () => `Desbloqueia a Ficha (🪙). Custa $1 e aumenta em $1 por compra. Acertos com Ficha iniciam o minigame Cara ou Coroa para dobrar a aposta (2x, 4x, 8x...).`,
         tier: 2,
         dependencies: [{ id: 'grandeGanho', level: 5 }],
         getCost: () => 50,
@@ -36,10 +37,21 @@ export const SKILLS: Record<SkillId, Skill> = {
         dependencies: [{ id: 'grandeGanho', level: 5 }],
         getCost: (level) => 200 + level * 25,
         maxLevel: 10,
-    }
+    },
+    caminhoCometa: {
+        id: 'caminhoCometa',
+        name: 'Caminho do Cometa',
+        description: () => `Desbloqueia o símbolo Cometa (☄️) com multiplicador base de 64x. O preço do ☄️ aumenta 50% por compra. Requer Momento Nível 10 na run para comprar.`,
+        tier: 3,
+        // Agora depende do Caminho da Ficha
+        dependencies: [{ id: 'caminhoFicha', level: 1 }],
+        getCost: () => 15000,
+        maxLevel: 1,
+    },
 };
 
 export const SKILL_TREE_LAYOUT: SkillId[][] = [
     ['grandeGanho'],
-    ['caminhoEstelar', 'caminhoCometa', 'caminhoEconomia']
+    ['caminhoEstelar', 'caminhoFicha', 'caminhoEconomia'],
+    ['caminhoCometa']
 ];

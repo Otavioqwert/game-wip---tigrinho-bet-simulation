@@ -1,15 +1,17 @@
+
 import React from 'react';
-import type { Inventory, SymbolKey, RoiSaldo, MidSymbolKey } from '../types';
-import { MID } from '../constants';
+import type { Inventory, SymbolKey, RoiSaldo, ActiveCookie } from '../types';
 
 interface InventoryTabProps {
     inv: Inventory;
     roiSaldo: RoiSaldo;
     momentoLevel: number;
     momentoProgress: number;
+    sugar: number;
+    activeCookies: ActiveCookie[];
 }
 
-const InventoryTab: React.FC<InventoryTabProps> = ({ inv, roiSaldo, momentoLevel, momentoProgress }) => {
+const InventoryTab: React.FC<InventoryTabProps> = ({ inv, roiSaldo, momentoLevel, momentoProgress, sugar, activeCookies }) => {
     const nextThreshold = (momentoLevel + 1) * 100;
     const displayProgress = Math.max(0, momentoProgress);
     const progressPercent = Math.min(100, (displayProgress / nextThreshold) * 100);
@@ -31,15 +33,16 @@ const InventoryTab: React.FC<InventoryTabProps> = ({ inv, roiSaldo, momentoLevel
                         ></div>
                     </div>
                 </div>
-                <div>
-                    <h4 className="font-bold text-lg text-pink-300 mb-2">Saldo Diabético</h4>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                        {MID.map(d => (
-                            <div key={d} className="bg-pink-500/10 p-2 rounded-lg">
-                                <span className="text-2xl">{d}</span>
-                                <span className="block text-sm text-pink-300 mt-1">{(roiSaldo[d as MidSymbolKey] || 0)}</span>
-                            </div>
-                        ))}
+                
+                {/* Sugar & Cookies Panel */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-orange-900/30 p-3 rounded-lg border border-orange-500/30 text-center">
+                        <h4 className="font-bold text-orange-300 mb-1">🍬 Açúcar</h4>
+                        <span className="text-2xl font-bold text-white">{sugar.toLocaleString()}</span>
+                    </div>
+                    <div className="bg-blue-900/30 p-3 rounded-lg border border-blue-500/30 text-center">
+                        <h4 className="font-bold text-blue-300 mb-1">🔥 Fornalha</h4>
+                        <span className="text-sm text-gray-300">{activeCookies.length > 0 ? `${activeCookies.length} Cookie(s) Ativo(s)` : 'Nenhum efeito'}</span>
                     </div>
                 </div>
             </div>

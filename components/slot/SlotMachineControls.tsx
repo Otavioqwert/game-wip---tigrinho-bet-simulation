@@ -1,5 +1,5 @@
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { MID } from '../../constants';
 import type { RoiSaldo } from '../../types';
 
 interface ControlsProps {
@@ -27,8 +27,6 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
         betVal,
         handleSpin,
         setBetVal,
-        criarEmbaixadorDoce,
-        roiSaldo,
         isPoolInvalid,
         quickSpinQueue,
         handleQuickSpin,
@@ -37,6 +35,10 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
         isBettingLocked,
     } = props;
     
+    // Use a ref to access the latest value inside the interval closure without dependencies issues
+    const febreDocesAtivoRef = useRef(febreDocesAtivo);
+    useEffect(() => { febreDocesAtivoRef.current = febreDocesAtivo; }, [febreDocesAtivo]);
+
     const quickSpinIntervalRef = useRef<number | null>(null);
     const [isQuickSpinPressed, setIsQuickSpinPressed] = useState(false);
 
@@ -75,7 +77,8 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
 
         quickSpinIntervalRef.current = window.setInterval(() => {
             if (!handleQuickSpin()) {
-                stopQuickSpin(febreDocesAtivo ? 'no_free_spins' : 'insufficient_funds');
+                const isFever = febreDocesAtivoRef.current;
+                stopQuickSpin(isFever ? 'no_free_spins' : 'insufficient_funds');
             }
         }, 150);
     }, [handleQuickSpin, stopQuickSpin, showMsg, bal, betVal, febreDocesAtivo, isBankrupt]);
@@ -106,6 +109,19 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
         }, 400);
     }, [setBetVal, stopBetAdjustment]);
 
+    // New logic for percentage bets
+    const setPercentageBet = useCallback((percentage: number) => {
+        const amount = balRef.current * percentage;
+        // Ensure minimum bet is 0.5 or balance if lower, rounded to 2 decimals
+        const newBet = Math.max(0.5, Math.floor(amount * 100) / 100);
+        
+        if (newBet > balRef.current && !isBankrupt) {
+             setBetVal(Math.max(0.5, balRef.current));
+        } else {
+             setBetVal(newBet);
+        }
+    }, [setBetVal, isBankrupt]);
+
     useEffect(() => {
         return () => {
             stopQuickSpin();
@@ -114,12 +130,15 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
     }, [stopQuickSpin, stopBetAdjustment]);
 
     const btnClasses = "py-3 px-4 font-bold text-stone-900 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl shadow-lg shadow-yellow-500/25 transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none";
+    const percentBtnClasses = "py-2 px-2 font-bold text-xs sm:text-sm text-yellow-400 bg-yellow-900/40 border border-yellow-600/50 rounded-lg hover:bg-yellow-600/40 active:scale-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+    
     const isControlsDisabled = isSpinning || quickSpinQueue > 0;
     const isBettingDisabled = isBankrupt || isBettingLocked;
 
     return (
         <div className="w-full max-w-sm">
             <div className="flex flex-col gap-2.5 mb-4">
+                {/* Main Spin Button */}
                 <button 
                     onClick={handleSpin} 
                     disabled={isControlsDisabled || isBettingDisabled || isPoolInvalid || (!febreDocesAtivo && bal < betVal)} 
@@ -127,6 +146,28 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
                 >
                     {isBettingDisabled ? '⛓️ BLOQUEADO ⛓️' : '🎰 GIRAR'}
                 </button>
+
+                {/* Percentage Bets Row */}
+                {!febreDocesAtivo && (
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <button 
+                            onClick={() => setPercentageBet(0.01)}
+                            disabled={isControlsDisabled || isBettingDisabled}
+                            className={percentBtnClasses}
+                        >
+                            Apostar 1%
+                        </button>
+                        <button 
+                            onClick={() => setPercentageBet(0.10)}
+                            disabled={isControlsDisabled || isBettingDisabled}
+                            className={percentBtnClasses}
+                        >
+                            Apostar 10%
+                        </button>
+                    </div>
+                )}
+
+                {/* Manual Adjustments Row */}
                 <div className="grid grid-cols-3 gap-2.5">
                     <button 
                         onMouseDown={() => startBetAdjustment('decrease')}
@@ -168,9 +209,6 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
                     </button>
                 </div>
             </div>
-            <button onClick={criarEmbaixadorDoce} disabled={febreDocesAtivo || !MID.every(d => (roiSaldo[d] || 0) >= 10)} className={`${btnClasses} w-full !bg-gradient-to-r !from-purple-400 !to-pink-400 !text-white`}>
-                🍭 Trocar saldo diabético por Embaixador doce!
-            </button>
         </div>
     );
 };

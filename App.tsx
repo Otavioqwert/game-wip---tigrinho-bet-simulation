@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import { usePanAndZoom } from './hooks/usePanAndZoom';
@@ -9,6 +10,7 @@ import ConfigTab from './components/ConfigTab';
 import PrestigeTab from './components/prestige/PrestigeTab';
 import SnakeGame from './components/minigames/snake/SnakeGame';
 import CreditCardManager, { PaymentDueModal, ItemPenaltyModal } from './components/CreditCardManager';
+import FeverSetupModal from './components/shops/FeverSetupModal'; // Import Fever Setup
 
 const App: React.FC = () => {
     const game = useGameLogic();
@@ -67,6 +69,18 @@ const App: React.FC = () => {
                 totalScoreMultiplier={game.totalIncomeMultiplier * game.scoreMultiplier}
                 resetSnakeUpgrades={game.resetSnakeUpgrades}
             />}
+            
+            {/* Fever Setup Modal */}
+            {game.feverPhase === 'SETUP' && (
+                <FeverSetupModal
+                    bal={game.bal}
+                    selectedPackages={game.selectedPackages}
+                    buyPackage={game.buyPackage}
+                    startFever={game.startFever}
+                    onClose={game.closeFeverSetup}
+                />
+            )}
+
             <CreditCardManager
                 creditCardLevel={game.creditCardLevel}
                 creditCardDebt={game.creditCardDebt}
@@ -165,6 +179,9 @@ const App: React.FC = () => {
                                 febreDocesAtivo={game.febreDocesAtivo}
                                 momentoLevel={game.momentoLevel}
                                 momentoProgress={game.momentoProgress}
+                                // Fever Trigger Props
+                                openFeverSetup={game.openFeverSetup}
+                                cooldownEnd={game.cooldownEnd}
                             />
                             {/* Main Tabs Navigation */}
                             <div className="flex gap-1 mb-2">
@@ -183,7 +200,14 @@ const App: React.FC = () => {
                                 onTouchEnd={handleTouchEnd}
                             >
                                 {mainActiveTab === 0 && <SlotMachine {...game} />}
-                                {mainActiveTab === 1 && <InventoryTab inv={game.inv} roiSaldo={game.roiSaldo} momentoLevel={game.momentoLevel} momentoProgress={game.momentoProgress} />}
+                                {mainActiveTab === 1 && <InventoryTab 
+                                    inv={game.inv} 
+                                    roiSaldo={game.roiSaldo} 
+                                    momentoLevel={game.momentoLevel} 
+                                    momentoProgress={game.momentoProgress}
+                                    sugar={game.sugar}
+                                    activeCookies={game.activeCookies} 
+                                />}
                                 {mainActiveTab === 2 && <ShopsTab {...game} />}
                                 {mainActiveTab === 3 && <ConfigTab {...game} />}
                             </main>

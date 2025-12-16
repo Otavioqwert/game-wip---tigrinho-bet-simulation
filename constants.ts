@@ -1,8 +1,8 @@
 
-import type { SymbolKey, SymbolMap, MidSymbolKey, ScratchCardTier } from './types';
+import type { SymbolKey, SymbolMap, MidSymbolKey, ScratchCardTier, CookieRecipe } from './types';
 
 export const MID: MidSymbolKey[] = ['🍭','🍦','🍧'];
-export const EXTRA: SymbolKey[] = ['🍀','💵','💎','🐯','☄️'];
+export const EXTRA: SymbolKey[] = ['🍀','💵','💎','🐯','☄️','🪙'];
 
 export const SYM: SymbolMap = {
   '⭐':{v:0,p:25},
@@ -13,19 +13,20 @@ export const SYM: SymbolMap = {
   '💵':{v:4,p:2},
   '💎':{v:8,p:4},
   '🐯':{v:16,p:8},
-  '☄️':{v:64,p:50}
+  '☄️':{v:64,p:50},
+  '🪙':{v:0,p:1} // Ficha: Value determined by minigame, Price scales linearly
 };
 
 export const INITIAL_INVENTORY: Record<SymbolKey, number> = {
     '🍭': 10, '🍦': 10, '🍧': 10,
     '🍀': 0, '💵': 0, '💎': 0, '🐯': 0,
-    '⭐': 2, '☄️': 0
+    '⭐': 2, '☄️': 0, '🪙': 0
 };
 
 export const INITIAL_MULTIPLIERS: Record<SymbolKey, number> = {
     '🍭': 0, '🍦': 0, '🍧': 0,
     '🍀': 0, '💵': 0, '💎': 0, '🐯': 0,
-    '⭐': 0, '☄️': 0
+    '⭐': 0, '☄️': 0, '🪙': 0
 };
 
 export const MID_SELL: Record<MidSymbolKey, number> = {'🍭':0.01,'🍦':0.02,'🍧':0.03};
@@ -35,14 +36,54 @@ export const PANI_INCREMENT: Record<MidSymbolKey, number> = {'🍭':0.02,'🍦':
 export const MIDMAX = 10;
 export const LOAN_BLOCK_BASE = 30;
 
+// Sugar Conversion Rates
+export const SUGAR_CONVERSION = {
+    '🍭': 1,
+    '🍦': 2,
+    '🍧': 3
+};
+
+// Cookie Recipes
+export const COOKIE_RECIPES: CookieRecipe[] = [
+    {
+        id: 'basic_cookie',
+        name: 'Cookie Básico',
+        sugarCost: 10,
+        multiplier: 1.5, // 50% boost
+        duration: 5, // spins (10 / 2)
+        description: 'Um boost simples e rápido.',
+        icon: '🍪'
+    },
+    {
+        id: 'golden_cookie',
+        name: 'Cookie Dourado',
+        sugarCost: 50,
+        multiplier: 3.0, // 200% boost
+        duration: 7, // spins (20 / 3 approx)
+        description: 'Sabor rico com ganhos triplicados.',
+        icon: '🌟'
+    },
+    {
+        id: 'mega_cookie',
+        name: 'Mega Cookie',
+        sugarCost: 200,
+        multiplier: 10.0, // 900% boost
+        duration: 8, // spins (50 / 6 approx)
+        description: 'Poder massivo da fornalha!',
+        icon: '💎'
+    }
+];
+
+
 // --- Item Penalty Values ---
-export const ITEM_PENALTY_VALUES: Record<Extract<SymbolKey, '☄️' | '🍀' | '🐯' | '⭐' | '💎' | '💵'>, number> = {
+export const ITEM_PENALTY_VALUES: Record<Extract<SymbolKey, '☄️' | '🍀' | '🐯' | '⭐' | '💎' | '💵' | '🪙'>, number> = {
     '☄️': 100,
     '🍀': 5,
     '🐯': 40,
     '⭐': 50,
     '💎': 20,
-    '💵': 10
+    '💵': 10,
+    '🪙': 1
 };
 
 

@@ -1,3 +1,4 @@
+
 // FIX: Implemented the main game logic hook to aggregate all other hooks and provide game state and actions to the App component.
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useGameState } from './useGameState';
@@ -9,8 +10,9 @@ import { useSecondaryPrestigeSkills } from './useSecondaryPrestigeSkills';
 import { useScratchCardLogic } from './useScratchCardLogic';
 import { usePassiveIncome } from './usePassiveIncome';
 import { useSnakeUpgrades } from './useSnakeUpgrades';
+import { useFurnaceLogic } from './useFurnaceLogic';
 import type { SkillId, SecondarySkillId, RenegotiationTier, SymbolKey } from '../types';
-import { ITEM_PENALTY_VALUES } from '../constants';
+import { ITEM_PENALTY_VALUES, MID } from '../constants';
 
 export const useGameLogic = () => {
     // --- Message State ---
@@ -235,6 +237,15 @@ export const useGameLogic = () => {
         showMsg,
     });
     
+    // --- Furnace Logic ---
+    const furnaceLogic = useFurnaceLogic({
+        sugar: gameState.sugar,
+        setSugar: gameState.setSugar,
+        activeCookies: gameState.activeCookies,
+        setActiveCookies: gameState.setActiveCookies,
+        showMsg
+    });
+
     // --- Snake Minigame Upgrades ---
     const snakeUpgrades = useSnakeUpgrades({
         bal: gameState.bal,
@@ -274,6 +285,10 @@ export const useGameLogic = () => {
         setRoiSaldo: gameState.setRoiSaldo,
         inv: gameState.inv,
         setInv: gameState.setInv,
+        mult: gameState.mult,
+        setMult: gameState.setMult,
+        bal: gameState.bal,
+        setBal: gameState.setBal,
         showMsg,
     });
 
@@ -285,12 +300,12 @@ export const useGameLogic = () => {
         setInv: gameState.setInv,
         mult: gameState.mult,
         panificadoraLevel: gameState.panificadoraLevel,
-        febreDocesAtivo: febreDoce.febreDocesAtivo,
-        setFebreDocesAtivo: febreDoce.setFebreDocesAtivo,
+        febreDocesAtivo: febreDoce.feverPhase === 'ACTIVE',
+        // The spin logic will call 'endFever' which is handled inside useFebreDoce
+        endFever: febreDoce.endFever,
         febreDocesGiros: febreDoce.febreDocesGiros,
         setFebreDocesGiros: febreDoce.setFebreDocesGiros,
         betValFebre: febreDoce.betValFebre,
-        restoreOriginalState: febreDoce.restoreOriginalState,
         totalIncomeMultiplier: totalIncomeMultiplier,
         skillLevels: gameState.skillLevels,
         showMsg,
@@ -306,6 +321,14 @@ export const useGameLogic = () => {
         setRoiSaldo: gameState.setRoiSaldo,
         handleSpend,
         handleGain,
+        // Furnace integration
+        activeCookies: gameState.activeCookies,
+        setActiveCookies: gameState.setActiveCookies,
+        setSugar: gameState.setSugar,
+        // Sweet Ladder integration
+        sweetLadderActive: febreDoce.sweetLadderActive,
+        sweetLadderD: febreDoce.sweetLadderD,
+        setSweetLadderD: febreDoce.setSweetLadderD
     });
 
     // --- Shop Logic ---
@@ -331,6 +354,9 @@ export const useGameLogic = () => {
         isSnakeGameUnlocked: isSnakeGameUnlocked,
         startSnakeGame: startSnakeGame,
         handleSpend,
+        // Furnace integration
+        setSugar: gameState.setSugar,
+        momentoLevel: gameState.momentoLevel // Pass momentoLevel here
     });
     
     // --- Scratch Card Logic ---
@@ -379,8 +405,29 @@ export const useGameLogic = () => {
 
     const isBankrupt = creditCardLevel > 0 && gameState.creditCardDebt >= secondarySkills.creditLimit;
 
+    // --- Embaixador Logic ---
+    const criarEmbaixadorDoce = useCallback(() => {
+        // Updated to cost Sugar instead of 10 of each candy
+        const sugarCost = 500;
+        
+        if (gameState.sugar < sugarCost) {
+            showMsg(`Precisa de ${sugarCost} 🍬 Açúcar!`, 2000, true);
+            return;
+        }
+
+        gameState.setSugar(prev => prev - sugarCost);
+
+        // Reward: 1 Tiger (Simple reward for now)
+        gameState.setInv(prev => ({ ...prev, '🐯': (prev['🐯'] || 0) + 1 }));
+        showMsg("Embaixador criado! Ganhou 1x 🐯 Tigre!", 3000, true);
+
+    }, [gameState.sugar, gameState.setSugar, gameState.setInv, showMsg]);
+
+    const febreDocesAtivo = febreDoce.feverPhase === 'ACTIVE';
+
     return {
         ...gameState,
+        febreDocesAtivo,
         ...febreDoce,
         ...spinLogic,
         ...shopLogic,
@@ -388,6 +435,7 @@ export const useGameLogic = () => {
         ...secondarySkills,
         ...scratchCardLogic,
         ...snakeUpgrades,
+        ...furnaceLogic,
         winMsg,
         extraMsg,
         setWinMsg,
@@ -417,5 +465,6 @@ export const useGameLogic = () => {
         takeCreditCardLoan,
         payOffCreditCardDebt,
         renegotiateCreditCard,
+        criarEmbaixadorDoce
     };
 };
