@@ -10,7 +10,16 @@ import ConfigTab from './components/ConfigTab';
 import PrestigeTab from './components/prestige/PrestigeTab';
 import SnakeGame from './components/minigames/snake/SnakeGame';
 import CreditCardManager, { PaymentDueModal, ItemPenaltyModal } from './components/CreditCardManager';
-import FeverSetupModal from './components/shops/FeverSetupModal'; // Import Fever Setup
+import FeverSetupModal from './components/shops/FeverSetupModal';
+import FeverReportModal from './components/shops/FeverReportModal';
+import TokenFlipOverlay from './components/shops/TokenFlipOverlay';
+
+// MEMOIZED COMPONENTS
+const MemoSlotMachine = React.memo(SlotMachine);
+const MemoInventoryTab = React.memo(InventoryTab);
+const MemoShopsTab = React.memo(ShopsTab);
+const MemoConfigTab = React.memo(ConfigTab);
+const MemoPrestigeTab = React.memo(PrestigeTab);
 
 const App: React.FC = () => {
     const game = useGameLogic();
@@ -66,9 +75,18 @@ const App: React.FC = () => {
                 snakeUpgrades={game.snakeUpgrades}
                 buySnakeUpgrade={game.buySnakeUpgrade}
                 snakeGameSettings={game.snakeGameSettings}
-                totalScoreMultiplier={game.totalIncomeMultiplier * game.scoreMultiplier}
+                // Fix: Correct property name to grandeGanhoMultiplier (from usePrestigeSkills hook)
+                totalScoreMultiplier={game.grandeGanhoMultiplier * game.scoreMultiplier}
                 resetSnakeUpgrades={game.resetSnakeUpgrades}
             />}
+            
+            {/* Token Flip Animation Overlay */}
+            {game.tokenFlipState.isActive && (
+                <TokenFlipOverlay
+                    flipState={game.tokenFlipState}
+                    onClose={game.closeTokenFlip}
+                />
+            )}
             
             {/* Fever Setup Modal */}
             {game.feverPhase === 'SETUP' && (
@@ -78,6 +96,15 @@ const App: React.FC = () => {
                     buyPackage={game.buyPackage}
                     startFever={game.startFever}
                     onClose={game.closeFeverSetup}
+                    momentoLevel={game.momentoLevel}
+                />
+            )}
+
+            {/* Fever Report Modal */}
+            {game.feverReport && (
+                <FeverReportModal
+                    report={game.feverReport}
+                    onClose={game.closeFeverReport}
                 />
             )}
 
@@ -169,7 +196,7 @@ const App: React.FC = () => {
                     style={style}
                 >
                     {isPrestigeView ? (
-                        <PrestigeTab {...game} />
+                        <MemoPrestigeTab {...game} />
                     ) : (
                         <div className="w-full h-full bg-gradient-to-br from-[#2a1810] to-[#1f1108] rounded-3xl p-5 shadow-2xl shadow-yellow-500/10 border-4 border-yellow-800 flex flex-col">
                             <Header
@@ -199,8 +226,8 @@ const App: React.FC = () => {
                                 onTouchMove={handleTouchMove}
                                 onTouchEnd={handleTouchEnd}
                             >
-                                {mainActiveTab === 0 && <SlotMachine {...game} />}
-                                {mainActiveTab === 1 && <InventoryTab 
+                                {mainActiveTab === 0 && <MemoSlotMachine {...game} />}
+                                {mainActiveTab === 1 && <MemoInventoryTab 
                                     inv={game.inv} 
                                     roiSaldo={game.roiSaldo} 
                                     momentoLevel={game.momentoLevel} 
@@ -208,8 +235,8 @@ const App: React.FC = () => {
                                     sugar={game.sugar}
                                     activeCookies={game.activeCookies} 
                                 />}
-                                {mainActiveTab === 2 && <ShopsTab {...game} />}
-                                {mainActiveTab === 3 && <ConfigTab {...game} />}
+                                {mainActiveTab === 2 && <MemoShopsTab {...game} />}
+                                {mainActiveTab === 3 && <MemoConfigTab {...game} />}
                             </main>
                         </div>
                     )}

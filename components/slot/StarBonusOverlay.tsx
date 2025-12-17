@@ -1,5 +1,6 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { StarBonusResult } from '../../types';
 
 interface StarBonusOverlayProps {
@@ -9,60 +10,79 @@ interface StarBonusOverlayProps {
 }
 
 const StarBonusOverlay: React.FC<StarBonusOverlayProps> = ({ results, totalWin, onComplete }) => {
-    const [visibleResults, setVisibleResults] = useState<StarBonusResult[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [accumulatedWin, setAccumulatedWin] = useState(0);
     const [isTurbo, setIsTurbo] = useState(false);
-    const scrollRef = useRef<HTMLDivElement>(null);
     
-    // Calcula o total de giros (pode ser 90, 180, 270...)
+    const scrollRef = useRef<HTMLDivElement>(null);
     const totalSpins = results.length;
 
+    // --- DERIVED STATE ---
+    const visibleResults = useMemo(() => {
+        return results.slice(0, currentIndex);
+    }, [results, currentIndex]);
+
+    const accumulatedWin = useMemo(() => {
+        return visibleResults.reduce((acc, res) => acc + (res.isWin ? res.win : 0), 0);
+    }, [visibleResults]);
+
+    const displayMaxSpins = useMemo(() => {
+        // 1. Calculate total bonus spins present in the entire result set
+        let totalBonusSpinsInResults = 0;
+        results.forEach(res => {
+            if (res.symbols.every(s => s === '⭐')) {
+                totalBonusSpinsInResults += 5; // Updated from 2 to 5
+            }
+        });
+
+        // 2. Infer the base (starting) spins
+        const inferredBase = Math.max(0, totalSpins - totalBonusSpinsInResults);
+
+        // 3. Calculate current bonus spins revealed so far
+        let currentBonusSpins = 0;
+        visibleResults.forEach(res => {
+            if (res.symbols.every(s => s === '⭐')) {
+                currentBonusSpins += 5; // Updated from 2 to 5
+            }
+        });
+
+        // 4. Current Max = Base + Revealed Bonus
+        return inferredBase + currentBonusSpins;
+    }, [results, visibleResults, totalSpins]);
+
+
+    // --- ANIMATION LOOP (Optimized) ---
     useEffect(() => {
-        if (currentIndex >= totalSpins) {
-            return;
-        }
+        if (currentIndex >= totalSpins) return;
 
-        // Base speed: 50ms (2x faster than original 100ms)
-        // Turbo speed: 3ms (Very fast)
-        const delay = isTurbo ? 3 : 50;
-
+        const delay = isTurbo ? 5 : 50;
+        
         const interval = setInterval(() => {
             setCurrentIndex(prev => {
-                const next = prev + 1;
-                if (next <= totalSpins) {
-                    const newItem = results[prev];
-                    
-                    // Optimization: In turbo mode, we might batch updates visually if needed, 
-                    // but React 18 automatic batching usually handles this fine.
-                    setVisibleResults(old => [...old, newItem]);
-                    
-                    if (newItem.isWin) {
-                        setAccumulatedWin(acc => acc + newItem.win);
-                    }
+                if (prev >= totalSpins) {
+                    clearInterval(interval);
+                    return prev;
                 }
-                return next;
+                return prev + 1;
             });
         }, delay);
 
         return () => clearInterval(interval);
-    }, [currentIndex, results, isTurbo, totalSpins]);
+    }, [isTurbo, totalSpins]);
 
-    // Auto-scroll logic
+    // --- AUTO SCROLL ---
     useEffect(() => {
         if (scrollRef.current) {
-            // Only auto-scroll if close to bottom or in turbo to keep track
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [visibleResults, isTurbo]);
+    }, [visibleResults.length, isTurbo]);
 
     const isFinished = currentIndex >= totalSpins;
-    const progressPercent = Math.min(100, (currentIndex / totalSpins) * 100);
+    const progressPercent = Math.min(100, (currentIndex / Math.max(1, displayMaxSpins)) * 100);
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black">
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-black text-sans font-sans">
             {/* Animated Space Background */}
-            <div className="absolute inset-0 z-0 opacity-60">
+            <div className="absolute inset-0 z-0 opacity-60 pointer-events-none">
                 <div className="stars"></div>
                 <div className="twinkling"></div>
             </div>
@@ -109,12 +129,12 @@ const StarBonusOverlay: React.FC<StarBonusOverlayProps> = ({ results, totalWin, 
                         <div className="text-left">
                             <div className="text-xs text-blue-300 mb-1">Giros Processados</div>
                             <div className="text-xl font-mono font-bold text-white">
-                                {Math.min(currentIndex, totalSpins)} <span className="text-gray-500 text-sm">/ {totalSpins}</span>
+                                {Math.min(currentIndex, totalSpins)} <span className="text-gray-500 text-sm">/ {displayMaxSpins}</span>
                             </div>
                         </div>
                         <div className="text-right">
                             <div className="text-xs text-yellow-200 mb-1">Total Ganho</div>
-                            <div className={`text-3xl font-black text-yellow-400 drop-shadow-md transition-transform duration-75 ${currentIndex > 0 && results[currentIndex-1]?.isWin ? 'scale-110 text-yellow-200' : 'scale-100'}`}>
+                            <div className={`text-3xl font-black text-yellow-400 drop-shadow-md transition-transform duration-75 ${visibleResults[visibleResults.length-1]?.isWin ? 'scale-110 text-yellow-200' : 'scale-100'}`}>
                                 ${accumulatedWin.toFixed(2)}
                             </div>
                         </div>
@@ -147,15 +167,15 @@ const StarBonusOverlay: React.FC<StarBonusOverlayProps> = ({ results, totalWin, 
                                     </div>
                                 </div>
                                 <div className={`font-bold text-sm sm:text-base ${res.isWin ? 'text-green-300' : 'text-gray-600'}`}>
-                                    {res.isWin ? `+$${res.win.toFixed(2)}` : '---'}
+                                    {res.isWin 
+                                        ? (res.win === 0 && res.symbols.every(s => s === '⭐') ? '🔄 +5 GIROS' : `+$${res.win.toFixed(2)}`)
+                                        : '---'}
                                 </div>
                             </div>
                         ))}
-                        {/* Spacer for auto-scroll visibility */}
                         <div className="h-4"></div>
                     </div>
                     
-                    {/* Gradient Overlay at bottom for smooth fade */}
                     <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent pointer-events-none"></div>
                 </div>
 
@@ -168,18 +188,21 @@ const StarBonusOverlay: React.FC<StarBonusOverlayProps> = ({ results, totalWin, 
                             w-full py-4 rounded-xl font-bold text-xl uppercase tracking-wider transition-all duration-300
                             ${isFinished 
                                 ? 'bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500 bg-[length:200%_auto] text-black shadow-[0_0_20px_#eab308] hover:scale-[1.02] animate-shimmer' 
-                                : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'}
+                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'}
                         `}
                         style={{
                             backgroundPosition: isFinished ? 'right center' : 'center'
                         }}
                     >
-                        {isFinished ? '💰 COLETAR FORTUNA 💰' : 'CALCULANDO TRAJETÓRIA...'}
+                        {isFinished 
+                            ? (Math.abs(accumulatedWin - totalWin) > 0.1 
+                                ? `💰 COLETAR $${totalWin.toFixed(2)}` 
+                                : '💰 COLETAR FORTUNA 💰')
+                            : 'CALCULANDO TRAJETÓRIA...'}
                     </button>
                 </div>
             </div>
             
-            {/* CSS for animations and background */}
             <style>{`
                 .animate-slide-in-right {
                     animation: slideInRight 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
@@ -192,10 +215,6 @@ const StarBonusOverlay: React.FC<StarBonusOverlayProps> = ({ results, totalWin, 
                 @keyframes move-twink-back {
                     from {background-position:0 0;}
                     to {background-position:-10000px 5000px;}
-                }
-                @keyframes move-clouds-back {
-                    from {background-position:0 0;}
-                    to {background-position:10000px 0;}
                 }
                 .stars, .twinkling {
                   position:absolute;
@@ -225,7 +244,8 @@ const StarBonusOverlay: React.FC<StarBonusOverlayProps> = ({ results, totalWin, 
                     animation: shimmer 3s infinite linear;
                 }
             `}</style>
-        </div>
+        </div>,
+        document.body
     );
 };
 

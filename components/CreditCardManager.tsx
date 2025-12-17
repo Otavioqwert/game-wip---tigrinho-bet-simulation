@@ -190,7 +190,8 @@ export const ItemPenaltyModal: React.FC<ItemPenaltyModalProps> = ({ isOpen, onCl
     const [selection, setSelection] = useState<Partial<Record<SymbolKey, number>>>({});
     if (!isOpen || !penalty) return null;
 
-    const penaltyItems = (Object.keys(ITEM_PENALTY_VALUES) as (keyof typeof ITEM_PENALTY_VALUES)[]).filter(key => inventory[key] > 0);
+    // Fix: Explicitly cast the keys of ITEM_PENALTY_VALUES to SymbolKey[] to satisfy handleSelectionChange's parameter type.
+    const penaltyItems = (Object.keys(ITEM_PENALTY_VALUES) as SymbolKey[]).filter(key => (inventory[key] || 0) > 0);
     
     const selectedValue = useMemo(() => {
         return (Object.keys(selection) as SymbolKey[]).reduce((acc, key) => {

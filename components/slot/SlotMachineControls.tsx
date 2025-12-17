@@ -4,6 +4,7 @@ import type { RoiSaldo } from '../../types';
 
 interface ControlsProps {
     febreDocesAtivo: boolean;
+    febreDocesGiros: number; // Added prop
     isSpinning: boolean;
     bal: number;
     betVal: number;
@@ -22,6 +23,7 @@ interface ControlsProps {
 const SlotMachineControls: React.FC<ControlsProps> = (props) => {
     const {
         febreDocesAtivo,
+        febreDocesGiros,
         isSpinning,
         bal,
         betVal,
@@ -135,6 +137,12 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
     const isControlsDisabled = isSpinning || quickSpinQueue > 0;
     const isBettingDisabled = isBankrupt || isBettingLocked;
 
+    const getMainButtonText = () => {
+        if (isBettingDisabled) return '⛓️ BLOQUEADO ⛓️';
+        if (febreDocesAtivo) return `🍭 GIRAR (${febreDocesGiros})`;
+        return '🎰 GIRAR';
+    };
+
     return (
         <div className="w-full max-w-sm">
             <div className="flex flex-col gap-2.5 mb-4">
@@ -142,9 +150,9 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
                 <button 
                     onClick={handleSpin} 
                     disabled={isControlsDisabled || isBettingDisabled || isPoolInvalid || (!febreDocesAtivo && bal < betVal)} 
-                    className={`${btnClasses} text-xl h-16`}
+                    className={`${btnClasses} text-xl h-16 ${febreDocesAtivo ? 'bg-gradient-to-br from-pink-500 to-purple-600 text-white border-2 border-yellow-300' : ''}`}
                 >
-                    {isBettingDisabled ? '⛓️ BLOQUEADO ⛓️' : '🎰 GIRAR'}
+                    {getMainButtonText()}
                 </button>
 
                 {/* Percentage Bets Row */}

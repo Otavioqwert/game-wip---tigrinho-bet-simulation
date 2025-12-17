@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import type { SymbolKey, MidSymbolKey, SkillId, Inventory, ActiveCookie, CookieId, ScratchCardMetrics, LotericaInjectionState, ActiveScratchCard } from '../types';
+import type { SymbolKey, MidSymbolKey, SkillId, Inventory, Multipliers, ActiveCookie, CookieId, ScratchCardMetrics, LotericaInjectionState, ActiveScratchCard, SecondarySkillId } from '../types';
 
 // Import newly created shop components
 import SymbolShop from './shops/SymbolShop';
@@ -15,7 +15,11 @@ interface ShopsTabProps {
     inv: Inventory;
     buy: (k: SymbolKey) => void;
     getPrice: (k: SymbolKey) => number;
-    mult: { [key: string]: number };
+    // Updated mult type to match Multipliers definition and added bonusMult
+    mult: Multipliers;
+    bonusMult: Multipliers;
+    // Add multUpgradeBonus to satisfy MultiplierShop requirements
+    multUpgradeBonus: number;
     multPrice: (k: SymbolKey) => number | null;
     midMultiplierValue: (k: SymbolKey) => number;
     buyMult: (k: SymbolKey) => void;
@@ -44,12 +48,17 @@ interface ShopsTabProps {
     injetarLoterica: (tier: number) => void;
     // New Shop Logic Props
     sellMeteor: () => void;
+    flipTokens: (amount: number) => void;
+    // Fixed: Added missing properties to satisfy SymbolShop requirements
+    buyWithSugar: (k: SymbolKey) => void;
+    getSecondarySkillLevel: (id: SecondarySkillId) => number;
+    mortgageUsages: number;
 }
 
 const ShopsTab: React.FC<ShopsTabProps> = (props) => {
     const { 
         isSnakeGameUnlocked, getSkillLevel, febreDocesAtivo, momentoLevel,
-        activeScratchCard, finishScratchCard, inv, sellMeteor
+        activeScratchCard, finishScratchCard, inv, sellMeteor, flipTokens
     } = props;
     
     const [shopActiveTab, setShopActiveTab] = useState(0);
@@ -57,6 +66,7 @@ const ShopsTab: React.FC<ShopsTabProps> = (props) => {
     const tabBtnClasses = (isActive: boolean) => `flex-1 p-2 rounded-t-lg font-bold cursor-pointer transition-colors text-sm sm:text-base ${isActive ? 'bg-yellow-500 text-stone-900' : 'bg-yellow-500/20 text-white hover:bg-yellow-500/30'}`;
     
     const isCometUnlocked = getSkillLevel('caminhoCometa') > 0;
+    const isTokenUnlocked = getSkillLevel('caminhoFicha') > 0;
 
     if (febreDocesAtivo) {
         return (
@@ -90,7 +100,7 @@ const ShopsTab: React.FC<ShopsTabProps> = (props) => {
                 ))}
             </div>
             <div className="bg-black/20 rounded-b-lg rounded-tr-lg p-4">
-                {shopActiveTab === 0 && <SymbolShop {...props} isCometUnlocked={isCometUnlocked} momentoLevel={momentoLevel} inv={inv} sellMeteor={sellMeteor} />}
+                {shopActiveTab === 0 && <SymbolShop {...props} isCometUnlocked={isCometUnlocked} isTokenUnlocked={isTokenUnlocked} momentoLevel={momentoLevel} inv={inv} sellMeteor={sellMeteor} flipTokens={flipTokens} />}
                 {shopActiveTab === 1 && <MultiplierShop {...props} isCometUnlocked={isCometUnlocked} />}
                 {shopActiveTab === 2 && <FurnaceShop {...props} />}
                 {shopActiveTab === 3 && <ScratchCardShop {...props} />}

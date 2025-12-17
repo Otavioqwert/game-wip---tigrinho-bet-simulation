@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import type { SkillId } from '../types';
 
@@ -6,8 +7,8 @@ interface PassiveIncomeProps {
     bal: number;
     getSkillLevel: (id: SkillId) => number;
     passiveSalary: number;
-    isEchoUnlocked: boolean;
-    totalIncomeMultiplier: number;
+    echoChance: number;
+    applyFinalGain: (baseAmount: number) => number;
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     handleGain: (amount: number) => void;
 }
@@ -17,8 +18,8 @@ export const usePassiveIncome = (props: PassiveIncomeProps) => {
         betVal,
         getSkillLevel,
         passiveSalary,
-        isEchoUnlocked,
-        totalIncomeMultiplier,
+        echoChance,
+        applyFinalGain,
         handleGain,
     } = props;
 
@@ -37,29 +38,28 @@ export const usePassiveIncome = (props: PassiveIncomeProps) => {
             // Salary
             if (salaryIncome > 0) {
                 let currentSalary = salaryIncome;
-                if (isEchoUnlocked && Math.random() < 0.1) {
+                if (echoChance > 0 && Math.random() < echoChance) {
                     currentSalary *= 2;
                 }
                 totalPassive += currentSalary;
             }
 
-            const finalIncome = totalPassive * totalIncomeMultiplier;
+            // Aplica Grande Ganho e Hidra
+            const finalIncome = applyFinalGain(totalPassive);
             handleGain(finalIncome);
         }, 1000); 
         
         return () => clearInterval(intervalId); 
-    }, [getSkillLevel, passiveSalary, isEchoUnlocked, totalIncomeMultiplier, handleGain]);
+    }, [getSkillLevel, passiveSalary, echoChance, applyFinalGain, handleGain]);
 
     // Anti-stuck passive income
     useEffect(() => {
         const interval = setInterval(() => {
-            // This logic is tricky with the new system, so we simplify it.
             // If the user has no money, give them a small boost.
-            // It will prioritize paying debt, which is the intended "anti-stuck" mechanic.
             if (props.bal < betVal) {
-                handleGain(0.5 * totalIncomeMultiplier);
+                handleGain(applyFinalGain(0.5));
             }
         }, 1000);
         return () => clearInterval(interval);
-    }, [betVal, props.bal, handleGain, totalIncomeMultiplier]);
+    }, [betVal, props.bal, handleGain, applyFinalGain]);
 };

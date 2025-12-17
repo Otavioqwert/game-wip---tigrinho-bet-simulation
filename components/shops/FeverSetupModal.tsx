@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import type { FeverPackage, PurchasedPackage, FeverTier, FeverType, FeverRollOption } from '../../types';
+import type { FeverPackage, PurchasedPackage, FeverTier, FeverType, FeverRollOption, FeverContentResult } from '../../types';
 import { ALL_FEVER_PACKAGES } from '../../constants/feverPackages';
 
 interface FeverSetupModalProps {
@@ -9,9 +9,10 @@ interface FeverSetupModalProps {
     buyPackage: (pkg: FeverPackage) => void;
     startFever: () => void;
     onClose: () => void;
+    momentoLevel: number;
 }
 
-const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages, buyPackage, startFever, onClose }) => {
+const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages, buyPackage, startFever, onClose, momentoLevel }) => {
     const [activeTier, setActiveTier] = useState<FeverTier>('budget');
     const [activeType, setActiveType] = useState<FeverType | 'all'>('all');
     const [inspectedPackage, setInspectedPackage] = useState<FeverPackage | null>(null);
@@ -90,9 +91,17 @@ const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages
                     const canAfford = bal >= pkg.cost;
                     const isFull = selectedPackages.length >= 3;
                     const isRisk = pkg.risk === 'risk';
+                    
+                    // Meteor Lock Logic
+                    let hasMeteor = false;
+                    if (typeof pkg.contents === 'object' && pkg.contents !== null && 'items' in pkg.contents) {
+                        if ((pkg.contents as FeverContentResult).items['☄️']) hasMeteor = true;
+                    }
+                    
+                    const isLocked = hasMeteor && momentoLevel < 10;
 
                     return (
-                        <div key={pkg.id} className={`relative bg-gray-800 border-2 rounded-xl p-4 flex flex-col ${getTierColor(pkg.tier)} ${isPurchased ? 'opacity-50 ring-2 ring-green-500' : ''}`}>
+                        <div key={pkg.id} className={`relative bg-gray-800 border-2 rounded-xl p-4 flex flex-col ${getTierColor(pkg.tier)} ${isPurchased ? 'opacity-50 ring-2 ring-green-500' : ''} ${isLocked ? 'opacity-60 grayscale' : ''}`}>
                             {isRisk && <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 rounded">RISK</div>}
                             
                             <div className="flex items-center gap-3 mb-2">
@@ -121,15 +130,16 @@ const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages
                                 </div>
                                 <button
                                     onClick={() => buyPackage(pkg)}
-                                    disabled={isPurchased || !canAfford || isFull}
+                                    disabled={isPurchased || !canAfford || isFull || isLocked}
                                     className={`w-full py-2 rounded font-bold ${
+                                        isLocked ? 'bg-red-900/50 text-red-400 border border-red-500 cursor-not-allowed' :
                                         isPurchased ? 'bg-green-700 text-white cursor-default' :
                                         !canAfford ? 'bg-gray-700 text-gray-500' :
                                         isFull ? 'bg-gray-600 text-gray-400' :
                                         'bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white'
                                     }`}
                                 >
-                                    {isPurchased ? 'COMPRADO' : isFull ? 'MAX 3' : 'COMPRAR'}
+                                    {isLocked ? 'BLOQUEADO (NÍVEL 10)' : isPurchased ? 'COMPRADO' : isFull ? 'MAX 3' : 'COMPRAR'}
                                 </button>
                             </div>
                         </div>

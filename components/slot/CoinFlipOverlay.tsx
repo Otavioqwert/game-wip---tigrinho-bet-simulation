@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import type { CoinFlipState } from '../../types';
 
 interface CoinFlipOverlayProps {
@@ -14,9 +15,9 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
     const currentWin = currentBet * currentMultiplier;
     const isGameOver = flipsRemaining === 0;
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="bg-gradient-to-b from-gray-800 to-black p-6 rounded-3xl border-4 border-slate-400 shadow-[0_0_50px_rgba(255,255,255,0.2)] text-center max-w-sm w-full relative overflow-hidden">
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+            <div className="bg-gradient-to-b from-gray-800 to-black p-6 rounded-3xl border-4 border-slate-400 shadow-[0_0_50px_rgba(255,255,255,0.2)] text-center max-w-sm w-full relative overflow-hidden animate-in zoom-in duration-300">
                 
                 {/* Header Info */}
                 <div className="mb-6">
@@ -119,7 +120,8 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
                     animation: flipCoin 2s ease-out forwards;
                 }
             `}</style>
-        </div>
+        </div>,
+        document.body
     );
 };
 

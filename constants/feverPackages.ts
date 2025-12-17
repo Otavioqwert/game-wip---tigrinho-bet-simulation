@@ -62,12 +62,12 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     },
     {
         id: 'pkg_doce_escada',
-        name: '📈 Doce Escada',
+        name: '🔗 Doce Corrente',
         cost: 3250,
         type: 'item', risk: 'safe', tier: 'budget',
-        icon: '📈',
+        icon: '🔗',
         contents: { items: { '🍭': 5, '🍦': 5, '🍧': 5 }, multipliers: {} },
-        description: 'Mecânica Única: Cada linha de doce aumenta D. Ganha ((1+D)D)/2 extra!'
+        description: 'Mecânica de Combo: Acertos com doces (mesmo com ⭐) aumentam a corrente. Se errar, zera! Bônus massivo para correntes longas.'
     },
     {
         id: 'pkg_star_junior',
@@ -96,7 +96,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         type: 'item', risk: 'safe', tier: 'mid', // Alterado para Safe
         icon: '⚡',
         contents: { items: { '🐯': 3 }, multipliers: { '🐯': 50 } }, // Fixo +3 Tigres e Mult
-        description: 'Garante +3 Tigres e um boost de velocidade (50x).'
+        description: 'Garante +3 Tigres e +50 Níveis de Mult (12.5x base extra).'
     },
     {
         id: 'risk_mid_1',
@@ -105,19 +105,22 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         type: 'item', risk: 'risk', tier: 'mid',
         icon: '🎰',
         contents: 'TOTALLY_RANDOM_CHEST',
-        description: '1 a 20 Itens Aleatórios com Mults de 1x a 80x!'
+        description: '1 a 20 Itens Aleatórios com Níveis de Mult de 1 a 80!'
     },
 
     // --- TIER 3: PREMIUM ---
     {
-        id: 'safe_mid_3', // ID mantido, mas logicamente agora é Premium
+        id: 'safe_mid_3', 
         name: '🐯 Caçada ao Tigre',
-        cost: 35000, // Preço aumentado
-        type: 'item', risk: 'safe', tier: 'premium', // Tier subiu
+        cost: 35000, 
+        type: 'item', risk: 'risk', tier: 'premium',
         icon: '🐯',
-        // Buff massivo: 5 Tigres e 500x de Multiplicador
-        contents: { items: { '🐯': 5 }, multipliers: { '🐯': 500 } }, 
-        description: 'ULTRA BUFF: 5 Tigres e +500x de Multiplicador acumulado!'
+        // ATUALIZAÇÃO: Fusão Estratégica (6 Tigres + 30 Doces)
+        contents: { 
+            items: { '🐯': 6, '🍭': 10, '🍦': 10, '🍧': 10 }, 
+            multipliers: { '🐯': 500 } 
+        },
+        description: 'FUSÃO: 6 Tigres (+500 nv) escondidos em 30 doces! Chance real de linhas duplas.'
     },
     {
         id: 'safe_premium_1',
@@ -143,8 +146,12 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 28000,
         type: 'item', risk: 'safe', tier: 'premium', // Alterado para Safe
         icon: '🌠',
-        contents: { items: { '☄️': 3, '⭐': 3 }, multipliers: { '☄️': 150 } },
-        description: '3 Meteoros, 3 Estrelas e +150x de Multiplicador!'
+        // ATUALIZAÇÃO: +1 Estrela e +5 de cada Doce
+        contents: { 
+            items: { '☄️': 3, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, 
+            multipliers: { '☄️': 150 } 
+        },
+        description: '3 Meteoros, 1 Estrela, Doces e +150% de Poder Real (Níveis)!'
     },
 
     // --- TIER 4: LUXURY ---
@@ -154,8 +161,12 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 70000,
         type: 'item', risk: 'safe', tier: 'luxury', // Alterado para Safe
         icon: '💫',
-        contents: { items: { '☄️': 10 }, multipliers: { '☄️': 300 } },
-        description: '10 Meteoros e +300x de Multiplicador!'
+        // ATUALIZAÇÃO: +1 Estrela e +5 de cada Doce
+        contents: { 
+            items: { '☄️': 10, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, 
+            multipliers: { '☄️': 300 } 
+        },
+        description: '10 Meteoros, 1 Estrela, Doces e +300% de Poder Real (Níveis)!'
     },
     {
         id: 'risk_luxury_3',

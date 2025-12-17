@@ -6,140 +6,147 @@ interface ScratchSlotProps {
     isRevealed: boolean;
     onReveal: () => void;
     isJackpot?: boolean;
+    revealAllTrigger?: boolean;
 }
 
-const ScratchSlot: React.FC<ScratchSlotProps> = ({ prize, isRevealed, onReveal, isJackpot }) => {
+const ScratchSlot: React.FC<ScratchSlotProps> = ({ prize, isRevealed, onReveal, isJackpot, revealAllTrigger }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const isRevealedRef = useRef(isRevealed);
+
+    // Mantém a ref sincronizada para evitar closures no loop de animação
+    useEffect(() => {
+        isRevealedRef.current = isRevealed;
+    }, [isRevealed]);
 
     useEffect(() => {
-        // Se já estiver revelado, não precisamos desenhar o canvas (ele é removido do DOM ou escondido)
+        if (revealAllTrigger && !isRevealed) {
+            onReveal();
+        }
+    }, [revealAllTrigger, isRevealed, onReveal]);
+
+    useEffect(() => {
         if (isRevealed) return;
 
         const canvas = canvasRef.current;
         if (!canvas) return;
-
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // Limpar canvas antes de desenhar para evitar sobreposição em re-renders
+        // Reset do canvas para desenho da "tinta"
+        ctx.globalCompositeOperation = 'source-over';
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 1. Preencher o fundo (a tinta da raspadinha - Prata/Cinza com textura)
-        ctx.fillStyle = '#94a3b8'; // slate-400
+        // Gradiente Metálico Premium
+        const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        grad.addColorStop(0, '#94a3b8'); 
+        grad.addColorStop(0.5, '#f1f5f9'); 
+        grad.addColorStop(1, '#475569'); 
+        
+        ctx.fillStyle = grad;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 2. Adicionar textura/ruído para parecer raspadinha real
-        ctx.fillStyle = '#64748b'; // slate-500
-        for (let i = 0; i < 600; i++) {
-             ctx.beginPath();
-             ctx.arc(
-                 Math.random() * canvas.width, 
-                 Math.random() * canvas.height, 
-                 Math.random() * 2.5, 
-                 0, Math.PI * 2
-             );
-             ctx.fill();
+        // Textura granulada para parecer papel real
+        for (let i = 0; i < 400; i++) {
+            ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)';
+            ctx.beginPath();
+            ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 2, 0, Math.PI * 2);
+            ctx.fill();
         }
         
-        // 3. Padrão ou ícone central (?)
-        ctx.fillStyle = '#475569'; // slate-600
-        ctx.font = 'bold 30px sans-serif';
+        // Marca d'água central
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.font = 'bold 80px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('?', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('$', canvas.width / 2, canvas.height / 2);
         
-        // 4. Bordas decorativas leves
-        ctx.strokeStyle = '#cbd5e1'; // slate-300
-        ctx.lineWidth = 4;
-        ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+        // Bordas internas
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 12;
+        ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
-    }, [isRevealed]); // Redesenha apenas se for resetado
+    }, [isRevealed]);
 
     const scratch = (clientX: number, clientY: number) => {
-        if (isRevealed) return;
-
+        if (isRevealedRef.current) return;
+        
         const canvas = canvasRef.current;
         if (!canvas) return;
-
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
         const rect = canvas.getBoundingClientRect();
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-        
-        // Ajustar coordenadas baseadas no tamanho real do canvas vs tamanho de exibição (CSS)
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
 
-        const drawX = x * scaleX;
-        const drawY = y * scaleY;
-
-        // A Mágica: "Apagar" a tinta tornando os pixels transparentes
+        // Aplica o efeito de "borracha"
         ctx.globalCompositeOperation = 'destination-out';
         ctx.beginPath();
-        // Tamanho do pincel aumentado para melhorar usabilidade
-        ctx.arc(drawX, drawY, 35, 0, Math.PI * 2);
+        // Aumentado de 40 para 55 para facilitar muito a raspagem
+        ctx.arc(x, y, 55, 0, Math.PI * 2);
         ctx.fill();
 
-        // Verificar o quanto foi raspado
+        // Checagem de transparência ultra-rápida (amostra 1 a cada 64 pixels)
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         let transparentPixels = 0;
-        const totalPixels = imageData.data.length / 4;
-        
-        // Otimização: Verificar 1 a cada 32 pixels
-        for (let i = 3; i < imageData.data.length; i += 128) {
-            if (imageData.data[i] === 0) transparentPixels++;
+        const pixelData = imageData.data;
+        const totalPixelsToSample = pixelData.length / 4;
+        const step = 64; // Amostragem otimizada
+
+        for (let i = 3; i < pixelData.length; i += (step * 4)) {
+            if (pixelData[i] < 128) { // Se o alpha for baixo (transparente)
+                transparentPixels++;
+            }
         }
         
-        // Ajustar total baseado na amostragem (1/32 do total)
-        const sampleSize = totalPixels / 32;
-        
-        // Se raspar mais de 40%, revela tudo automaticamente
-        if (transparentPixels / sampleSize > 0.40) { 
+        const sampledCount = totalPixelsToSample / step;
+        const transparencyRatio = transparentPixels / sampledCount;
+
+        // Reduzido o limite para 30%. Raspar 1/3 do slot já revela o prêmio.
+        if (transparencyRatio > 0.30) { 
              onReveal();
         }
     }
 
-    const handleMouseMove = (e: React.MouseEvent) => {
-        // Apenas raspa se o botão esquerdo estiver pressionado
-        if (e.buttons === 1) scratch(e.clientX, e.clientY);
-    }
+    // Eventos unificados para mouse e touch
+    const handleMove = (e: React.MouseEvent | React.TouchEvent) => {
+        if (isRevealed) return;
+        if ('buttons' in e && e.buttons !== 1) return; // Se for mouse e não estiver clicado
 
-    const handleTouchMove = (e: React.TouchEvent) => {
-        // O preventDefault é importante em alguns browsers mobile, mas no React moderno o evento pode ser passivo.
-        // A melhor forma de prevenir scroll é via CSS (touch-action: none) que já está aplicado.
-        scratch(e.touches[0].clientX, e.touches[0].clientY);
-    }
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        scratch(clientX, clientY);
+    };
 
     return (
-        <div className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 shadow-inner select-none touch-none transform transition-transform hover:scale-[1.02] ${isJackpot && isRevealed ? 'border-yellow-400 shadow-[0_0_15px_#eab308]' : 'border-gray-600'}`}>
-            {/* CAMADA DE BAIXO: O Prêmio */}
-            <div className={`absolute inset-0 flex flex-col items-center justify-center p-1 ${isJackpot ? 'bg-gradient-to-br from-yellow-700 via-yellow-600 to-yellow-800 animate-pulse' : 'bg-gradient-to-br from-black to-gray-800'}`}>
+        <div className={`relative w-full aspect-square rounded-2xl overflow-hidden border-2 transition-all duration-500 shadow-lg ${isJackpot && isRevealed ? 'border-yellow-400 scale-105 shadow-yellow-500/50 z-10' : 'border-white/5'}`}>
+            {/* Camada de Prêmios (Fica por baixo) */}
+            <div className={`absolute inset-0 flex flex-col items-center justify-center p-2 text-center select-none ${isJackpot ? 'bg-gradient-to-br from-yellow-600 via-amber-400 to-yellow-800' : 'bg-[#0a0a0a]'}`}>
                 {prize > 0 ? (
-                    <>
-                        {isJackpot && <span className="text-[10px] font-black text-yellow-100 uppercase tracking-tighter mb-1">JACKPOT</span>}
-                        <span className={`text-lg sm:text-2xl font-black ${isJackpot ? 'text-white drop-shadow-md' : 'text-green-400'}`}>
-                            ${prize >= 1000 ? (prize/1000).toFixed(1) + 'k' : prize.toFixed(0)}
-                        </span>
-                        <span className={`text-[10px] uppercase font-bold ${isJackpot ? 'text-yellow-200' : 'text-gray-500'}`}>Ganhou</span>
-                    </>
+                    <div className="animate-in zoom-in fade-in duration-500">
+                        {isJackpot && <div className="text-[10px] font-black text-black bg-white px-2 rounded-full mb-1 uppercase tracking-tighter">JACKPOT</div>}
+                        <div className={`text-2xl sm:text-3xl font-black leading-none ${isJackpot ? 'text-black' : 'text-green-400'}`}>
+                            ${prize >= 1000 ? (prize/1000).toFixed(1)+'k' : prize.toFixed(0)}
+                        </div>
+                        <div className={`text-[9px] font-black uppercase mt-1 ${isJackpot ? 'text-black/60' : 'text-white/40'}`}>PRÊMIO</div>
+                    </div>
                 ) : (
-                    <span className="text-4xl opacity-30 grayscale">✖️</span>
+                    <div className="text-3xl opacity-10 grayscale">💀</div>
                 )}
             </div>
             
-            {/* CAMADA DE CIMA: O Canvas (Raspadinha) */}
+            {/* Camada de Raspagem (Canvas por cima) */}
             {!isRevealed && (
                 <canvas 
                     ref={canvasRef}
-                    width={250} 
-                    height={250}
+                    width={300} 
+                    height={300}
                     className="absolute inset-0 w-full h-full cursor-crosshair touch-none z-10"
-                    onMouseMove={handleMouseMove}
-                    onTouchMove={handleTouchMove}
-                    onMouseDown={(e) => scratch(e.clientX, e.clientY)}
-                    onTouchStart={(e) => scratch(e.touches[0].clientX, e.touches[0].clientY)}
+                    onMouseMove={handleMove}
+                    onTouchMove={handleMove}
+                    onMouseDown={handleMove}
                 />
             )}
         </div>

@@ -189,6 +189,13 @@ export interface PurchasedPackage extends FeverPackage {
     resultDescription?: string; // O que o jogador ganhou (ex: "40 Spins" ou "Tigre x3")
 }
 
+export interface FeverReport {
+    startBalance: number;
+    endBalance: number;
+    totalSpins: number; // Total de giros feitos
+    packagesUsed: PurchasedPackage[];
+}
+
 // --- STAR BONUS TYPES ---
 export interface StarBonusResult {
     symbols: SymbolKey[];
@@ -211,4 +218,11 @@ export interface CoinFlipState {
     history: ('heads' | 'tails')[];
     lastResult: 'heads' | 'tails' | null;
     isAnimating: boolean;
+}
+
+// --- TOKEN FLIP VISUAL TYPES ---
+export interface TokenFlipState {
+    isActive: boolean;
+    results: boolean[]; // true = win (heads), false = lose (tails)
+    tokenValue: number; // The market value of 1 token at time of flip
 }

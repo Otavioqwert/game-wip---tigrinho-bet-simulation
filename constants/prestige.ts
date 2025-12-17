@@ -1,0 +1,8 @@
+
+export const PRESTIGE_BASE_REQUIREMENT = 500;
+export const PRESTIGE_GROWTH_FACTOR = 1.5;
+export const CASH_TO_PA_RATIO = 100;
+
+export const START_STOP_CASH_PER_LEVEL = 25;
+export const START_STOP_SUGAR_PER_LEVEL = 5;
+export const START_STOP_CLOVER_STEP = 10;

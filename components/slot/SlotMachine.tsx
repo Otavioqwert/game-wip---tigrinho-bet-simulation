@@ -79,8 +79,9 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
             )}
 
             {febreDocesAtivo && (
-                <div className="bg-gradient-to-r from-purple-400 to-pink-500 text-white rounded-lg p-2 mb-3 font-bold shadow-lg shadow-pink-500/40 text-center text-md w-full max-w-sm">
-                    FEBRE DOCE 🔥 - {febreDocesGiros} Giros Grátis!
+                <div className="bg-gradient-to-r from-purple-500 via-pink-600 to-purple-500 bg-[length:200%_auto] animate-shimmer text-white rounded-xl p-3 mb-3 font-black shadow-lg shadow-pink-500/40 text-center text-xl w-full max-w-sm border-2 border-yellow-300">
+                    🔥 FEBRE DOCE 🔥<br/>
+                    <span className="text-3xl text-yellow-300 drop-shadow-md">{febreDocesGiros} Giros Restantes</span>
                 </div>
             )}
              {isPoolInvalid && (
@@ -117,6 +118,15 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
             </div>
             
             <SlotMachineControls {...props} />
+            <style>{`
+                @keyframes shimmer {
+                    0% {background-position: 0% 50%;}
+                    100% {background-position: 100% 50%;}
+                }
+                .animate-shimmer {
+                    animation: shimmer 3s infinite linear;
+                }
+            `}</style>
         </div>
     );
 };

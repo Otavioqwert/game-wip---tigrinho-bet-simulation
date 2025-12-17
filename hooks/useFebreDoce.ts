@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import type { RoiSaldo, Inventory, SymbolKey, FeverPackage, PurchasedPackage, FeverContentResult, Multipliers } from '../types';
+import type { RoiSaldo, Inventory, SymbolKey, FeverPackage, PurchasedPackage, FeverContentResult, Multipliers, FeverReport } from '../types';
 import { ALL_FEVER_PACKAGES } from '../constants/feverPackages';
 import { SYM, INITIAL_INVENTORY, INITIAL_MULTIPLIERS } from '../constants';
 
@@ -28,10 +28,15 @@ export const useFebreDoce = (props: FebreDoceProps) => {
     // Fever Active State
     const [febreDocesGiros, setFebreDocesGiros] = useState(0);
     const [betValFebre, setBetValFebre] = useState(10); // Default base bet
+    const [initialTotalSpins, setInitialTotalSpins] = useState(0); // Track total spins for report
     
     // Mechanics State
     const [sweetLadderActive, setSweetLadderActive] = useState(false);
     const [sweetLadderD, setSweetLadderD] = useState(0);
+    
+    // Report State
+    const [feverReport, setFeverReport] = useState<FeverReport | null>(null);
+    const [startBalance, setStartBalance] = useState(0);
     
     // Backup states
     const originalState = useRef<{ inv: Inventory | null, mult: Multipliers | null }>({ inv: null, mult: null });
@@ -64,9 +69,17 @@ export const useFebreDoce = (props: FebreDoceProps) => {
 
     const closeFeverSetup = useCallback(() => {
         if (feverPhase === 'SETUP') {
+            // REFUND LOGIC: Return money for selected packages
+            if (selectedPackages.length > 0) {
+                const totalRefund = selectedPackages.reduce((acc, p) => acc + p.cost, 0);
+                setBal(b => b + totalRefund);
+                showMsg(`Cancelado: $${totalRefund.toLocaleString()} reembolsados!`, 3000, true);
+            }
+            
+            setSelectedPackages([]);
             setFeverPhase('IDLE');
         }
-    }, [feverPhase]);
+    }, [feverPhase, selectedPackages, setBal, showMsg]);
 
     const resolvePackageRoll = (pkg: FeverPackage): { result: any, desc: string, contents?: FeverContentResult } => {
         if (!pkg.rolls) return { result: null, desc: '' };
@@ -182,15 +195,14 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         if (pkg.contents === 'TOTALLY_RANDOM_CHEST') {
              const generated = generateRandomChestContents();
              purchased.contents = generated;
-             
-             // Count items for description
-             const count = Object.values(generated.items).reduce((a, b) => a + (b || 0), 0);
-             purchased.resultDescription = `${count} Itens + Mults Aleatórios`;
+             // Hiding result
+             purchased.resultDescription = `❓ Conteúdo Surpresa`;
         }
         // Process RNG Risk
         else if (pkg.risk === 'risk' && pkg.rolls) {
             const { result, desc, contents } = resolvePackageRoll(pkg);
-            purchased.resultDescription = desc;
+            // Hiding result for risk packages
+            purchased.resultDescription = "❓ Conteúdo Surpresa";
             
             if (pkg.type === 'bet') {
                 purchased.spins = result; // Overwrite spins with rolled value
@@ -226,6 +238,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         // 1. Save state
         originalState.current.inv = { ...inv };
         originalState.current.mult = { ...mult };
+        setStartBalance(bal); // Snapshot balance AFTER buying packages
 
         // 2. Prepare Fever Inventory & Multipliers
         const feverInv = { ...INITIAL_INVENTORY };
@@ -282,6 +295,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         setInv(feverInv);
         setMult(feverMult);
         setFebreDocesGiros(totalSpins);
+        setInitialTotalSpins(totalSpins); // Store for report
         setFeverPhase('ACTIVE');
         setBetValFebre(activeBet);
         
@@ -291,10 +305,20 @@ export const useFebreDoce = (props: FebreDoceProps) => {
 
         showMsg(hasApostador ? "🔥 FEBRE DO APOSTADOR! (Aposta $100 / Giros reduzidos)" : "🔥 FEBRE DOCE INICIADA! 🔥", 3000, true);
 
-    }, [inv, mult, selectedPackages, setInv, setMult, showMsg]);
+    }, [inv, mult, selectedPackages, setInv, setMult, showMsg, bal]);
 
     const endFever = useCallback(() => {
-        // Restore State
+        // Calculate report
+        const endBalance = bal;
+        const report: FeverReport = {
+            startBalance: startBalance,
+            endBalance: endBalance,
+            totalSpins: initialTotalSpins,
+            packagesUsed: [...selectedPackages]
+        };
+        setFeverReport(report);
+        
+        // Restore State immediately to ensure clean UI behind modal
         if (originalState.current.inv) setInv(originalState.current.inv);
         if (originalState.current.mult) setMult(originalState.current.mult);
         
@@ -312,10 +336,14 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         setCooldownEnd(end);
         localStorage.setItem('tigrinho_fever_cooldown', end.toString());
         
-        showMsg("Febre Doce terminou! Volte em 30min.", 5000, true);
+        // Show report msg
+        // showMsg("Febre Doce terminou! Veja o relatório.", 5000, true);
 
-    }, [setInv, setMult, showMsg]);
+    }, [setInv, setMult, showMsg, bal, startBalance, initialTotalSpins, selectedPackages]);
 
+    const closeFeverReport = useCallback(() => {
+        setFeverReport(null);
+    }, []);
 
     return {
         feverPhase,
@@ -331,6 +359,8 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         cooldownEnd,
         sweetLadderActive,
         sweetLadderD,
-        setSweetLadderD
+        setSweetLadderD,
+        feverReport,
+        closeFeverReport
     };
 };

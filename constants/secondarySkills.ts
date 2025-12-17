@@ -1,19 +1,31 @@
+
 import type { SecondarySkill, SecondarySkillId } from '../types';
 
-// NOTE: Some of the more complex skills are stubbed out with a "Coming Soon" notice
-// to manage implementation scope. Their logic is not yet implemented.
+// Tabela de custos exatos para a Hidra (Lógica: 2x Atual + Anterior)
+const HYDRA_COSTS = [
+    10000,    // Nv 0 -> 1
+    20000,    // Nv 1 -> 2
+    50000,    // Nv 2 -> 3
+    120000,   // Nv 3 -> 4
+    290000,   // Nv 4 -> 5
+    700000,   // Nv 5 -> 6
+    1690000,  // Nv 6 -> 7
+    4080000,  // Nv 7 -> 8
+    9850000,  // Nv 8 -> 9
+    23780000  // Nv 9 -> 10
+];
 
 export const SECONDARY_SKILLS: Record<SecondarySkillId, SecondarySkill> = {
-    // Tier 1
+    // Tier 1 - O PULO DO GATO
     startStop: {
         id: 'startStop',
         name: 'Start/Stop',
-        description: (level) => `Cada prestígio aumenta o valor inicial do próximo em $10. Bônus atual: +$${level * 10}.`,
+        description: (level) => `Kit de Partida: +$${level * 25}, +${level * 5} 🍬 e (+${Math.floor(level / 10)}x) Nv Avulso de Mult no Trevo (🍀).`,
         tier: 1,
         dependencies: [],
         getCost: (level) => 1 + level,
         costType: 'pa',
-        maxLevel: 90,
+        maxLevel: 100,
     },
     // Tier 2
     snakeGame: {
@@ -29,7 +41,7 @@ export const SECONDARY_SKILLS: Record<SecondarySkillId, SecondarySkill> = {
     cashback: {
         id: 'cashback',
         name: 'Perda da Perda',
-        description: (level) => `Receba ${level * 1}% de volta em todas as apostas e compras na loja.`,
+        description: (level) => `Receba ${level * 1}% de volta em compras. Essencial para desbloquear finanças avançadas (Requer Nível 5 MAX).`,
         tier: 2,
         dependencies: [],
         getCost: (level) => 10 + level * 10,
@@ -39,7 +51,7 @@ export const SECONDARY_SKILLS: Record<SecondarySkillId, SecondarySkill> = {
     salary: {
         id: 'salary',
         name: 'Aumento de Salário',
-        description: (level) => `Gere +$${(level * 0.10).toFixed(2)} por segundo passivamente.`,
+        description: (level) => `Gere +$${(level * 0.10).toFixed(2)} por segundo. No Nível 10, libera especializações de carreira.`,
         tier: 2,
         dependencies: [],
         getCost: (level) => 10 + level * 10,
@@ -49,14 +61,14 @@ export const SECONDARY_SKILLS: Record<SecondarySkillId, SecondarySkill> = {
     decelerometer: {
         id: 'decelerometer',
         name: 'Desacelerômetro',
-        description: (level) => `Reduz o aumento de preço de todos os upgrades em ${level * 2}%. Custa PA e dobra de preço a cada nível.`,
+        description: (level) => `Reduz o aumento de preço de todos os upgrades em ${level * 2}%.`,
         tier: 2,
         dependencies: [],
         getCost: (level) => Math.pow(2, level),
         costType: 'pa',
         maxLevel: 50,
     },
-    // Tier 3
+    // Tier 3 - BLOQUEIOS ESTRATÉGICOS
     sideQuest: {
         id: 'sideQuest',
         name: 'Side Quest',
@@ -80,9 +92,9 @@ export const SECONDARY_SKILLS: Record<SecondarySkillId, SecondarySkill> = {
     bankruptcy: {
         id: 'bankruptcy',
         name: 'Cartão de Crédito',
-        description: (level) => `Desbloqueia um cartão de crédito com limite de $${(level > 0 ? 50 * level + 50 * Math.pow(1.25, level) : 0).toFixed(2)}. A dívida é paga em 24 parcelas a cada 60s, com juros de 15% a cada 300s.`,
+        description: (level) => `Desbloqueia um cartão de crédito. Requer Perda da Perda no Nível 5 (MAX).`,
         tier: 3,
-        dependencies: [{id: 'cashback', level: 1}],
+        dependencies: [{id: 'cashback', level: 5}],
         getCost: (level) => 5 + level * 5,
         costType: 'pa',
         maxLevel: 25,
@@ -90,51 +102,50 @@ export const SECONDARY_SKILLS: Record<SecondarySkillId, SecondarySkill> = {
     mortgage: {
         id: 'mortgage',
         name: 'Hipoteca',
-        description: () => `(EM BREVE) Permite comprar itens com Saldo Diabético, criando uma dívida com juros.`,
+        description: (level) => `Compre itens raros com Açúcar (🍬). Penalidade base de $100 + $50 por uso. Requer Perda da Perda no Nível 5 (MAX).`,
         tier: 3,
-        dependencies: [{id: 'cashback', level: 1}],
-        getCost: () => 25,
+        dependencies: [{id: 'cashback', level: 5}],
+        getCost: () => 1000,
         costType: 'pa',
         maxLevel: 1,
     },
     ownBoss: {
         id: 'ownBoss',
         name: 'Próprio Chefe',
-        description: () => `(EM BREVE) Desbloqueia uma loja especial de salário.`,
+        description: () => `(EM BREVE) Desbloqueia uma loja especial de salário. Requer Salário no Nível 10.`,
         tier: 3,
         dependencies: [{id: 'salary', level: 10}],
-        getCost: () => 50,
+        getCost: () => 550,
         costType: 'pa',
         maxLevel: 1,
     },
     echo: {
         id: 'echo',
         name: 'Eco',
-        description: () => `Seu salário passivo tem 10% de chance de ser pago duas vezes.`,
+        description: (level) => `Chance de salário pago duas vezes. Requer Salário no Nível 10.`,
         tier: 3,
         dependencies: [{id: 'salary', level: 10}],
-        getCost: () => 25,
+        getCost: (level) => 25 + level * 25,
         costType: 'pa',
-        maxLevel: 1,
+        maxLevel: 5,
     },
     increment: {
         id: 'increment',
         name: 'Incremento',
-        description: (level) => `Aumenta em ${level}% o valor ganho ao comprar upgrades de multiplicador.`,
+        description: (level) => `Aumenta em ${level}% a eficácia de todos os multiplicadores da loja (Bônus Final).`,
         tier: 3,
         dependencies: [{id: 'decelerometer', level: 7}],
-        getCost: (level) => 50 + level * 25,
+        getCost: (level) => 25 * (level + 1 + Math.floor(level / 2) * Math.ceil(level / 2)),
         costType: 'pa',
         maxLevel: 25,
     },
     hydra: {
         id: 'hydra',
         name: 'Hidra',
-        description: (level) => `Multiplica todos os ganhos por ${Math.pow(1.005, level).toFixed(6)}. Este efeito é cumulativo com outros bônus.`,
+        description: (level) => `Eleva ganhos finais à potência de ^${(1 + level * 0.005).toFixed(3)}. No Nível 10 (^1.05), prêmios de 1M rendem o DOBRO!`,
         tier: 3,
         dependencies: [{id: 'decelerometer', level: 7}],
-        // FIX: Corrected the 'getCost' function signature to accept the 'level' parameter.
-        getCost: (level) => 10000 * Math.pow(2, level),
+        getCost: (level) => HYDRA_COSTS[level] || HYDRA_COSTS[HYDRA_COSTS.length - 1] * Math.pow(2.414, level - 9),
         costType: 'pa',
         maxLevel: 10,
     },

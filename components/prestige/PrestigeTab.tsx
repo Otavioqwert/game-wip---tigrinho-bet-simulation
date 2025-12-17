@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { SkillId, SecondarySkillId } from '../../types';
 import SkillTree from './skills/SkillTree';
@@ -24,11 +25,15 @@ interface PrestigeTabProps {
 
 
 const PrestigeTab: React.FC<PrestigeTabProps> = (props) => {
-    const { bal, prestigePoints, prestigeLevel, prestigeRequirement, handlePrestige } = props;
+    const { bal, prestigePoints, setPrestigePoints, prestigeLevel, prestigeRequirement, handlePrestige } = props;
     const [activeTab, setActiveTab] = useState(0);
 
     const progress = Math.min((bal / prestigeRequirement) * 100, 100);
     const canPrestige = bal >= prestigeRequirement;
+
+    const handleDebugPA = () => {
+        setPrestigePoints(prev => prev + 999000000);
+    };
 
     const btnClasses = `
         w-full py-4 text-xl font-bold rounded-lg transition-all duration-300 transform 
@@ -47,12 +52,20 @@ const PrestigeTab: React.FC<PrestigeTabProps> = (props) => {
                 <h2 className="text-4xl font-bold text-purple-400 neon-glow-text mb-2">Prestígio</h2>
                 <p className="text-gray-300 text-lg mb-6">Nível de Prestígio: {prestigeLevel}</p>
 
-                <div className="bg-black/30 p-4 rounded-lg mb-6 inner-neon-border border-purple-700">
+                <div className="bg-black/30 p-4 rounded-lg mb-2 inner-neon-border border-purple-700">
                     <p className="text-2xl font-bold text-yellow-300 neon-glow-text">
-                        {prestigePoints} <span className="text-xl text-purple-300">PA</span>
+                        {prestigePoints.toLocaleString()} <span className="text-xl text-purple-300">PA</span>
                     </p>
                     <p className="text-sm text-gray-400">(Pontos de Prestígio)</p>
                 </div>
+
+                {/* DEBUG BUTTON */}
+                <button 
+                    onClick={handleDebugPA}
+                    className="mb-6 w-full py-1 text-[10px] font-black uppercase tracking-widest text-red-500 border border-dashed border-red-500/50 rounded hover:bg-red-500/10 transition-colors animate-pulse"
+                >
+                    [ ATIVAR CHEAT: +999M PA ]
+                </button>
 
                 <div className="mb-6">
                     <h3 className="text-2xl text-white mb-3">Próximo Nível</h3>
