@@ -1,10 +1,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { INITIAL_INVENTORY, INITIAL_MULTIPLIERS, SUGAR_CONVERSION } from '../constants';
-import type { Inventory, Multipliers, PanificadoraLevels, RoiSaldo, SymbolKey, RenegotiationTier, ActiveCookie } from '../types';
+import type { Inventory, Multipliers, PanificadoraLevels, RoiSaldo, SymbolKey, RenegotiationTier, ActiveCookie, ScratchCardMetrics, LotericaInjectionState } from '../types';
 
 const SAVE_KEY = 'tigrinho-save-game';
-const SAVE_VERSION = 17; // Incremented version for Furnace Update
+const SAVE_VERSION = 19; // Incremented for V3 Compatibility & Lock Logic
 
 export interface ItemPenalty {
     amount: number;
@@ -23,7 +23,7 @@ export interface SavedState {
     skillLevels: Record<string, number>;
     secondarySkillLevels: Record<string, number>;
     snakeUpgrades: Record<string, number>;
-    scratchCardPurchaseCounts: Record<number, number>;
+    scratchCardPurchaseCounts: Record<number, number>; // Legacy support, can be removed in future if not needed
     unluckyPot: number;
     momentoLevel: number;
     momentoProgress: number;
@@ -33,9 +33,12 @@ export interface SavedState {
     paymentDueDate: number | null;
     isBettingLocked: boolean;
     itemPenaltyDue: ItemPenalty | null;
-    // New Furnace State
+    // Furnace State
     sugar: number;
     activeCookies: ActiveCookie[];
+    // Scratch Card V3 State
+    scratchMetrics: ScratchCardMetrics;
+    lotericaState: LotericaInjectionState;
 }
 
 const getInitialState = (): SavedState => ({
@@ -62,7 +65,17 @@ const getInitialState = (): SavedState => ({
     isBettingLocked: false,
     itemPenaltyDue: null,
     sugar: 0,
-    activeCookies: []
+    activeCookies: [],
+    scratchMetrics: {
+        tierPurchaseCounts: new Array(10).fill(0),
+        tierLastPurchase: new Array(10).fill(0),
+        tierCooldownRemaining: new Array(10).fill(0)
+    },
+    lotericaState: {
+        lastInjectionTime: new Array(10).fill(0),
+        injectionCooldownRemaining: new Array(10).fill(0),
+        totalInjections: new Array(10).fill(0)
+    }
 });
 
 const parseAndMigrateSaveData = (encodedState: string): SavedState | null => {
@@ -116,11 +129,24 @@ const parseAndMigrateSaveData = (encodedState: string): SavedState | null => {
             
             parsedState.sugar = totalSugar;
             parsedState.activeCookies = [];
-            
-            // Clear old currencies but keep object structure to satisfy Types
             parsedState.roiSaldo = { '🍭': 0, '🍦': 0, '🍧': 0 };
+        }
+
+        // Migration for V18/V19 (Scratch Card V3 Support)
+        if (saveVersion < 19) {
+            console.log("Migrating to v19: Initializing Scratch Card V3 structures if missing...");
             
-            console.log(`Migration complete. Converted to ${totalSugar} Sugar.`);
+            if (!parsedState.scratchMetrics) {
+                parsedState.scratchMetrics = getInitialState().scratchMetrics;
+            }
+            if (!parsedState.lotericaState) {
+                parsedState.lotericaState = getInitialState().lotericaState;
+            }
+            
+            // Ensure arrays are correct length (10 tiers) just in case of weird intermediate state
+            if (parsedState.scratchMetrics?.tierPurchaseCounts?.length !== 10) {
+                 parsedState.scratchMetrics = getInitialState().scratchMetrics;
+            }
         }
 
         // Ensure bal is not negative from older saves
@@ -168,6 +194,10 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
     const [sugar, setSugar] = useState(getInitialState().sugar);
     const [activeCookies, setActiveCookies] = useState<ActiveCookie[]>(getInitialState().activeCookies);
 
+    // Scratch Card V3 State
+    const [scratchMetrics, setScratchMetrics] = useState<ScratchCardMetrics>(getInitialState().scratchMetrics);
+    const [lotericaState, setLotericaState] = useState<LotericaInjectionState>(getInitialState().lotericaState);
+
 
     const loadState = (state: SavedState) => {
         setBal(state.bal);
@@ -194,27 +224,28 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
         setItemPenaltyDue(state.itemPenaltyDue || null);
         setSugar(state.sugar || 0);
         setActiveCookies(state.activeCookies || []);
+        setScratchMetrics(state.scratchMetrics || getInitialState().scratchMetrics);
+        setLotericaState(state.lotericaState || getInitialState().lotericaState);
     };
     
     const softReset = useCallback((newPrestigeData: { points: number, level: number, initialBal: number }) => {
         const initial = getInitialState();
         
-        // Verifica se possui Caminho Estelar para ajustar o inventário inicial do prestígio
         const adjustedInv = { ...initial.inv };
         if (skillLevels['caminhoEstelar'] && skillLevels['caminhoEstelar'] > 0) {
-            adjustedInv['⭐'] = (adjustedInv['⭐'] || 0) + 3; // Garante 5 estrelas no início
+            adjustedInv['⭐'] = (adjustedInv['⭐'] || 0) + 3;
         }
 
-        // Carrega um estado completamente novo, MAS sobrescreve-o imediatamente
-        // com os valores de prestígio que queremos preservar.
         loadState({
             ...initial,
-            inv: adjustedInv, // Usa o inventário ajustado
-            bal: newPrestigeData.initialBal, // Use new initial balance
+            inv: adjustedInv,
+            bal: newPrestigeData.initialBal,
             prestigePoints: newPrestigeData.points,
             prestigeLevel: newPrestigeData.level,
             skillLevels: skillLevels,
-            secondarySkillLevels: secondarySkillLevels, // Preserve secondary skills
+            secondarySkillLevels: secondarySkillLevels,
+            // Preserve Scratch Metrics in Prestige? No, reset inflation logic usually resets in idle games.
+            // But let's keep it reset for now as per "soft reset" definition.
         });
         showMsg("Progresso reiniciado para o próximo nível de prestígio!", 4000, true);
     }, [skillLevels, secondarySkillLevels, showMsg]);
@@ -225,14 +256,15 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
             prestigePoints, prestigeLevel, skillLevels, secondarySkillLevels, snakeUpgrades, 
             scratchCardPurchaseCounts, unluckyPot, momentoLevel, momentoProgress, 
             creditCardDebt, renegotiationTier, missedPayments, paymentDueDate, 
-            isBettingLocked, itemPenaltyDue, sugar, activeCookies
+            isBettingLocked, itemPenaltyDue, sugar, activeCookies,
+            scratchMetrics, lotericaState
         };
         const jsonState = JSON.stringify(gameState);
         const binaryString = unescape(encodeURIComponent(jsonState));
         const checksum = binaryString.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const encodedData = btoa(binaryString);
         return `V${SAVE_VERSION}:${checksum}:${encodedData}`;
-    }, [bal, betVal, inv, mult, roiSaldo, panificadoraLevel, estrelaPrecoAtual, prestigePoints, prestigeLevel, skillLevels, secondarySkillLevels, snakeUpgrades, scratchCardPurchaseCounts, unluckyPot, momentoLevel, momentoProgress, creditCardDebt, renegotiationTier, missedPayments, paymentDueDate, isBettingLocked, itemPenaltyDue, sugar, activeCookies]);
+    }, [bal, betVal, inv, mult, roiSaldo, panificadoraLevel, estrelaPrecoAtual, prestigePoints, prestigeLevel, skillLevels, secondarySkillLevels, snakeUpgrades, scratchCardPurchaseCounts, unluckyPot, momentoLevel, momentoProgress, creditCardDebt, renegotiationTier, missedPayments, paymentDueDate, isBettingLocked, itemPenaltyDue, sugar, activeCookies, scratchMetrics, lotericaState]);
 
     const saveGame = useCallback((isManual = false) => {
         try {
@@ -298,6 +330,8 @@ export const useGameState = ({ showMsg }: GameStateProps) => {
         itemPenaltyDue, setItemPenaltyDue,
         sugar, setSugar,
         activeCookies, setActiveCookies,
+        scratchMetrics, setScratchMetrics,
+        lotericaState, setLotericaState,
         softReset,
         saveGame, hardReset, exportState, importState
     };

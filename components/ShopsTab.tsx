@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import type { SymbolKey, MidSymbolKey, SkillId, ScratchCardTier, ScratchCardCell, Inventory, ActiveCookie, CookieId } from '../types';
+import type { SymbolKey, MidSymbolKey, SkillId, Inventory, ActiveCookie, CookieId, ScratchCardMetrics, LotericaInjectionState, ActiveScratchCard } from '../types';
 
 // Import newly created shop components
 import SymbolShop from './shops/SymbolShop';
@@ -9,7 +9,6 @@ import FurnaceShop from './shops/FurnaceShop';
 import ScratchCardShop from './shops/ScratchCardShop';
 import MinigamesShop from './shops/MinigamesShop';
 import ScratchCardModal from './shops/ScratchCardModal';
-import BulkScratchResultModal from './shops/BulkScratchResultModal';
 
 interface ShopsTabProps {
     bal: number;
@@ -21,23 +20,11 @@ interface ShopsTabProps {
     midMultiplierValue: (k: SymbolKey) => number;
     buyMult: (k: SymbolKey) => void;
     panificadoraLevel: { [key: string]: number };
-    buyPanificadora: (d: MidSymbolKey) => void;
     roiSaldo: { [key: string]: number };
     getSkillLevel: (id: SkillId) => number;
-    unluckyPot: number;
-    activeCard: { tier: ScratchCardTier; grid: ScratchCardCell[] } | null;
-    winnings: number | null;
-    getScratchCardPrice: (tierIndex: number) => number;
-    buyScratchCard: (tierIndex: number) => void;
-    revealSquare: (index: number) => void;
-    revealAll: () => void;
-    closeCard: () => void;
+    unluckyPot: number; // Deprecated for Scratch Card V3 but kept for interface compatibility if needed
     isSnakeGameUnlocked: boolean;
     startSnakeGame: () => void;
-    // Bulk buy props
-    bulkResult: { count: number, cost: number, winnings: number } | null;
-    buyMultipleScratchCards: (tierIndex: number, quantity: number) => void;
-    closeBulkResultModal: () => void;
     // Febre Doce status
     febreDocesAtivo: boolean;
     // Furnace Props
@@ -46,10 +33,25 @@ interface ShopsTabProps {
     craftCookie: (id: CookieId) => void;
     // Momento
     momentoLevel: number;
+    // Scratch Card V3 Props
+    scratchMetrics: ScratchCardMetrics;
+    lotericaState: LotericaInjectionState;
+    activeScratchCard: ActiveScratchCard | null;
+    calculateCurrentCost: (tier: number) => number;
+    calculateCurrentRTP: (tier: number) => number;
+    buyScratchCard: (tier: number) => void;
+    finishScratchCard: () => void;
+    injetarLoterica: (tier: number) => void;
+    // New Shop Logic Props
+    sellMeteor: () => void;
 }
 
 const ShopsTab: React.FC<ShopsTabProps> = (props) => {
-    const { activeCard, winnings, revealSquare, revealAll, closeCard, isSnakeGameUnlocked, getSkillLevel, bulkResult, closeBulkResultModal, febreDocesAtivo, momentoLevel } = props;
+    const { 
+        isSnakeGameUnlocked, getSkillLevel, febreDocesAtivo, momentoLevel,
+        activeScratchCard, finishScratchCard, inv, sellMeteor
+    } = props;
+    
     const [shopActiveTab, setShopActiveTab] = useState(0);
 
     const tabBtnClasses = (isActive: boolean) => `flex-1 p-2 rounded-t-lg font-bold cursor-pointer transition-colors text-sm sm:text-base ${isActive ? 'bg-yellow-500 text-stone-900' : 'bg-yellow-500/20 text-white hover:bg-yellow-500/30'}`;
@@ -72,20 +74,11 @@ const ShopsTab: React.FC<ShopsTabProps> = (props) => {
 
     return (
         <div>
-            {activeCard && (
-                <ScratchCardModal 
-                    card={activeCard}
-                    winnings={winnings}
-                    revealSquare={revealSquare}
-                    revealAll={revealAll}
-                    closeCard={closeCard}
-                />
-            )}
-
-            {bulkResult && (
-                <BulkScratchResultModal
-                    result={bulkResult}
-                    onClose={closeBulkResultModal}
+            {/* V3 Scratch Card Modal */}
+            {activeScratchCard && (
+                <ScratchCardModal
+                    card={activeScratchCard}
+                    onClose={finishScratchCard}
                 />
             )}
 
@@ -97,7 +90,7 @@ const ShopsTab: React.FC<ShopsTabProps> = (props) => {
                 ))}
             </div>
             <div className="bg-black/20 rounded-b-lg rounded-tr-lg p-4">
-                {shopActiveTab === 0 && <SymbolShop {...props} isCometUnlocked={isCometUnlocked} momentoLevel={momentoLevel} />}
+                {shopActiveTab === 0 && <SymbolShop {...props} isCometUnlocked={isCometUnlocked} momentoLevel={momentoLevel} inv={inv} sellMeteor={sellMeteor} />}
                 {shopActiveTab === 1 && <MultiplierShop {...props} isCometUnlocked={isCometUnlocked} />}
                 {shopActiveTab === 2 && <FurnaceShop {...props} />}
                 {shopActiveTab === 3 && <ScratchCardShop {...props} />}

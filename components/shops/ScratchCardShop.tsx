@@ -1,145 +1,230 @@
 
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { 
-    SCRATCH_CARD_TIERS, 
-    SCRATCH_CARD_BASE_PRIZES, 
-    SCRATCH_CARD_WIN_CHANCE_MODIFIERS, 
-    SCRATCH_CARD_BASE_WIN_CHANCE 
+    SCRATCH_CARD_TIERS_V3, 
+    LOTERICA_INJECTION_COSTS, 
+    LOTERICA_INJECTION_REDUCTIONS,
+    SCRATCH_CARD_INFLATION_V3,
+    SCRATCH_CARD_UNLOCK_THRESHOLDS
 } from '../../constants';
-import type { ScratchCardTier, ScratchCardCell } from '../../types';
+import type { ScratchCardMetrics, LotericaInjectionState } from '../../types';
 
 interface ScratchCardShopProps {
-    unluckyPot: number;
-    activeCard: { tier: ScratchCardTier; grid: ScratchCardCell[] } | null;
-    getScratchCardPrice: (tierIndex: number) => number;
-    buyScratchCard: (tierIndex: number) => void;
-    buyMultipleScratchCards: (tierIndex: number, quantity: number) => void;
+    bal: number;
+    scratchMetrics: ScratchCardMetrics;
+    lotericaState: LotericaInjectionState;
+    calculateCurrentCost: (tier: number) => number;
+    calculateCurrentRTP: (tier: number) => number;
+    buyScratchCard: (tier: number) => void;
+    injetarLoterica: (tier: number) => void;
+    unluckyPot: number; // Added prop
 }
 
 const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
-    const { unluckyPot, activeCard, getScratchCardPrice, buyScratchCard, buyMultipleScratchCards } = props;
-    const [quantities, setQuantities] = useState<Record<number, number>>({});
-    const [showOddsFor, setShowOddsFor] = useState<number | null>(null);
+    const { 
+        bal, scratchMetrics, lotericaState, 
+        calculateCurrentCost, calculateCurrentRTP, 
+        buyScratchCard, injetarLoterica, unluckyPot
+    } = props;
 
-    const handleQuantityChange = (tierIndex: number, value: string) => {
-        const num = parseInt(value, 10);
-        setQuantities(prev => ({
-            ...prev,
-            [tierIndex]: isNaN(num) || num < 1 ? 1 : num
-        }));
+    const formatTime = (ms: number) => {
+        if (ms < 60000) return `${Math.ceil(ms / 1000)}s`;
+        if (ms < 3600000) return `${Math.ceil(ms / 60000)}m`;
+        return `${Math.ceil(ms / 3600000)}h`;
     };
     
-    const shopBtnClasses = "py-1.5 px-3 font-semibold text-stone-900 bg-yellow-400 rounded-md transition-all hover:bg-yellow-300 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-400";
-    
-    // Get base max prize (first element of prizes array)
-    const baseMaxPrize = SCRATCH_CARD_BASE_PRIZES[0].value;
+    const getRTPColor = (rtp: number) => {
+        if (rtp >= 2000) return 'text-purple-400 animate-pulse'; // Ultra High
+        if (rtp >= 1000) return 'text-green-400';
+        if (rtp >= 500) return 'text-yellow-400';
+        if (rtp >= 200) return 'text-orange-400';
+        return 'text-red-400';
+    };
 
-    const prizeLabels = [
-        "JACKPOT (100x)",
-        "Grande (25x)",
-        "Médio (10x)",
-        "Dobro (2x)",
-        "Metade (0.5x)",
-        "Nada (0x)"
-    ];
+    const getBorderColor = (color: string) => {
+        const map: Record<string, string> = {
+            gray: 'border-gray-600', amber: 'border-amber-600', slate: 'border-slate-600',
+            yellow: 'border-yellow-600', cyan: 'border-cyan-600', blue: 'border-blue-600',
+            zinc: 'border-zinc-600', purple: 'border-purple-600', indigo: 'border-indigo-600',
+            pink: 'border-pink-600',
+        };
+        return map[color] || 'border-gray-600';
+    }
+
+    // Calcula o total histórico gasto em raspadinhas (Soma de Progressão Aritmética)
+    // Custo = Base + (Inflação * (k-1))
+    const totalInvested = useMemo(() => {
+        return SCRATCH_CARD_TIERS_V3.reduce((total, tier, index) => {
+            const count = scratchMetrics.tierPurchaseCounts[index];
+            if (count <= 0) return total;
+            
+            const base = tier.cost;
+            const inflation = SCRATCH_CARD_INFLATION_V3[index];
+            
+            // Soma da PA: Sn = (n/2) * (2a1 + (n-1)r)
+            // Onde a1 = base, r = inflation, n = count
+            const sum = (count / 2) * (2 * base + (count - 1) * inflation);
+            
+            return total + sum;
+        }, 0);
+    }, [scratchMetrics.tierPurchaseCounts]);
 
     return (
-        <div className="space-y-2">
-            <div className="text-center bg-black/30 p-3 rounded-lg mb-4">
-                <p className="font-bold text-lg text-yellow-300">Pote de Azar: ${unluckyPot.toFixed(2)}</p>
-                <p className="text-sm text-gray-400">O Pote de Azar cresce quando você perde apostas. Use-o para recuperar perdas!</p>
+        <div className="space-y-4">
+            <div className="bg-black/30 p-4 rounded-lg text-center mb-4 border border-white/5">
+                <h2 className="text-2xl font-bold text-white mb-2">🎫 Raspadinhas</h2>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="bg-red-900/20 p-2 rounded border border-red-500/30">
+                        <p className="text-xs text-red-300 uppercase font-bold">Pote de Azar</p>
+                        <p className="text-xl font-bold text-white">${unluckyPot.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-blue-900/20 p-2 rounded border border-blue-500/30">
+                        <p className="text-xs text-blue-300 uppercase font-bold">Total Investido</p>
+                        <p className="text-xl font-bold text-white">${totalInvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    </div>
+                </div>
+                <p className="text-gray-400 text-xs mt-3 italic">
+                    <span className="text-yellow-400 font-bold">Dica:</span> Cartões com mais slots (9 ou 12) têm vantagem matemática real!
+                </p>
             </div>
-            {SCRATCH_CARD_TIERS.map((tier, index) => {
-                const currentPrice = getScratchCardPrice(index);
-                const quantity = quantities[index] || 1;
-                const maxPrize = baseMaxPrize * tier.multiplier;
-                const isOddsOpen = showOddsFor === index;
-
-                // Probability Calculations
-                const tierModifier = SCRATCH_CARD_WIN_CHANCE_MODIFIERS[index] || 0;
-                // Calculate win chance per slot (sum of all winning probabilities)
-                const baseWinChance = SCRATCH_CARD_BASE_PRIZES.filter(p => p.value > 0).reduce((acc, p) => acc + p.probability, 0);
-                const tierWinChance = Math.min(1, Math.max(0, baseWinChance + tierModifier));
+            
+            <div className="grid grid-cols-1 gap-4">
+            {SCRATCH_CARD_TIERS_V3.map((tier, index) => {
+                const purchases = scratchMetrics.tierPurchaseCounts[index];
+                const currentCost = calculateCurrentCost(index);
+                const currentRTP = calculateCurrentRTP(index);
+                const baseCost = tier.cost;
+                const inflation = currentCost - baseCost;
+                const unlockThreshold = SCRATCH_CARD_UNLOCK_THRESHOLDS[index];
+                
+                // Tier is locked if current balance is below threshold AND user has never purchased it
+                const isLocked = bal < unlockThreshold && purchases === 0;
+                
+                const cdRemaining = scratchMetrics.tierCooldownRemaining[index] || 0;
+                const injectionCdRemaining = lotericaState.injectionCooldownRemaining[index] || 0;
+                
+                const injectionCost = currentCost * LOTERICA_INJECTION_COSTS[index];
+                const injectionReduction = LOTERICA_INJECTION_REDUCTIONS[index];
+                
+                // Calculate hypothetical cost after injection for preview
+                const purchasesAfter = Math.floor(purchases * (1 - injectionReduction));
+                const newCostAfterInjection = baseCost + (SCRATCH_CARD_INFLATION_V3[index] * purchasesAfter);
+                
+                const borderColor = getBorderColor(tier.theme.color);
 
                 return (
-                    <div key={tier.name} className="bg-yellow-500/10 p-2 rounded-md border border-yellow-500/20">
-                        <div className="flex justify-between items-start mb-2">
-                            <div>
-                                <span className="font-bold text-yellow-400 text-lg">{tier.name}</span>
-                                <div className="text-sm text-gray-300">Preço: <span className="text-white font-bold">$ {currentPrice.toFixed(2)}</span></div>
-                                <div className="text-xs text-green-400">Jackpot: ${maxPrize.toLocaleString()}</div>
-                                <button 
-                                    onClick={() => setShowOddsFor(isOddsOpen ? null : index)}
-                                    className="text-xs text-sky-400 underline mt-1 hover:text-sky-300"
-                                >
-                                    {isOddsOpen ? 'Ocultar Chances' : '📊 Ver Chances (por slot)'}
-                                </button>
-                            </div>
-                            <button 
-                                onClick={() => buyScratchCard(index)} 
-                                disabled={unluckyPot < currentPrice || !!activeCard} 
-                                className={`${shopBtnClasses} h-full self-center`}
-                            >
-                                Raspar (1)
-                            </button>
-                        </div>
-                        
-                        {isOddsOpen && (
-                            <div className="bg-black/40 p-2 rounded mb-2 text-xs">
-                                <table className="w-full text-left">
-                                    <thead>
-                                        <tr className="text-gray-400 border-b border-gray-600">
-                                            <th className="pb-1">Prêmio (x6 slots)</th>
-                                            <th className="pb-1 text-right">Valor</th>
-                                            <th className="pb-1 text-right">Chance/Slot</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {SCRATCH_CARD_BASE_PRIZES.map((prize, pIdx) => {
-                                            if (prize.value === 0) return null; // Don't show "Nada" row in detail
-                                            const val = prize.value * tier.multiplier;
-                                            const prob = (prize.probability * 100).toFixed(2);
-                                            const isJackpot = pIdx === 0;
-                                            return (
-                                                <tr key={pIdx} className={isJackpot ? "text-yellow-300 font-bold" : "text-gray-300"}>
-                                                    <td className="py-0.5">{prizeLabels[pIdx]}</td>
-                                                    <td className="py-0.5 text-right">${val.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                                                    <td className="py-0.5 text-right">{prob}%</td>
-                                                </tr>
-                                            );
-                                        })}
-                                        <tr className="border-t border-gray-600 text-gray-400 font-bold">
-                                            <td className="pt-1">Chance Vitória/Slot</td>
-                                            <td className="pt-1 text-right">-</td>
-                                            <td className="pt-1 text-right">{(tierWinChance * 100).toFixed(1)}%</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                    <div key={index} className={`border-2 ${borderColor} bg-black/40 rounded-xl p-4 relative overflow-hidden transition-all hover:bg-black/50 ${isLocked ? 'opacity-70 grayscale' : ''}`}>
+                        {/* Background Tint */}
+                        <div className={`absolute inset-0 bg-${tier.theme.color}-900/10 pointer-events-none`}></div>
+
+                        {/* Lock Overlay */}
+                        {isLocked && (
+                            <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4">
+                                <span className="text-4xl mb-2">🔒</span>
+                                <h3 className="text-xl font-bold text-gray-300">Bloqueado</h3>
+                                <p className="text-sm text-gray-400">Requer saldo de</p>
+                                <p className="text-xl font-bold text-yellow-400">${unlockThreshold.toLocaleString()}</p>
                             </div>
                         )}
 
-                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-yellow-500/20 bg-black/20 p-2 rounded">
-                           <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-400">Qtd:</span>
-                                <input
-                                    type="number"
-                                    value={quantity}
-                                    onChange={(e) => handleQuantityChange(index, e.target.value)}
-                                    min="1"
-                                    className="w-16 bg-black/50 text-white p-1 rounded border border-gray-600 text-center"
-                                />
-                           </div>
-                            <button
-                                onClick={() => buyMultipleScratchCards(index, quantity)}
-                                disabled={!!activeCard || unluckyPot < (currentPrice * quantity)}
-                                className={`${shopBtnClasses} !bg-sky-600 !text-white hover:!bg-sky-500 text-xs`}
-                            >
-                                Compra em Massa
-                            </button>
+                        <div className="relative z-10">
+                            {/* Header Row */}
+                            <div className="flex justify-between items-start mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="text-4xl filter drop-shadow-md">{tier.theme.icon}</div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white leading-none">{tier.name}</h3>
+                                        <p className="text-xs text-gray-400 mt-1 font-mono">
+                                            {tier.slots} Slots 
+                                            {tier.slots > 6 && <span className="text-green-400 font-bold ml-1">(Vantagem {tier.slots === 9 ? '1.5x' : '2x'})</span>}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-right bg-black/40 px-3 py-1 rounded-lg border border-white/5">
+                                    <div className={`text-xl font-black ${getRTPColor(currentRTP)}`}>
+                                        {currentRTP.toFixed(0)}%
+                                    </div>
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-widest">Retorno Real</div>
+                                </div>
+                            </div>
+                            
+                            {/* Info Stats */}
+                            <div className="flex flex-wrap gap-2 mb-3 text-xs sm:text-sm">
+                                <div className="bg-white/5 px-2 py-1 rounded text-gray-300">
+                                    Base: <span className="font-bold text-white">${baseCost.toLocaleString()}</span>
+                                </div>
+                                <div className="bg-white/5 px-2 py-1 rounded text-gray-300">
+                                    Inflação: <span className="font-bold text-red-400">+${inflation.toLocaleString()}</span>
+                                </div>
+                                <div className="bg-white/5 px-2 py-1 rounded text-gray-300">
+                                    Compras: <span className="font-bold text-white">{purchases}</span>
+                                </div>
+                            </div>
+                            
+                            {/* Buy Button & Cost */}
+                            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-4 bg-black/20 p-2 rounded-lg border border-white/5">
+                                <div className="pl-2">
+                                    <span className="text-xs text-gray-400 block">Custo Atual</span>
+                                    <span className="text-2xl font-bold text-white">${currentCost.toLocaleString()}</span>
+                                </div>
+                                
+                                {cdRemaining > 0 ? (
+                                    <div className="flex-1 bg-gray-800 rounded-lg h-12 flex items-center justify-center border border-gray-700">
+                                        <span className="text-gray-400 font-mono">⏳ {formatTime(cdRemaining)}</span>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => buyScratchCard(index)}
+                                        disabled={bal < currentCost || isLocked}
+                                        className={`flex-1 font-bold py-3 px-6 rounded-lg transition-all shadow-lg active:scale-95 ${
+                                            bal >= currentCost && !isLocked
+                                                ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20' 
+                                                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        COMPRAR
+                                    </button>
+                                )}
+                            </div>
+                            
+                            {/* Injection Panel */}
+                            {purchases >= 5 && (
+                                <div className="mt-3 pt-3 border-t border-white/10">
+                                    <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                                        <div className="text-xs text-gray-400 flex-1">
+                                            <div className="flex items-center gap-1 mb-1">
+                                                <span className="text-lg">🏪</span>
+                                                <strong className="text-purple-300">Injeção na Lotérica</strong>
+                                            </div>
+                                            <p>Custo: <span className="text-red-300 font-mono">${injectionCost.toLocaleString()}</span></p>
+                                            <p>Novo Preço: <span className="text-green-300 font-mono">${newCostAfterInjection.toLocaleString()}</span></p>
+                                        </div>
+                                        
+                                        {injectionCdRemaining > 0 ? (
+                                            <div className="px-4 py-2 bg-purple-900/20 border border-purple-500/30 rounded text-purple-300 text-xs font-mono whitespace-nowrap">
+                                                Recarga: {formatTime(injectionCdRemaining)}
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => injetarLoterica(index)}
+                                                disabled={bal < injectionCost}
+                                                className={`px-4 py-2 rounded text-xs font-bold border transition-colors ${
+                                                    bal >= injectionCost
+                                                        ? 'bg-purple-900/40 border-purple-500 text-purple-300 hover:bg-purple-800/60'
+                                                        : 'bg-gray-800/50 border-gray-700 text-gray-500 cursor-not-allowed'
+                                                }`}
+                                            >
+                                                INJETAR (-{(injectionReduction * 100).toFixed(0)}% INF)
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
-                )
+                );
             })}
+            </div>
         </div>
     );
 };

@@ -354,22 +354,22 @@ export const useGameLogic = () => {
         isSnakeGameUnlocked: isSnakeGameUnlocked,
         startSnakeGame: startSnakeGame,
         handleSpend,
+        handleGain, // Passing handleGain to Shop Logic
         // Furnace integration
         setSugar: gameState.setSugar,
         momentoLevel: gameState.momentoLevel // Pass momentoLevel here
     });
     
-    // --- Scratch Card Logic ---
+    // --- Scratch Card Logic V3 ---
     const scratchCardLogic = useScratchCardLogic({
         bal: gameState.bal,
-        unluckyPot: gameState.unluckyPot,
-        setUnluckyPot: gameState.setUnluckyPot,
-        scratchCardPurchaseCounts: gameState.scratchCardPurchaseCounts,
-        setScratchCardPurchaseCounts: gameState.setScratchCardPurchaseCounts,
-        totalIncomeMultiplier: totalIncomeMultiplier,
-        showMsg,
-        handleSpend,
-        handleGain,
+        setBal: gameState.setBal,
+        scratchMetrics: gameState.scratchMetrics,
+        setScratchMetrics: gameState.setScratchMetrics,
+        lotericaState: gameState.lotericaState,
+        setLotericaState: gameState.setLotericaState,
+        totalIncomeMultiplier,
+        showMsg
     });
 
     // --- Passive Income ---

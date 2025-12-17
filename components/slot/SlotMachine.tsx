@@ -4,7 +4,8 @@ import Reel from './Reel';
 import SlotMachineControls from './SlotMachineControls';
 import StarBonusOverlay from './StarBonusOverlay';
 import CoinFlipOverlay from './CoinFlipOverlay';
-import type { RoiSaldo, StarBonusState, CoinFlipState } from '../../types';
+import ProbabilityWidget from './ProbabilityWidget';
+import type { RoiSaldo, StarBonusState, CoinFlipState, Inventory } from '../../types';
 
 interface SlotMachineProps {
     febreDocesAtivo: boolean;
@@ -21,6 +22,7 @@ interface SlotMachineProps {
     setBetVal: React.Dispatch<React.SetStateAction<number>>;
     criarEmbaixadorDoce: () => void;
     roiSaldo: RoiSaldo;
+    inv: Inventory; // Added prop for widget
     isPoolInvalid: boolean;
     quickSpinQueue: number;
     handleQuickSpin: () => boolean;
@@ -52,7 +54,8 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
         closeStarBonus,
         coinFlipState,
         handleCoinGuess,
-        closeCoinFlip
+        closeCoinFlip,
+        inv
     } = props;
     
     return (
@@ -91,18 +94,26 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
                      {isBettingLocked && ' Pague a multa para desbloquear.'}
                 </div>
             )}
-            <div className="w-full max-w-sm bg-black/50 rounded-2xl p-4 sm:p-5 mb-5 inner-neon-border">
-                <div className="grid grid-cols-3 gap-3 mb-3">
-                    {grid.map((s, i) => {
-                        const column = i % 3;
-                        const delay = `${column * 100}ms`;
-                        const isColumnSpinning = spinningColumns[column];
-                        const isColumnStopping = stoppingColumns[column];
-                        return <Reel key={i} symbol={s} isSpinning={isColumnSpinning} isStopping={isColumnStopping} delay={delay} />;
-                    })}
+            
+            {/* Slot Machine Container - Added relative for widget positioning */}
+            <div className="w-full max-w-sm relative">
+                
+                {/* PROBABILITY WIDGET (Attached to right side) */}
+                <ProbabilityWidget inv={inv} />
+
+                <div className="bg-black/50 rounded-2xl p-4 sm:p-5 mb-5 inner-neon-border relative z-10">
+                    <div className="grid grid-cols-3 gap-3 mb-3">
+                        {grid.map((s, i) => {
+                            const column = i % 3;
+                            const delay = `${column * 100}ms`;
+                            const isColumnSpinning = spinningColumns[column];
+                            const isColumnStopping = stoppingColumns[column];
+                            return <Reel key={i} symbol={s} isSpinning={isColumnSpinning} isStopping={isColumnStopping} delay={delay} />;
+                        })}
+                    </div>
+                    <div className="text-center text-lg font-bold text-green-300 min-h-[28px] text-shadow shadow-green-400/50">{winMsg}</div>
+                    <div className="text-center text-yellow-400 min-h-[24px]">{extraMsg}</div>
                 </div>
-                <div className="text-center text-lg font-bold text-green-300 min-h-[28px] text-shadow shadow-green-400/50">{winMsg}</div>
-                <div className="text-center text-yellow-400 min-h-[24px]">{extraMsg}</div>
             </div>
             
             <SlotMachineControls {...props} />

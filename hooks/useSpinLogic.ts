@@ -151,10 +151,22 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                 win = currentBet * 0.05; 
             } else if (uniqueNonStars.length === 1) {
                 // Case: Mixed with Wildcards (e.g., [🍭, ⭐, 🍭] or [🍦, 🍦, ⭐])
-                isWin = true;
                 const winSymbol = uniqueNonStars[0];
-                // Standard items pay the reduced bonus rate (5% of their line value)
-                win = (currentBet * midMultiplierValue(winSymbol)) * 0.05;
+                
+                if (winSymbol === '🪙') {
+                    // FIX: Ficha inside Star Bonus has 50% chance to pay $1
+                    if (Math.random() < 0.5) {
+                        isWin = true;
+                        win = 1;
+                    } else {
+                        isWin = false;
+                        win = 0;
+                    }
+                } else {
+                    isWin = true;
+                    // Standard items pay the reduced bonus rate (5% of their line value)
+                    win = (currentBet * midMultiplierValue(winSymbol)) * 0.05;
+                }
             } else {
                 // Case: No match (e.g., [🍭, 🍦, ⭐])
                 isWin = false;

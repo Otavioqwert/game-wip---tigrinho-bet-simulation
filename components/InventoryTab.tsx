@@ -1,6 +1,8 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Inventory, SymbolKey, RoiSaldo, ActiveCookie } from '../types';
+import PoolHealthIndicator from './PoolHealthIndicator';
+import { calculatePoolDensity } from '../utils/poolMetrics';
 
 interface InventoryTabProps {
     inv: Inventory;
@@ -16,11 +18,13 @@ const InventoryTab: React.FC<InventoryTabProps> = ({ inv, roiSaldo, momentoLevel
     const displayProgress = Math.max(0, momentoProgress);
     const progressPercent = Math.min(100, (displayProgress / nextThreshold) * 100);
 
+    const poolMetrics = useMemo(() => calculatePoolDensity(inv), [inv]);
+
     return (
         <div>
             {/* Stats Display */}
             <h3 className="text-xl font-bold text-yellow-400 mb-3 text-center">Estatísticas</h3>
-            <div className="bg-black/20 rounded-xl p-3 mb-6 space-y-4">
+            <div className="bg-black/20 rounded-xl p-3 mb-4 space-y-4">
                 <div>
                     <div className="flex justify-between items-center mb-1">
                         <span className="font-bold text-lg text-purple-300">Momento Nível {momentoLevel}</span>
@@ -47,11 +51,14 @@ const InventoryTab: React.FC<InventoryTabProps> = ({ inv, roiSaldo, momentoLevel
                 </div>
             </div>
 
+            {/* Pool Health */}
+            <PoolHealthIndicator metrics={poolMetrics} />
+
             {/* Inventory Display */}
             <h3 className="text-xl font-bold text-yellow-400 mb-3 text-center">Inventário de Símbolos</h3>
             <div className="grid grid-cols-4 gap-2 p-2.5 bg-black/20 rounded-xl mb-6">
                 {(Object.keys(inv) as SymbolKey[]).map(k => (
-                    <div key={k} className="text-center bg-yellow-500/10 p-2 rounded-lg text-2xl">
+                    <div key={k} className="text-center bg-yellow-500/10 p-2 rounded-lg text-2xl relative">
                         {k}
                         <span className="block text-xs text-yellow-400 mt-1">{inv[k]}x</span>
                     </div>

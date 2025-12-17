@@ -28,6 +28,7 @@ interface ShopLogicProps {
     startSnakeGame: () => void;
     // Economy handler
     handleSpend: (cost: number) => boolean;
+    handleGain: (amount: number) => void; // New prop for selling
     // Furnace props
     setSugar: React.Dispatch<React.SetStateAction<number>>;
     // Momento Props for Meteor Lock
@@ -40,7 +41,7 @@ export const useShopLogic = (props: ShopLogicProps) => {
         panificadoraLevel, setPanificadoraLevel, estrelaPrecoAtual,
         setEstrelaPrecoAtual, midMultiplierValue, economiaCostMultiplier,
         getSkillLevel, showMsg,
-        cashbackMultiplier, priceIncreaseModifier, multUpgradeBonus, handleSpend,
+        cashbackMultiplier, priceIncreaseModifier, multUpgradeBonus, handleSpend, handleGain,
         setSugar, momentoLevel
     } = props;
 
@@ -104,6 +105,28 @@ export const useShopLogic = (props: ShopLogicProps) => {
         }
     }, [getPrice, cashbackMultiplier, handleSpend, setInv, setSugar, estrelaPrecoAtual, setEstrelaPrecoAtual, priceIncreaseModifier, momentoLevel]);
 
+    const sellMeteor = useCallback(() => {
+        const meteorCount = inv['☄️'] || 0;
+        if (meteorCount <= 0) return;
+
+        // Calculate refund based on CURRENT price (approximate loss logic)
+        // Selling refunds 50% of the cost of the *next* meteor (simplified) 
+        // or let's use the price of the *last* meteor bought.
+        // Since getPrice calculates price for the *next* one based on count, 
+        // we can check price for (count - 1).
+        
+        const basePrice = SYM['☄️']?.p || 50;
+        // Price of the last one bought = Base * 1.5^(count-1)
+        const lastBoughtPrice = basePrice * Math.pow(1.5, Math.max(0, meteorCount - 1));
+        const refundAmount = lastBoughtPrice * 0.5 * economiaCostMultiplier; // Apply econ multiplier to refund too to prevent exploit
+
+        setInv(p => ({ ...p, '☄️': Math.max(0, (p['☄️'] || 0) - 1) }));
+        handleGain(refundAmount);
+        
+        showMsg(`Meteoro vendido! +$${refundAmount.toFixed(2)} (50% do valor)`, 3000, true);
+
+    }, [inv, handleGain, showMsg, economiaCostMultiplier]);
+
     // ===== FIX #2: PREÇO DO MULTIPLICADOR =====
     const multPrice = useCallback((sym: SymbolKey): number | null => {
         const currentMult = mult[sym] || 0;
@@ -147,6 +170,7 @@ export const useShopLogic = (props: ShopLogicProps) => {
     return {
         getPrice,
         buy,
+        sellMeteor,
         multPrice,
         buyMult,
         buyPanificadora,

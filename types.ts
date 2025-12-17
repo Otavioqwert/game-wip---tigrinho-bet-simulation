@@ -79,16 +79,45 @@ export interface SecondarySkill {
 }
 
 
-// --- Scratch Card Types ---
-export interface ScratchCardTier {
+// --- Scratch Card V3 Types ---
+export interface ScratchCardTierV3 {
     name: string;
     cost: number;
-    multiplier: number; // Multiplier relative to base prizes
+    targetRTP: number;
+    efficiency: number;
+    slots: number;
+    maxJackpotMult: number;
+    cooldown: number;
+    theme: {
+        color: string;
+        icon: string;
+        glow?: string;
+    };
+}
+
+export interface ScratchCardMetrics {
+    tierPurchaseCounts: number[];      // Compras lifetime por tier
+    tierLastPurchase: number[];        // Timestamp última compra
+    tierCooldownRemaining: number[];   // Cooldown restante por tier (runtime only)
+}
+
+export interface LotericaInjectionState {
+    lastInjectionTime: number[];       // Timestamp última injeção por tier
+    injectionCooldownRemaining: number[]; // Cooldown restante injeção (runtime only)
+    totalInjections: number[];         // Total de injeções por tier
 }
 
 export interface ScratchCardCell {
     prize: number;
     revealed: boolean;
+    isJackpot?: boolean;
+}
+
+export interface ActiveScratchCard {
+    tier: number;
+    cells: ScratchCardCell[];
+    totalWin: number;
+    isRevealing: boolean;
 }
 
 // --- Snake Minigame Upgrade Types ---

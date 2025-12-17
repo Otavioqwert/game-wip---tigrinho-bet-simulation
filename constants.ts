@@ -1,5 +1,5 @@
 
-import type { SymbolKey, SymbolMap, MidSymbolKey, ScratchCardTier, CookieRecipe } from './types';
+import type { SymbolKey, SymbolMap, MidSymbolKey, ScratchCardTierV3, CookieRecipe } from './types';
 
 export const MID: MidSymbolKey[] = ['🍭','🍦','🍧'];
 export const EXTRA: SymbolKey[] = ['🍀','💵','💎','🐯','☄️','🪙'];
@@ -87,48 +87,147 @@ export const ITEM_PENALTY_VALUES: Record<Extract<SymbolKey, '☄️' | '🍀' | 
 };
 
 
-// --- Scratch Card Constants ---
+// --- Scratch Card V3 Constants ---
 
-// Inflation: Additive price increase per purchase per tier.
-// Tier 0 increases $0.05, Tier 6 increases $15.00
-export const SCRATCH_CARD_INFLATION = [0.05, 0.12, 0.30, 0.75, 2.00, 5.00, 15.00];
-
-// Progression: Powers of 2 costs with INCREASING Efficiency.
-// Efficiency = Multiplier / Cost.
-export const SCRATCH_CARD_TIERS: ScratchCardTier[] = [
-    { name: 'Bronze',       cost: 1,     multiplier: 1 },      // Eff: 1.0
-    { name: 'Prata',        cost: 2,     multiplier: 2.2 },    // Eff: 1.1
-    { name: 'Ouro',         cost: 4,     multiplier: 4.8 },    // Eff: 1.2
-    { name: 'Platina',      cost: 8,     multiplier: 10.4 },   // Eff: 1.3
-    { name: 'Diamante',     cost: 16,    multiplier: 22.4 },   // Eff: 1.4
-    { name: 'Mestre',       cost: 32,    multiplier: 48 },     // Eff: 1.5
-    { name: 'Grão-Mestre',  cost: 64,    multiplier: 102.4 },  // Eff: 1.6
+export const SCRATCH_CARD_TIERS_V3: ScratchCardTierV3[] = [
+    {
+        name: 'Papelão',
+        cost: 5,
+        targetRTP: 400,
+        efficiency: 1.0,
+        slots: 6,
+        maxJackpotMult: 50,
+        cooldown: 1000,
+        theme: { color: 'gray', icon: '📦' }
+    },
+    {
+        name: 'Bronze',
+        cost: 10,
+        targetRTP: 500,
+        efficiency: 1.25,
+        slots: 6,
+        maxJackpotMult: 100,
+        cooldown: 5000,
+        theme: { color: 'amber', icon: '🥉' }
+    },
+    {
+        name: 'Prata',
+        cost: 25,
+        targetRTP: 600,
+        efficiency: 1.5,
+        slots: 6,
+        maxJackpotMult: 150,
+        cooldown: 15000,
+        theme: { color: 'slate', icon: '🥈' }
+    },
+    {
+        name: 'Ouro',
+        cost: 60,
+        targetRTP: 700,
+        efficiency: 1.75,
+        slots: 9,
+        maxJackpotMult: 250,
+        cooldown: 45000,
+        theme: { color: 'yellow', icon: '🥇' }
+    },
+    {
+        name: 'Platina',
+        cost: 150,
+        targetRTP: 800,
+        efficiency: 2.0,
+        slots: 9,
+        maxJackpotMult: 400,
+        cooldown: 120000,
+        theme: { color: 'cyan', icon: '💠' }
+    },
+    {
+        name: 'Diamante',
+        cost: 400,
+        targetRTP: 900,
+        efficiency: 2.25,
+        slots: 9,
+        maxJackpotMult: 600,
+        cooldown: 300000,
+        theme: { color: 'blue', icon: '💎' }
+    },
+    {
+        name: 'Titânio',
+        cost: 1000,
+        targetRTP: 1000,
+        efficiency: 2.5,
+        slots: 12,
+        maxJackpotMult: 1000,
+        cooldown: 600000,
+        theme: { color: 'zinc', icon: '⚙️' }
+    },
+    {
+        name: 'Obsidiana',
+        cost: 2500,
+        targetRTP: 1100,
+        efficiency: 2.75,
+        slots: 12,
+        maxJackpotMult: 1500,
+        cooldown: 1200000,
+        theme: { color: 'purple', icon: '🔮' }
+    },
+    {
+        name: 'Celestial',
+        cost: 6000,
+        targetRTP: 1200,
+        efficiency: 3.0,
+        slots: 12,
+        maxJackpotMult: 2500,
+        cooldown: 2400000,
+        theme: { color: 'indigo', icon: '🌌' }
+    },
+    {
+        name: 'Divino',
+        cost: 15000,
+        targetRTP: 1300,
+        efficiency: 3.25,
+        slots: 12,
+        maxJackpotMult: 4000,
+        cooldown: 7200000,
+        theme: { color: 'pink', icon: '👑', glow: 'animate-pulse' }
+    }
 ];
 
-// Base prizes calibrated for Cost 1 (PER SLOT - 6 slots total)
-// EV per slot = (100*0.0005) + (25*0.005) + (10*0.02) + (2*0.12) + (0.5*0.20)
-// EV per slot = 0.05 + 0.125 + 0.2 + 0.24 + 0.1 = 0.715
-// Total Card EV (6 slots) = 0.715 * 6 = 4.29 (429% RTP Base)
-export const SCRATCH_CARD_BASE_PRIZES = [
-    { value: 100,  probability: 0.0005 }, // 0.05% - Jackpot (100x)
-    { value: 25,   probability: 0.0050 }, // 0.5%  - Grande (25x)
-    { value: 10,   probability: 0.0200 }, // 2.0%  - Médio (10x)
-    { value: 2,    probability: 0.1200 }, // 12%   - Dobro (2x)
-    { value: 0.5,  probability: 0.2000 }, // 20%   - Meio (0.5x)
-    { value: 0,    probability: 0.6545 }, // 65%   - Nada
+// REBALANCEAMENTO DA INFLAÇÃO
+// Tiers altos agora escalam muito mais rápido para compensar o RTP Real de 2600%
+export const SCRATCH_CARD_INFLATION_V3 = [
+    1.50,    // Papelão (6 slots) - Leve
+    4.00,    // Bronze (6 slots)
+    12.00,   // Prata (6 slots)
+    45.00,   // Ouro (9 slots) - Médio (Começa vantagem 1.5x)
+    120.00,  // Platina (9 slots)
+    450.00,  // Diamante (9 slots)
+    2000.00, // Titânio (12 slots) - Pesado (Começa vantagem 2.0x)
+    7500.00, // Obsidiana (12 slots)
+    25000.00,// Celestial (12 slots)
+    75000.00 // Divino (12 slots) - Brutal (Para forçar uso de injeção)
 ];
 
-// Chance modifiers per tier (Linear growth to slightly boost win rate on high tiers)
-// Increases the chance of hitting *any* winning prize per slot.
-export const SCRATCH_CARD_WIN_CHANCE_MODIFIERS = [
-    0,      // Bronze
-    0.01,   // Prata
-    0.02,   // Ouro
-    0.025,  // Platina
-    0.03,   // Diamante
-    0.035,  // Mestre
-    0.04    // Grão-Mestre
+// Requisitos de Saldo para desbloquear (V3 Update)
+export const SCRATCH_CARD_UNLOCK_THRESHOLDS = [
+    0,       // Papelão (Sempre liberado)
+    50,      // Bronze
+    250,     // Prata
+    1000,    // Ouro
+    5000,    // Platina
+    20000,   // Diamante
+    100000,  // Titânio
+    500000,  // Obsidiana
+    2500000, // Celestial
+    10000000 // Divino
 ];
 
-// The base chance of a single cell winning for Tier 1
-export const SCRATCH_CARD_BASE_WIN_CHANCE = SCRATCH_CARD_BASE_PRIZES.filter(p => p.value > 0).reduce((sum, p) => sum + p.probability, 0);
+export const LOTERICA_INJECTION_COOLDOWN = 14400000; // 4 hours
+
+export const LOTERICA_INJECTION_COSTS = [
+    3, 3, 4, 5, 6, 7, 8, 9, 10, 12
+];
+
+// Aumento ligeiro na eficiência da injeção para compensar a inflação alta
+export const LOTERICA_INJECTION_REDUCTIONS = [
+    0.60, 0.60, 0.55, 0.55, 0.55, 0.55, 0.60, 0.60, 0.60, 0.65
+];

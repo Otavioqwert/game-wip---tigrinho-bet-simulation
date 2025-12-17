@@ -1,227 +1,249 @@
 
-// Fix: Import React to resolve 'Cannot find namespace React' error in type annotations.
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { 
-    SCRATCH_CARD_TIERS, SCRATCH_CARD_BASE_PRIZES,
-    SCRATCH_CARD_WIN_CHANCE_MODIFIERS, SCRATCH_CARD_BASE_WIN_CHANCE,
-    SCRATCH_CARD_INFLATION
+    SCRATCH_CARD_TIERS_V3,
+    SCRATCH_CARD_INFLATION_V3,
+    SCRATCH_CARD_UNLOCK_THRESHOLDS,
+    LOTERICA_INJECTION_COOLDOWN,
+    LOTERICA_INJECTION_COSTS,
+    LOTERICA_INJECTION_REDUCTIONS
 } from '../constants';
-import type { ScratchCardTier, ScratchCardCell } from '../types';
+import type { ScratchCardMetrics, LotericaInjectionState, ActiveScratchCard, ScratchCardCell } from '../types';
 
 interface ScratchCardLogicProps {
     bal: number;
-    unluckyPot: number;
-    setUnluckyPot: React.Dispatch<React.SetStateAction<number>>;
-    scratchCardPurchaseCounts: Record<number, number>;
-    setScratchCardPurchaseCounts: React.Dispatch<React.SetStateAction<Record<number, number>>>;
-    totalIncomeMultiplier: number;
+    setBal: React.Dispatch<React.SetStateAction<number>>;
+    scratchMetrics: ScratchCardMetrics;
+    setScratchMetrics: React.Dispatch<React.SetStateAction<ScratchCardMetrics>>;
+    lotericaState: LotericaInjectionState;
+    setLotericaState: React.Dispatch<React.SetStateAction<LotericaInjectionState>>;
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
-    handleSpend: (cost: number) => boolean;
-    handleGain: (amount: number) => void;
+    totalIncomeMultiplier: number;
 }
 
-// Helper function to calculate prize values for a specific tier using the multiplier
-const getTierPrizes = (tierIndex: number): { value: number, probability: number }[] => {
-    const tier = SCRATCH_CARD_TIERS[tierIndex];
-    if (!tier) return SCRATCH_CARD_BASE_PRIZES;
+// --- NEW MATH CONSTANTS ---
+const BASE_SLOTS_NORMALIZATION = 6; // Todos os valores são calculados como se tivessem 6 slots
 
-    return SCRATCH_CARD_BASE_PRIZES.map(prize => ({
-        ...prize,
-        value: prize.value * tier.multiplier
-    }));
-};
+// Definição da Distribuição do Pote (RTP Distribution)
+// Probabilidade por Slot | % do RTP total alocado
+const PRIZE_DISTRIBUTION = [
+    { id: 'jackpot', prob: 0.002, share: 0.40, isJackpot: true }, // 0.2% chance, leva 40% do valor esperado
+    { id: 'high',    prob: 0.015, share: 0.25, isJackpot: false }, // 1.5% chance, leva 25%
+    { id: 'mid',     prob: 0.060, share: 0.20, isJackpot: false }, // 6.0% chance, leva 20%
+    { id: 'low',     prob: 0.180, share: 0.15, isJackpot: false }, // 18.0% chance, leva 15%
+];
 
-// Helper function to calculate the total win chance for a specific tier
-const getTierWinChance = (tierIndex: number): number => {
-    const modifier = SCRATCH_CARD_WIN_CHANCE_MODIFIERS[tierIndex] || 0;
-    return Math.min(1, Math.max(0, SCRATCH_CARD_BASE_WIN_CHANCE + modifier));
+// Gera a tabela de prêmios baseada no custo e RTP alvo
+const generatePrizeStructure = (currentCost: number, baseRTP: number) => {
+    // O "Pote Esperado" é quanto o cartão deveria pagar em média baseada no RTP
+    const expectedReturnPot = currentCost * (baseRTP / 100);
+
+    return PRIZE_DISTRIBUTION.map(tier => {
+        // Mágica da Normalização:
+        // Calculamos o valor do prêmio dividindo a fatia do pote pela probabilidade E por 6 slots.
+        // Se o cartão tiver 12 slots, ele terá 12 chances de ganhar esse prêmio calculado para 6.
+        // Isso dobra efetivamente o retorno real para o jogador.
+        const rawValue = (expectedReturnPot * tier.share) / (tier.prob * BASE_SLOTS_NORMALIZATION);
+        
+        // Arredondamento estético
+        let value = rawValue;
+        if (value > 1000) value = Math.round(value / 100) * 100;
+        else if (value > 100) value = Math.round(value / 10) * 10;
+        else value = Math.round(value);
+
+        return {
+            value: Math.max(currentCost * 0.1, value), // Minimo 10% do custo
+            prob: tier.prob,
+            isJackpot: tier.isJackpot
+        };
+    });
 };
 
 export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
     const {
-        unluckyPot, setUnluckyPot, scratchCardPurchaseCounts,
-        setScratchCardPurchaseCounts, totalIncomeMultiplier, showMsg, handleGain
+        bal, setBal,
+        scratchMetrics, setScratchMetrics,
+        lotericaState, setLotericaState,
+        showMsg, totalIncomeMultiplier
     } = props;
 
-    const [activeCard, setActiveCard] = useState<{ tier: ScratchCardTier, grid: ScratchCardCell[] } | null>(null);
-    const [winnings, setWinnings] = useState<number | null>(null);
-    const [bulkResult, setBulkResult] = useState<{ count: number, cost: number, winnings: number } | null>(null);
+    const [activeScratchCard, setActiveScratchCard] = useState<ActiveScratchCard | null>(null);
 
-    // Calculates the price of the Nth card (where N is current count + 1)
-    // Formula: Base Cost + (Count * Inflation Value)
-    const getScratchCardPrice = useCallback((tierIndex: number, purchaseCountOverride?: number): number => {
-        const tier = SCRATCH_CARD_TIERS[tierIndex];
-        if (!tier) return Infinity;
-        
-        const purchaseCount = purchaseCountOverride ?? (scratchCardPurchaseCounts[tierIndex] || 0);
-        const inflation = SCRATCH_CARD_INFLATION[tierIndex] || 0;
-        
-        return tier.cost + (purchaseCount * inflation);
-    }, [scratchCardPurchaseCounts]);
-    
-    const generateSingleCardResult = (tierIndex: number) => {
-        const tierWinChance = getTierWinChance(tierIndex);
-        const currentTierPrizes = getTierPrizes(tierIndex);
-        // We use the base sum for normalization of the roll logic within a winning outcome
-        // NOTE: Our probability list now includes a 0 value item for "loss" which affects the sum if included blindly.
-        // We only care about winning probabilities for the secondary roll.
-        const winningPrizes = currentTierPrizes.filter(p => p.value > 0);
-        const totalWinProbability = winningPrizes.reduce((acc, p) => acc + p.probability, 0);
+    // Cooldown Loop
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = Date.now();
+            setScratchMetrics(prev => ({
+                ...prev,
+                tierCooldownRemaining: prev.tierLastPurchase.map((lastTime, i) => 
+                    Math.max(0, (SCRATCH_CARD_TIERS_V3[i]?.cooldown || 0) - (now - lastTime))
+                )
+            }));
+            
+            setLotericaState(prev => ({
+                ...prev,
+                injectionCooldownRemaining: prev.lastInjectionTime.map((lastTime) =>
+                    Math.max(0, LOTERICA_INJECTION_COOLDOWN - (now - lastTime))
+                )
+            }));
+        }, 500);
+        return () => clearInterval(interval);
+    }, [setScratchMetrics, setLotericaState]);
 
-        let totalWinnings = 0;
-        for (let i = 0; i < 6; i++) {
-            const randomRoll = Math.random();
-            // First check if this cell is a winner at all
-            if (randomRoll < tierWinChance) {
-                // Determine WHICH prize it is based on relative weights of winning prizes
-                let prizeRoll = Math.random() * totalWinProbability;
-                
-                for (let j = 0; j < winningPrizes.length; j++) {
-                    const prize = winningPrizes[j];
-                    prizeRoll -= prize.probability;
-                    if (prizeRoll <= 0) {
-                        totalWinnings += prize.value;
-                        break;
-                    }
-                }
-                // Fallback to smallest prize if loop finishes (rounding errors)
-                if (totalWinnings === 0 && winningPrizes.length > 0) {
-                     // Just in case
-                     totalWinnings += winningPrizes[winningPrizes.length - 1].value;
+    const calculateCurrentCost = useCallback((tier: number): number => {
+        const baseCost = SCRATCH_CARD_TIERS_V3[tier].cost;
+        const inflation = SCRATCH_CARD_INFLATION_V3[tier];
+        const purchases = scratchMetrics.tierPurchaseCounts[tier];
+        return baseCost + (inflation * purchases);
+    }, [scratchMetrics.tierPurchaseCounts]);
+
+    // RTP Real: Considera a vantagem dos slots extras
+    const calculateCurrentRTP = useCallback((tier: number): number => {
+        const currentCost = calculateCurrentCost(tier);
+        if (currentCost === 0) return 0;
+        
+        const tierData = SCRATCH_CARD_TIERS_V3[tier];
+        const baseRTP = tierData.targetRTP; // RTP Base definido na constante
+        
+        // RTP Nominal (ajustado pela inflação do custo)
+        const nominalRTP = (baseRTP * tierData.cost) / currentCost;
+        
+        // RTP Real (Vantagem de slots: (Slots Atuais / 6))
+        // Se tiver 12 slots, o RTP real é o dobro do nominal
+        const realRTP = nominalRTP * (tierData.slots / BASE_SLOTS_NORMALIZATION);
+        
+        return realRTP;
+    }, [calculateCurrentCost]);
+
+    const rollScratchCard = (tier: number): { prizes: number[], jackpotHit: boolean } => {
+        const tierData = SCRATCH_CARD_TIERS_V3[tier];
+        const currentCost = calculateCurrentCost(tier);
+        const prizeStructure = generatePrizeStructure(currentCost, tierData.targetRTP);
+        
+        const results: number[] = [];
+        let jackpotHit = false;
+
+        for (let i = 0; i < tierData.slots; i++) {
+            const roll = Math.random();
+            let cumulativeProb = 0;
+            let selectedPrize = 0;
+            
+            for (const p of prizeStructure) {
+                cumulativeProb += p.prob;
+                if (roll <= cumulativeProb) {
+                    selectedPrize = p.value;
+                    if (p.isJackpot) jackpotHit = true;
+                    break;
                 }
             }
+            results.push(selectedPrize);
         }
-        return totalWinnings;
+        return { prizes: results, jackpotHit };
     };
 
+    const buyScratchCard = useCallback((tier: number) => {
+        const now = Date.now();
+        const lastPurchase = scratchMetrics.tierLastPurchase[tier];
+        const cooldown = SCRATCH_CARD_TIERS_V3[tier].cooldown;
+        const unlockThreshold = SCRATCH_CARD_UNLOCK_THRESHOLDS[tier];
+        const purchases = scratchMetrics.tierPurchaseCounts[tier];
 
-    const buyScratchCard = useCallback((tierIndex: number) => {
-        const tier = SCRATCH_CARD_TIERS[tierIndex];
-        const price = getScratchCardPrice(tierIndex);
-
-        if (!tier || unluckyPot < price) {
-            showMsg('Pote de Azar insuficiente!', 2000, true);
+        if (bal < unlockThreshold && purchases === 0) {
+            showMsg(`🔒 Bloqueado! Requer $${unlockThreshold.toLocaleString()}.`, 2000, true);
             return;
         }
-        setUnluckyPot(p => p - price);
-        setScratchCardPurchaseCounts(p => ({ ...p, [tierIndex]: (p[tierIndex] || 0) + 1 }));
-
-        const tierWinChance = getTierWinChance(tierIndex);
-        const currentTierPrizes = getTierPrizes(tierIndex);
         
-        // Correct probability handling for cell generation
-        const winningPrizes = currentTierPrizes.filter(p => p.value > 0);
-        const totalWinProbability = winningPrizes.reduce((acc, p) => acc + p.probability, 0);
-    
-        const newGrid: ScratchCardCell[] = Array.from({ length: 6 }, () => {
-            const randomRoll = Math.random();
-            let cellPrizeValue = 0;
-    
-            if (randomRoll < tierWinChance) {
-                let prizeRoll = Math.random() * totalWinProbability;
-                
-                for (let i = 0; i < winningPrizes.length; i++) {
-                    const prize = winningPrizes[i];
-                    prizeRoll -= prize.probability;
-                    if (prizeRoll <= 0) {
-                        cellPrizeValue = prize.value;
-                        break;
-                    }
-                }
-                // Fallback
-                if (cellPrizeValue === 0 && winningPrizes.length > 0) {
-                    cellPrizeValue = winningPrizes[winningPrizes.length - 1].value;
-                }
-            }
-    
-            return { prize: cellPrizeValue, revealed: false };
-        });
+        if (now - lastPurchase < cooldown) return;
         
-        setActiveCard({ tier, grid: newGrid });
-        setWinnings(null);
-    }, [unluckyPot, setUnluckyPot, showMsg, getScratchCardPrice, setScratchCardPurchaseCounts]);
-
-    const buyMultipleScratchCards = useCallback((tierIndex: number, quantity: number) => {
-        if (quantity <= 0) return;
-
-        let totalCost = 0;
-        let totalWinnings = 0;
-        const tempPurchaseCounts = { ...scratchCardPurchaseCounts };
-        const initialPurchaseCount = tempPurchaseCounts[tierIndex] || 0;
-
-        // Calculate total cost considering additive inflation for each card individually
-        for (let i = 0; i < quantity; i++) {
-            const currentPurchaseCount = initialPurchaseCount + i;
-            const cardCost = getScratchCardPrice(tierIndex, currentPurchaseCount);
-            totalCost += cardCost;
-            totalWinnings += generateSingleCardResult(tierIndex);
-        }
-
-        if (unluckyPot < totalCost) {
-            showMsg(`Pote de Azar insuficiente para ${quantity} raspadinhas! Custo: $${totalCost.toFixed(2)}`, 3000, true);
+        const currentCost = calculateCurrentCost(tier);
+        if (bal < currentCost) {
+            showMsg('💸 Saldo insuficiente!', 1500, true);
             return;
         }
-
-        setUnluckyPot(p => p - totalCost);
-        setScratchCardPurchaseCounts(p => ({ ...p, [tierIndex]: (p[tierIndex] || 0) + quantity }));
         
-        const finalWinnings = totalWinnings * totalIncomeMultiplier;
-        handleGain(finalWinnings);
-
-        setBulkResult({
-            count: quantity,
-            cost: totalCost,
-            winnings: finalWinnings
-        });
-
-    }, [scratchCardPurchaseCounts, getScratchCardPrice, unluckyPot, totalIncomeMultiplier, setUnluckyPot, setScratchCardPurchaseCounts, handleGain, showMsg]);
-
-    const revealSquare = useCallback((index: number) => {
-        if (!activeCard || winnings !== null) return;
-        setActiveCard(prev => {
-            if (!prev) return null;
-            const newGrid = [...prev.grid];
-            if (newGrid[index].revealed) return prev;
-            newGrid[index] = { ...newGrid[index], revealed: true };
-            return { ...prev, grid: newGrid };
-        });
-    }, [activeCard, winnings]);
-
-    const revealAll = useCallback(() => {
-        if (!activeCard) return;
-        const revealedGrid = activeCard.grid.map(cell => ({ ...cell, revealed: true }));
+        // Deduct Cost
+        setBal(prev => prev - currentCost);
         
-        const finalWinnings = revealedGrid.reduce((sum, cell) => sum + cell.prize, 0);
+        // Roll Prizes
+        const { prizes } = rollScratchCard(tier);
+        const rawTotalWin = prizes.reduce((sum, p) => sum + p, 0);
+        const totalWin = rawTotalWin * totalIncomeMultiplier;
+        
+        // Determine jackpots for UI (value based threshold)
+        // Se o prêmio for maior que 20x o custo, considera visualmente um jackpot
+        const jackpotThreshold = currentCost * 20;
 
-        setWinnings(finalWinnings);
-        setActiveCard(prev => prev ? { ...prev, grid: revealedGrid } : null);
-    }, [activeCard]);
+        const cells: ScratchCardCell[] = prizes.map(prize => ({
+            prize: prize * totalIncomeMultiplier,
+            revealed: false,
+            isJackpot: prize >= jackpotThreshold
+        }));
+        
+        setActiveScratchCard({
+            tier,
+            cells,
+            totalWin,
+            isRevealing: true
+        });
+        
+        setScratchMetrics(prev => ({
+            ...prev,
+            tierPurchaseCounts: prev.tierPurchaseCounts.map((count, i) => i === tier ? count + 1 : count),
+            tierLastPurchase: prev.tierLastPurchase.map((time, i) => i === tier ? now : time)
+        }));
 
-    const closeCard = useCallback(() => {
-        if (winnings === null) return;
-        if (winnings > 0) {
-            const finalWinnings = winnings * totalIncomeMultiplier;
-            handleGain(finalWinnings);
-            showMsg(`Você ganhou $${finalWinnings.toFixed(2)}!`, 3000);
+    }, [bal, setBal, calculateCurrentCost, scratchMetrics, setScratchMetrics, showMsg, totalIncomeMultiplier]);
+
+    const finishScratchCard = useCallback(() => {
+        if (!activeScratchCard) return;
+        if (activeScratchCard.totalWin > 0) {
+            setBal(prev => prev + activeScratchCard.totalWin);
+            showMsg(`Ganhou $${activeScratchCard.totalWin.toFixed(2)}!`, 2000, true);
         }
-        setActiveCard(null);
-        setWinnings(null);
-    }, [winnings, handleGain, showMsg, totalIncomeMultiplier]);
+        setActiveScratchCard(null);
+    }, [activeScratchCard, setBal, showMsg]);
 
-    const closeBulkResultModal = useCallback(() => {
-        setBulkResult(null);
-    }, []);
+    const injetarLoterica = useCallback((tier: number) => {
+        const now = Date.now();
+        const lastInjection = lotericaState.lastInjectionTime[tier];
+        
+        if (now - lastInjection < LOTERICA_INJECTION_COOLDOWN) return;
+        
+        const currentCost = calculateCurrentCost(tier);
+        const injectionCost = currentCost * LOTERICA_INJECTION_COSTS[tier];
+        
+        if (bal < injectionCost) {
+            showMsg('💸 Saldo insuficiente para injeção!', 2000, true);
+            return;
+        }
+        
+        setBal(prev => prev - injectionCost);
+        
+        const purchases = scratchMetrics.tierPurchaseCounts[tier];
+        const reduction = LOTERICA_INJECTION_REDUCTIONS[tier];
+        const newPurchaseCount = Math.floor(purchases * (1 - reduction));
+        
+        setScratchMetrics(prev => ({
+            ...prev,
+            tierPurchaseCounts: prev.tierPurchaseCounts.map((count, i) => i === tier ? newPurchaseCount : count)
+        }));
+        
+        setLotericaState(prev => ({
+            ...prev,
+            lastInjectionTime: prev.lastInjectionTime.map((time, i) => i === tier ? now : time),
+            totalInjections: prev.totalInjections.map((count, i) => i === tier ? count + 1 : count)
+        }));
+        
+        showMsg(`🏪 Lotérica Injetada! Inflação reduzida.`, 3000, true);
+
+    }, [bal, calculateCurrentCost, scratchMetrics, lotericaState, setBal, setScratchMetrics, setLotericaState, showMsg]);
 
     return {
-        activeCard,
-        winnings,
-        bulkResult,
-        getScratchCardPrice,
+        activeScratchCard,
         buyScratchCard,
-        revealSquare,
-        revealAll,
-        closeCard,
-        buyMultipleScratchCards,
-        closeBulkResultModal,
+        finishScratchCard,
+        injetarLoterica,
+        calculateCurrentCost,
+        calculateCurrentRTP
     };
 };
