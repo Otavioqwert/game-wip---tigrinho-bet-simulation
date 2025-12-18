@@ -1,5 +1,5 @@
 
-import type { ScratchCardTierV3, CookieRecipe } from './types';
+import type { ScratchCardTierV3, CookieRecipe, BakeryProduct, BakeryProductId } from './types';
 export * from './constants/economy';
 
 export const MID_SELL: Record<string, number> = {'🍭':0.01,'🍦':0.02,'🍧':0.03};
@@ -38,6 +38,45 @@ export const COOKIE_RECIPES: CookieRecipe[] = [
         icon: '💎'
     }
 ];
+
+export const BAKERY_PRODUCTS: Record<BakeryProductId, BakeryProduct> = {
+    cookie: {
+        id: 'cookie',
+        name: 'Cookie',
+        icon: '🍪',
+        craftTime: 60,           // 1 minuto
+        craftCost: 1,            // 1 açúcar
+        sellPrice: 200,          // $200
+        passiveIncome: 0.1,      // +$0.1/s
+        upgradeBonus: 0.10,      // +10% por nível
+        upgradeCost: 40,         // $40 (20% do sell price)
+        upgradeCostIncrease: 2   // +$2 por nível
+    },
+    cupcake: {
+        id: 'cupcake',
+        name: 'Cupcake',
+        icon: '🧁',
+        craftTime: 180,          // 3 minutos
+        craftCost: 2,            // 2 açúcar
+        sellPrice: 500,          // $500
+        passiveIncome: 0.3,      // +$0.3/s
+        upgradeBonus: 0.25,      // +25% por nível
+        upgradeCost: 100,        // $100
+        upgradeCostIncrease: 5   // +$5 por nível
+    },
+    cake: {
+        id: 'cake',
+        name: 'Bolo',
+        icon: '🎂',
+        craftTime: 360,          // 6 minutos
+        craftCost: 4,            // 4 açúcar
+        sellPrice: 1200,         // $1,200
+        passiveIncome: 0.7,      // +$0.7/s
+        upgradeBonus: 0.40,      // +40% por nível
+        upgradeCost: 240,        // $240
+        upgradeCostIncrease: 12  // +$12 por nível
+    }
+};
 
 export const ITEM_PENALTY_VALUES: Record<string, number> = {
     '☄️': 100, '🍀': 5, '🐯': 40, '⭐': 50, '💎': 20, '💵': 10, '🪙': 1

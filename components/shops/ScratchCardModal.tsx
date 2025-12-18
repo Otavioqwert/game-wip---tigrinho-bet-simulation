@@ -64,7 +64,7 @@ const ScratchCardModal: React.FC<Props> = ({ card, onClose }) => {
                 </div>
 
                 {/* Corpo do Ticket Estilizado */}
-                <div className="bg-[#120e0e] border-2 border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden group">
+                <div className="bg-[#120e0e] border-2 border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden group flex flex-col items-center">
                     {/* Barra de Progresso Discreta */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-white/5 overflow-hidden">
                         <div 
@@ -73,7 +73,8 @@ const ScratchCardModal: React.FC<Props> = ({ card, onClose }) => {
                         />
                     </div>
 
-                    <div className={`grid ${card.cells.length <= 6 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-3 sm:grid-cols-4'} gap-4 mt-2`}>
+                    {/* Grid sempre em 3 colunas para gerar 3x2, 3x3 e 3x4 */}
+                    <div className="grid grid-cols-3 gap-3 mt-2 mx-auto w-full max-w-[320px]">
                         {card.cells.map((cell, index) => (
                             <ScratchSlot
                                 key={index}

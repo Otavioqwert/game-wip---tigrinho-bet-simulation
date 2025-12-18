@@ -40,6 +40,38 @@ export interface ActiveCookie {
     icon: string;
 }
 
+// --- BAKERY SYSTEM ("PRÓPRIO CHEFE") ---
+export type BakeryProductId = 'cookie' | 'cupcake' | 'cake';
+
+export interface BakeryProduct {
+    id: BakeryProductId;
+    name: string;
+    icon: string;
+    craftTime: number;        // segundos
+    craftCost: number;        // açúcar
+    sellPrice: number;        // $
+    passiveIncome: number;    // $/s por unidade no estoque
+    upgradeBonus: number;     // % de buff por nível de upgrade
+    upgradeCost: number;      // custo base do upgrade
+    upgradeCostIncrease: number; // incremento linear
+}
+
+export interface CraftingSlot {
+    id: number;
+    productId: BakeryProductId | null;
+    startTime: number | null;    // timestamp
+    endTime: number | null;      // timestamp
+    quantity: number;            // batch crafting
+}
+
+export interface BakeryState {
+    inventory: Record<BakeryProductId, number>;        // Estoque por produto
+    upgradeLevels: Record<BakeryProductId, number>;    // Níveis de upgrade
+    craftingSlots: CraftingSlot[];            // Slots de crafting
+    extraSlots: number;                       // Quantos slots extras (além dos 3 base)
+    speedLevel: number;                       // Nível do upgrade de velocidade
+}
+
 // --- Skill Tree Types ---
 
 export type SkillId = 'grandeGanho' | 'caminhoEstelar' | 'caminhoCometa' | 'caminhoEconomia' | 'caminhoFicha';

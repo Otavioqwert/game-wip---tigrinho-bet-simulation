@@ -72,7 +72,7 @@ const PrestigeTab: React.FC<PrestigeTabProps> = (props) => {
                 
                 <div className="mb-6 text-gray-400 text-sm leading-relaxed">
                     <p>Ao atingir a meta, você pode converter todo o seu dinheiro em <span className="font-bold text-purple-300">Pontos de Prestígio (PA)</span>.</p>
-                    <p>Taxa de conversão: <span className="font-bold text-white">1 PA</span> para cada <span className="font-bold text-white">$100</span>.</p>
+                    <p>Taxa de conversão: <span className="font-bold text-white">1 PA</span> para cada <span className="font-bold text-white">$1.000</span>.</p>
                     <p className="mt-2 text-yellow-500">Essa ação irá <span className="font-bold">reiniciar seu progresso</span> (dinheiro, itens, etc), mas você manterá seus Pontos de Prestígio e habilidades.</p>
                 </div>
 

@@ -10,6 +10,7 @@ import { useScratchCardLogic } from './useScratchCardLogic';
 import { usePassiveIncome } from './usePassiveIncome';
 import { useSnakeUpgrades } from './useSnakeUpgrades';
 import { useFurnaceLogic } from './useFurnaceLogic';
+import { useBakeryLogic } from './useBakeryLogic'; // IMPORTED
 import { PRESTIGE_BASE_REQUIREMENT, PRESTIGE_GROWTH_FACTOR, CASH_TO_PA_RATIO } from '../constants/prestige';
 import type { SkillId, SecondarySkillId, RenegotiationTier, SymbolKey } from '../types';
 
@@ -109,6 +110,19 @@ export const useGameLogic = () => {
         snakeUpgrades: gameState.snakeUpgrades,
         setSnakeUpgrades: gameState.setSnakeUpgrades,
         showMsg
+    });
+
+    // INTEGRATED BAKERY LOGIC
+    const bakeryLogic = useBakeryLogic({
+        sugar: gameState.sugar,
+        setSugar: gameState.setSugar,
+        bal: gameState.bal,
+        handleSpend,
+        handleGain,
+        bakeryState: gameState.bakery,
+        setBakeryState: gameState.setBakeryState,
+        showMsg,
+        applyFinalGain: finalGainCalculation
     });
 
     const febreDoce = useFebreDoce({
@@ -241,7 +255,8 @@ export const useGameLogic = () => {
 
     return {
         ...gameState, ...febreDoce, ...spinLogic, ...shopLogic, ...prestigeSkills, ...secondarySkills,
-        ...scratchCardLogic, ...snakeUpgrades, ...furnaceLogic,
+        ...scratchCardLogic, ...snakeUpgrades, ...furnaceLogic, ...bakeryLogic, // Spread Bakery Logic
+        bakeryState: gameState.bakery, // Alias for ShopsTabProps
         winMsg, extraMsg, setWinMsg, showMsg, prestigeRequirement, handlePrestige,
         isPoolInvalid: spinLogic.pool.length <= 1,
         // Usamos agora a função de cálculo em vez de um multiplier estático
