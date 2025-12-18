@@ -125,6 +125,18 @@ export const SCRATCH_CARD_TIERS_V3: ScratchCardTierV3[] = [
     }
 ];
 
+export const SCRATCH_PRIZE_TIERS = [
+    { id: 'divine',    name: 'Divino',    mult: 800, prob: 0.00008335, minTier: 7, color: 'text-pink-500' }, // Obsidiana+
+    { id: 'exalted',   name: 'Exaltado',  mult: 400, prob: 0.0001667,  minTier: 5, color: 'text-cyan-400' }, // Diamante+
+    { id: 'ancient',   name: 'Ancestral', mult: 200, prob: 0.0004171,  minTier: 2, color: 'text-purple-400' }, // Prata+
+    { id: 'mythic',    name: 'Mítico',    mult: 100, prob: 0.00167,    minTier: 0, color: 'text-red-500' },
+    { id: 'legendary', name: 'Lendário',  mult: 50,  prob: 0.003361,   minTier: 0, color: 'text-orange-400' },
+    { id: 'epic',      name: 'Épico',     mult: 40,  prob: 0.006781,   minTier: 0, color: 'text-yellow-400' },
+    { id: 'rare',      name: 'Raro',      mult: 30,  prob: 0.008512,   minTier: 0, color: 'text-blue-400' },
+    { id: 'uncommon',  name: 'Incomum',   mult: 20,  prob: 0.017407,   minTier: 0, color: 'text-green-400' },
+    { id: 'common',    name: 'Comum',     mult: 4,   prob: 0.076581,   minTier: 0, color: 'text-gray-400' },
+];
+
 export const SCRATCH_CARD_INFLATION_V3 = [1.50, 4.00, 12.00, 45.00, 120.00, 450.00, 2000.00, 7500.00, 25000.00, 75000.00];
 export const SCRATCH_CARD_UNLOCK_THRESHOLDS = [0, 50, 250, 1000, 5000, 20000, 100000, 500000, 2500000, 10000000];
 export const LOTERICA_INJECTION_COOLDOWN = 14400000;

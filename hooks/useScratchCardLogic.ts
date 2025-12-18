@@ -6,7 +6,8 @@ import {
     SCRATCH_CARD_UNLOCK_THRESHOLDS,
     LOTERICA_INJECTION_COOLDOWN,
     LOTERICA_INJECTION_COSTS,
-    LOTERICA_INJECTION_REDUCTIONS
+    LOTERICA_INJECTION_REDUCTIONS,
+    SCRATCH_PRIZE_TIERS
 } from '../constants';
 import type { ScratchCardMetrics, LotericaInjectionState, ActiveScratchCard } from '../types';
 
@@ -22,30 +23,6 @@ interface ScratchCardLogicProps {
     applyFinalGain: (baseAmount: number) => number;
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
 }
-
-const PRIZE_DISTRIBUTION = [
-    { id: 'jackpot', prob: 0.002, share: 0.40, isJackpot: true },
-    { id: 'high',    prob: 0.015, share: 0.25, isJackpot: false },
-    { id: 'mid',     prob: 0.060, share: 0.20, isJackpot: false },
-    { id: 'low',     prob: 0.180, share: 0.15, isJackpot: false },
-];
-
-const generatePrizeStructure = (currentCost: number, baseRTP: number, efficiency: number, totalSlots: number) => {
-    const expectedReturnPot = currentCost * (baseRTP / 100);
-    return PRIZE_DISTRIBUTION.map(tier => {
-        const rawValue = (expectedReturnPot * tier.share * efficiency) / (tier.prob * totalSlots);
-        let value = rawValue;
-        if (value > 1000) value = Math.round(value / 100) * 100;
-        else if (value > 100) value = Math.round(value / 10) * 10;
-        else value = Math.round(value);
-
-        return {
-            value: Math.max(currentCost * 0.1, value), 
-            prob: tier.prob,
-            isJackpot: tier.isJackpot
-        };
-    });
-};
 
 export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
     const { bal, setBal, unluckyPot, setUnluckyPot, scratchMetrics, setScratchMetrics, lotericaState, setLotericaState, applyFinalGain, showMsg } = props;
@@ -77,12 +54,31 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
         return baseCost + (inflation * purchases);
     }, [scratchMetrics.tierPurchaseCounts]);
 
+    // FATOR DE SORTE PROGRESSIVO:
+    // Mistura o módulo antigo com os números exatos.
+    // Tier 0 (Papelão) = 1.0x chance (Os números exatos do prompt)
+    // Tier 1 (Bronze)  = 1.2x chance
+    // ...
+    // Tier 9 (Divino)  = 2.8x chance
+    // Isso faz com que tiers altos tenham muito menos "slots vazios".
+    const getTierLuckFactor = (tier: number) => 1 + (tier * 0.20);
+
     const calculateCurrentRTP = useCallback((tier: number): number => {
-        const currentCost = calculateCurrentCost(tier);
-        if (currentCost === 0) return 0;
         const tierData = SCRATCH_CARD_TIERS_V3[tier];
-        return ((tierData.targetRTP * tierData.cost) / currentCost) * tierData.efficiency;
-    }, [calculateCurrentCost]);
+        const luckFactor = getTierLuckFactor(tier);
+        let baseRTPFactor = 0;
+
+        for (const prize of SCRATCH_PRIZE_TIERS) {
+            if (tier >= prize.minTier) {
+                // A chance real é a probabilidade base * fator de sorte do tier
+                const effectiveProb = prize.prob * luckFactor;
+                baseRTPFactor += (effectiveProb * prize.mult);
+            }
+        }
+
+        // RTP = (Soma das Probs Ajustadas * Multiplicadores) * Eficiência * 100
+        return baseRTPFactor * tierData.efficiency * 100;
+    }, []);
 
     const buyScratchCard = useCallback((tier: number) => {
         const now = Date.now();
@@ -107,34 +103,46 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
         setUnluckyPot(prev => prev - currentCost);
         
         const tierData = SCRATCH_CARD_TIERS_V3[tier];
-        const prizeStructure = generatePrizeStructure(currentCost, tierData.targetRTP, tierData.efficiency, tierData.slots);
+        const baseSlotValue = currentCost / tierData.slots;
+        const luckFactor = getTierLuckFactor(tier);
+        
         const prizes: number[] = [];
+        
         for (let i = 0; i < tierData.slots; i++) {
             const roll = Math.random();
-            let cumulativeProb = 0;
-            let selectedPrize = 0;
-            for (const p of prizeStructure) {
-                cumulativeProb += p.prob;
-                if (roll <= cumulativeProb) {
-                    selectedPrize = p.value;
+            let selectedMult = 0;
+            let currentThreshold = 0;
+
+            for (const prizeTier of SCRATCH_PRIZE_TIERS) {
+                if (tier < prizeTier.minTier) continue;
+
+                // APLICA O FATOR DE SORTE AQUI
+                // Aumenta a "fatia" de probabilidade de cada prêmio baseado no Tier
+                const effectiveProb = prizeTier.prob * luckFactor;
+
+                if (roll < currentThreshold + effectiveProb) {
+                    selectedMult = prizeTier.mult;
                     break;
                 }
+                currentThreshold += effectiveProb;
             }
-            prizes.push(selectedPrize);
+
+            const winValue = selectedMult > 0 
+                ? baseSlotValue * selectedMult * tierData.efficiency 
+                : 0;
+
+            prizes.push(winValue);
         }
 
         const rawTotalWin = prizes.reduce((sum, p) => sum + p, 0);
-        // Aplica modificadores lineares e a Hidra Exponencial
         const finalTotalWin = applyFinalGain(rawTotalWin);
         
-        const jackpotThreshold = currentCost * 20;
-
         setActiveScratchCard({
             tier,
             cells: prizes.map(p => ({
-                prize: applyFinalGain(p), // Visualização individual também corrigida
+                prize: applyFinalGain(p), 
                 revealed: false,
-                isJackpot: p >= jackpotThreshold
+                isJackpot: p >= (currentCost / tierData.slots * 50)
             })),
             totalWin: finalTotalWin,
             isRevealing: true
