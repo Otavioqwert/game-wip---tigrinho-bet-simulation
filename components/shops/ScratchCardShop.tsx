@@ -84,8 +84,8 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                     const cdRemaining = scratchMetrics.tierCooldownRemaining[index] || 0;
                     const isInfoOpen = activeInfoCard === index;
 
-                    // Luck Factor: +20% chance per tier level
-                    const tierLuckFactor = 1 + (index * 0.20);
+                    // Luck Factor: +25% chance per tier level
+                    const tierLuckFactor = 1 + (index * 0.25);
 
                     // Filter prizes available for this tier
                     const availablePrizes = SCRATCH_PRIZE_TIERS.filter(p => index >= p.minTier);
@@ -115,24 +115,30 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                 {isInfoOpen && (
                                     <div className="absolute inset-0 z-40 bg-black/95 rounded-2xl p-4 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-200">
                                         <h4 className="text-white font-bold mb-1 uppercase tracking-wider text-sm">Estatísticas {tier.name}</h4>
-                                        <p className="text-xs text-green-400 font-bold mb-3">Sorte: +{((tierLuckFactor - 1) * 100).toFixed(0)}% | Eficiência: +{((tier.efficiency - 1) * 100).toFixed(0)}%</p>
                                         
-                                        <div className="w-full overflow-y-auto max-h-[70%] custom-scrollbar">
+                                        <div className="flex justify-between w-full px-4 mb-2 text-xs border-b border-white/10 pb-2">
+                                            <span className="text-green-400">🍀 Sorte: x{tierLuckFactor.toFixed(2)}</span>
+                                            <span className="text-blue-400">⚡ Eficiência: x{tier.efficiency.toFixed(1)}</span>
+                                        </div>
+                                        
+                                        <div className="w-full overflow-y-auto max-h-[65%] custom-scrollbar">
                                             <table className="w-full text-xs text-left">
                                                 <thead>
                                                     <tr className="border-b border-white/20 text-gray-500">
                                                         <th className="py-1">Prêmio</th>
-                                                        <th className="py-1 text-right">Mult.</th>
+                                                        <th className="py-1 text-right">Mult. Real</th>
                                                         <th className="py-1 text-right">Chance</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="font-mono">
                                                     {availablePrizes.map(p => {
                                                         const adjustedProb = p.prob * tierLuckFactor;
+                                                        // MOSTRA O MULTIPLICADOR REAL (Base * Eficiência)
+                                                        const effectiveMult = p.mult * tier.efficiency;
                                                         return (
                                                             <tr key={p.id} className="border-b border-white/5">
                                                                 <td className={`py-1 font-bold ${p.color}`}>{p.name}</td>
-                                                                <td className="py-1 text-right text-gray-300">{p.mult}x</td>
+                                                                <td className="py-1 text-right text-gray-300">{effectiveMult.toFixed(0)}x</td>
                                                                 <td className="py-1 text-right text-white">{(adjustedProb * 100).toFixed(4)}%</td>
                                                             </tr>
                                                         );
@@ -146,7 +152,7 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                             </table>
                                         </div>
                                         <p className="text-[9px] text-gray-500 mt-2 text-center">
-                                            *Chances aumentadas pelo Nível do Cartão.
+                                            *Mult. Real aplicado sobre o custo do slot (Preço Total / {tier.slots}).
                                         </p>
                                     </div>
                                 )}

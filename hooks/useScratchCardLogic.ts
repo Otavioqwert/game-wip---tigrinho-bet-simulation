@@ -54,30 +54,35 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
         return baseCost + (inflation * purchases);
     }, [scratchMetrics.tierPurchaseCounts]);
 
-    // FATOR DE SORTE PROGRESSIVO:
-    // Mistura o módulo antigo com os números exatos.
-    // Tier 0 (Papelão) = 1.0x chance (Os números exatos do prompt)
-    // Tier 1 (Bronze)  = 1.2x chance
+    // FATOR DE SORTE PROGRESSIVO (Versão Melhorada):
+    // Tier 0 = 1.00x
+    // Tier 1 = 1.25x
     // ...
-    // Tier 9 (Divino)  = 2.8x chance
-    // Isso faz com que tiers altos tenham muito menos "slots vazios".
-    const getTierLuckFactor = (tier: number) => 1 + (tier * 0.20);
+    // Tier 9 = 3.25x
+    // Aumenta a frequência de acertos significativamente nos tiers altos.
+    const getTierLuckFactor = (tier: number) => 1 + (tier * 0.25);
 
     const calculateCurrentRTP = useCallback((tier: number): number => {
         const tierData = SCRATCH_CARD_TIERS_V3[tier];
         const luckFactor = getTierLuckFactor(tier);
-        let baseRTPFactor = 0;
+        let expectedMultiplierSum = 0;
 
         for (const prize of SCRATCH_PRIZE_TIERS) {
             if (tier >= prize.minTier) {
-                // A chance real é a probabilidade base * fator de sorte do tier
+                // Chance Real = Probabilidade Base * Sorte do Tier
                 const effectiveProb = prize.prob * luckFactor;
-                baseRTPFactor += (effectiveProb * prize.mult);
+                
+                // Valor Real = Multiplicador Base * Eficiência do Tier
+                const effectiveMult = prize.mult * tierData.efficiency;
+                
+                // Contribuição para o Retorno (Probabilidade * Valor)
+                expectedMultiplierSum += (effectiveProb * effectiveMult);
             }
         }
 
-        // RTP = (Soma das Probs Ajustadas * Multiplicadores) * Eficiência * 100
-        return baseRTPFactor * tierData.efficiency * 100;
+        // RTP = (Soma das Expectativas) * 100
+        // Como o 'effectiveMult' é aplicado sobre o (Custo/Slot), a soma direta é o retorno sobre o custo.
+        return expectedMultiplierSum * 100;
     }, []);
 
     const buyScratchCard = useCallback((tier: number) => {
@@ -117,7 +122,6 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
                 if (tier < prizeTier.minTier) continue;
 
                 // APLICA O FATOR DE SORTE AQUI
-                // Aumenta a "fatia" de probabilidade de cada prêmio baseado no Tier
                 const effectiveProb = prizeTier.prob * luckFactor;
 
                 if (roll < currentThreshold + effectiveProb) {
@@ -127,6 +131,7 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
                 currentThreshold += effectiveProb;
             }
 
+            // O prêmio real aplica a Eficiência do Tier sobre o Multiplicador Base
             const winValue = selectedMult > 0 
                 ? baseSlotValue * selectedMult * tierData.efficiency 
                 : 0;
