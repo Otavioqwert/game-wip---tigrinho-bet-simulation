@@ -1,3 +1,4 @@
+
 import type { SnakeUpgrade, SnakeUpgradeId, SnakeUpgradeType } from '../types';
 
 export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
@@ -16,21 +17,20 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     id: 'comboMaster',
     nome: "Mestre do Combo",
     tipo: "pontuacao",
-    custoInicial: 500, // CHANGED
-    efeitoPorNivel: 0.05,
-    efeitoMaximo: 0.50,
-    crescimento: 1.3,
-    maxLevel: 5, // CHANGED
-    description: (level) => `Cada maçã coletada vale ${((level * 0.05) * 100).toFixed(0)}% a mais de pontos (máx 50%).`
+    custoInicial: 100, 
+    efeitoPorNivel: 0.25, // Adds +0.25% to the base 1% step
+    crescimento: 1.35,
+    maxLevel: 16,
+    description: (level) => `Acelera o combo! Cada maçã adiciona +${(1 + (level * 0.25)).toFixed(2)}% ao multiplicador (Base: 1%).`
   },
   premiumMultiplier: {
     id: 'premiumMultiplier',
     nome: "Multiplicador Premium",
     tipo: "pontuacao",
     custoInicial: 500,
-    efeitoPorNivel: 0.01, // CHANGED
+    efeitoPorNivel: 0.01, 
     crescimento: 1.4,
-    maxLevel: 999, // CHANGED
+    maxLevel: 999, 
     description: (level) => `Multiplica seus ganhos totais em ${((level * 0.01) * 100).toFixed(0)}% (acumulativo).`
   },
 
@@ -56,6 +56,16 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     crescimento: 1.35,
     maxLevel: 2,
     description: (level) => `Comece o jogo com ${level} segmento(s) a menos.`
+  },
+  dashSkill: {
+    id: 'dashSkill',
+    nome: "Hyper Dash",
+    tipo: "gameplay",
+    custoInicial: 2500,
+    efeitoPorNivel: 1,
+    crescimento: 1,
+    maxLevel: 1,
+    description: () => `Toque 2x na mesma direção para dar um DASH instantâneo até a parede! Inclui 1s de câmera lenta para reagir.`
   },
   secondChance: {
     id: 'secondChance',
@@ -86,10 +96,10 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     nome: "Maçã Dourada",
     tipo: "especial",
     custoInicial: 400,
-    efeitoPorNivel: 0.01, // CHANGED
+    efeitoPorNivel: 0.01, 
     efeitoMaximo: 0.50,
-    crescimento: 1.15, // CHANGED
-    maxLevel: 50, // CHANGED
+    crescimento: 1.15, 
+    maxLevel: 50, 
     description: (level) => `${((level * 0.01) * 100).toFixed(0)}% de chance de uma maçã dourada aparecer, valendo 5x mais pontos.`
   },
   turboCash: {
@@ -124,6 +134,6 @@ export const calculateSnakeUpgradeCost = (upgrade: SnakeUpgrade, level: number):
 
 export const SNAKE_UPGRADE_LAYOUT: Record<SnakeUpgradeType, SnakeUpgradeId[]> = {
     pontuacao: ['basicMultiplier', 'comboMaster', 'premiumMultiplier'],
-    gameplay: ['slowSpeed', 'smallerStart', 'secondChance', 'paralamas'],
+    gameplay: ['slowSpeed', 'smallerStart', 'dashSkill', 'secondChance', 'paralamas'],
     especial: ['goldenApple', 'turboCash', 'frenzy']
 };

@@ -77,15 +77,25 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                     const purchases = scratchMetrics.tierPurchaseCounts[index];
                     const currentCost = calculateCurrentCost(index);
                     const currentRTP = calculateCurrentRTP(index);
+                    
+                    // Valor Esperado em $ agora é constante (baseado no custo base), mas o RTP % cai
+                    const expectedValue = (currentCost * currentRTP) / 100;
+                    
                     const unlockThreshold = SCRATCH_CARD_UNLOCK_THRESHOLDS[index];
                     const isLocked = bal < unlockThreshold && purchases === 0;
                     const canAfford = unluckyPot >= currentCost;
                     const theme = getTierTheme(tier.theme.color);
                     const cdRemaining = scratchMetrics.tierCooldownRemaining[index] || 0;
                     const isInfoOpen = activeInfoCard === index;
+                    
+                    // Injection Cooldown Check
+                    const injectionCd = lotericaState.injectionCooldownRemaining[index] || 0;
 
-                    // Luck Factor: +25% chance per tier level
-                    const tierLuckFactor = 1 + (index * 0.25);
+                    // Luck Factor: +8% chance per tier level
+                    const tierLuckFactor = 1 + (index * 0.08);
+                    
+                    // Slot Base Value for Display - FIX: Use BASE Cost, not currentCost
+                    const baseSlotValue = tier.cost / tier.slots;
 
                     // Filter prizes available for this tier
                     const availablePrizes = SCRATCH_PRIZE_TIERS.filter(p => index >= p.minTier);
@@ -118,7 +128,7 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                         
                                         <div className="flex justify-between w-full px-4 mb-2 text-xs border-b border-white/10 pb-2">
                                             <span className="text-green-400">🍀 Sorte: x{tierLuckFactor.toFixed(2)}</span>
-                                            <span className="text-blue-400">⚡ Eficiência: x{tier.efficiency.toFixed(1)}</span>
+                                            <span className="text-blue-400">⚡ Eficiência: x{tier.efficiency.toFixed(3)}</span>
                                         </div>
                                         
                                         <div className="w-full overflow-y-auto max-h-[65%] custom-scrollbar">
@@ -126,7 +136,7 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                                 <thead>
                                                     <tr className="border-b border-white/20 text-gray-500">
                                                         <th className="py-1">Prêmio</th>
-                                                        <th className="py-1 text-right">Mult. Real</th>
+                                                        <th className="py-1 text-right">Valor ($)</th>
                                                         <th className="py-1 text-right">Chance</th>
                                                     </tr>
                                                 </thead>
@@ -135,24 +145,29 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                                         const adjustedProb = p.prob * tierLuckFactor;
                                                         // MOSTRA O MULTIPLICADOR REAL (Base * Eficiência)
                                                         const effectiveMult = p.mult * tier.efficiency;
+                                                        const prizeValue = baseSlotValue * effectiveMult;
+                                                        
                                                         return (
                                                             <tr key={p.id} className="border-b border-white/5">
                                                                 <td className={`py-1 font-bold ${p.color}`}>{p.name}</td>
-                                                                <td className="py-1 text-right text-gray-300">{effectiveMult.toFixed(0)}x</td>
+                                                                <td className="py-1 text-right text-green-300">
+                                                                    ${prizeValue >= 1000 ? (prizeValue/1000).toFixed(1) + 'k' : prizeValue.toFixed(0)}
+                                                                    <span className="text-[9px] text-gray-500 ml-1">({effectiveMult.toFixed(0)}x)</span>
+                                                                </td>
                                                                 <td className="py-1 text-right text-white">{(adjustedProb * 100).toFixed(4)}%</td>
                                                             </tr>
                                                         );
                                                     })}
                                                     <tr className="text-gray-500 italic">
                                                         <td className="py-1">Vazio</td>
-                                                        <td className="py-1 text-right">0x</td>
+                                                        <td className="py-1 text-right text-red-900">$0</td>
                                                         <td className="py-1 text-right">{(lossProb * 100).toFixed(4)}%</td>
                                                     </tr>
                                                 </tbody>
                                             </table>
                                         </div>
                                         <p className="text-[9px] text-gray-500 mt-2 text-center">
-                                            *Mult. Real aplicado sobre o custo do slot (Preço Total / {tier.slots}).
+                                            *Prêmios fixos baseados no custo original: ${tier.cost.toLocaleString()}
                                         </p>
                                     </div>
                                 )}
@@ -167,10 +182,15 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="text-right pr-8"> {/* Padding Right for Info Button */}
+                                    <div className="text-right pr-8">
                                         <div className="text-[9px] font-black text-white/40 uppercase">Retorno Estimado</div>
-                                        <div className={`text-xl font-black ${currentRTP > 1000 ? 'text-green-400' : 'text-yellow-400'}`}>
-                                            {currentRTP.toFixed(0)}%
+                                        <div className="flex flex-col items-end">
+                                            <div className="text-lg font-black text-green-300 tabular-nums leading-none">
+                                                ~${expectedValue >= 1000 ? (expectedValue/1000).toFixed(1) + 'k' : expectedValue.toFixed(0)}
+                                            </div>
+                                            <div className={`text-xs font-bold ${currentRTP > 100 ? 'text-yellow-400' : 'text-gray-400'}`}>
+                                                ({currentRTP.toFixed(0)}%)
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -211,12 +231,18 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                         <div className="text-[10px] text-white/50 font-bold uppercase">
                                             Estratégia: <span className="text-purple-400">Lotérica {lotericaState.totalInjections[index]}x</span>
                                         </div>
-                                        <button 
-                                            onClick={() => injetarLoterica(index)}
-                                            className="text-[10px] font-black text-purple-300 hover:text-purple-100 transition-colors uppercase underline underline-offset-2"
-                                        >
-                                            Injetar Capital (-{(LOTERICA_INJECTION_REDUCTIONS[index] * 100).toFixed(0)}% inflação)
-                                        </button>
+                                        {injectionCd > 0 ? (
+                                            <span className="text-[10px] font-mono text-gray-500 font-bold bg-black/40 px-2 py-1 rounded">
+                                                ⏳ {formatTime(injectionCd)}
+                                            </span>
+                                        ) : (
+                                            <button 
+                                                onClick={() => injetarLoterica(index)}
+                                                className="text-[10px] font-black text-purple-300 hover:text-purple-100 transition-colors uppercase underline underline-offset-2"
+                                            >
+                                                Injetar Capital (-{(LOTERICA_INJECTION_REDUCTIONS[index] * 100).toFixed(0)}% inflação)
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>

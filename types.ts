@@ -153,7 +153,7 @@ export interface ActiveScratchCard {
 }
 
 // --- Snake Minigame Upgrade Types ---
-export type SnakeUpgradeId = 'basicMultiplier' | 'comboMaster' | 'premiumMultiplier' | 'slowSpeed' | 'smallerStart' | 'secondChance' | 'goldenApple' | 'turboCash' | 'frenzy' | 'paralamas';
+export type SnakeUpgradeId = 'basicMultiplier' | 'comboMaster' | 'premiumMultiplier' | 'slowSpeed' | 'smallerStart' | 'dashSkill' | 'secondChance' | 'goldenApple' | 'turboCash' | 'frenzy' | 'paralamas';
 export type SnakeUpgradeType = 'pontuacao' | 'gameplay' | 'especial';
 
 export interface SnakeUpgrade {

@@ -54,36 +54,41 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
         return baseCost + (inflation * purchases);
     }, [scratchMetrics.tierPurchaseCounts]);
 
-    // FATOR DE SORTE PROGRESSIVO (Versão Melhorada):
+    // FATOR DE SORTE PROGRESSIVO (Versão Balanceada):
     // Tier 0 = 1.00x
-    // Tier 1 = 1.25x
-    // ...
-    // Tier 9 = 3.25x
-    // Aumenta a frequência de acertos significativamente nos tiers altos.
-    const getTierLuckFactor = (tier: number) => 1 + (tier * 0.25);
+    // Tier 9 = 1.72x
+    const getTierLuckFactor = (tier: number) => 1 + (tier * 0.08);
 
     const calculateCurrentRTP = useCallback((tier: number): number => {
         const tierData = SCRATCH_CARD_TIERS_V3[tier];
+        const currentCost = calculateCurrentCost(tier);
+        
+        // FIX: Valor base calculado sobre o CUSTO ORIGINAL (tierData.cost), não o custo inflacionado.
+        const baseSlotValue = tierData.cost / tierData.slots;
         const luckFactor = getTierLuckFactor(tier);
-        let expectedMultiplierSum = 0;
+        
+        let expectedValuePerSlot = 0;
 
         for (const prize of SCRATCH_PRIZE_TIERS) {
             if (tier >= prize.minTier) {
                 // Chance Real = Probabilidade Base * Sorte do Tier
                 const effectiveProb = prize.prob * luckFactor;
                 
-                // Valor Real = Multiplicador Base * Eficiência do Tier
-                const effectiveMult = prize.mult * tierData.efficiency;
+                // Valor Real do Prêmio = Valor do Slot * Mult * Eficiência
+                const prizeValue = baseSlotValue * prize.mult * tierData.efficiency;
                 
-                // Contribuição para o Retorno (Probabilidade * Valor)
-                expectedMultiplierSum += (effectiveProb * effectiveMult);
+                // EV acumulado (Probabilidade * Valor)
+                expectedValuePerSlot += (effectiveProb * prizeValue);
             }
         }
 
-        // RTP = (Soma das Expectativas) * 100
-        // Como o 'effectiveMult' é aplicado sobre o (Custo/Slot), a soma direta é o retorno sobre o custo.
-        return expectedMultiplierSum * 100;
-    }, []);
+        // Valor Esperado Total do Ticket = EV por Slot * Numero de Slots
+        const totalTicketEV = expectedValuePerSlot * tierData.slots;
+
+        // RTP = (Retorno Esperado / Custo Atual) * 100
+        // Como o retorno é fixo e o custo sobe, o RTP cai com o tempo.
+        return currentCost > 0 ? (totalTicketEV / currentCost) * 100 : 0;
+    }, [calculateCurrentCost]);
 
     const buyScratchCard = useCallback((tier: number) => {
         const now = Date.now();
@@ -108,7 +113,8 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
         setUnluckyPot(prev => prev - currentCost);
         
         const tierData = SCRATCH_CARD_TIERS_V3[tier];
-        const baseSlotValue = currentCost / tierData.slots;
+        // FIX: Prêmios baseados no custo original
+        const baseSlotValue = tierData.cost / tierData.slots;
         const luckFactor = getTierLuckFactor(tier);
         
         const prizes: number[] = [];
@@ -147,7 +153,7 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
             cells: prizes.map(p => ({
                 prize: applyFinalGain(p), 
                 revealed: false,
-                isJackpot: p >= (currentCost / tierData.slots * 50)
+                isJackpot: p >= (baseSlotValue * 50) // Jackpot visual threshold also based on base value
             })),
             totalWin: finalTotalWin,
             isRevealing: true

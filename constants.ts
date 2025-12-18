@@ -84,57 +84,66 @@ export const ITEM_PENALTY_VALUES: Record<string, number> = {
 
 export const SCRATCH_CARD_TIERS_V3: ScratchCardTierV3[] = [
     {
-        name: 'Papelão', cost: 5, targetRTP: 400, efficiency: 1.0, slots: 6, maxJackpotMult: 50, cooldown: 1000,
+        name: 'Papelão', cost: 5, targetRTP: 355, efficiency: 1.00, slots: 6, maxJackpotMult: 50, cooldown: 1000,
         theme: { color: 'gray', icon: '📦' }
     },
     {
-        name: 'Bronze', cost: 10, targetRTP: 500, efficiency: 1.1, slots: 6, maxJackpotMult: 100, cooldown: 5000,
+        name: 'Bronze', cost: 10, targetRTP: 479, efficiency: 1.125, slots: 6, maxJackpotMult: 100, cooldown: 5000,
         theme: { color: 'amber', icon: '🥉' }
     },
     {
-        name: 'Prata', cost: 25, targetRTP: 600, efficiency: 1.2, slots: 6, maxJackpotMult: 150, cooldown: 15000,
+        name: 'Prata', cost: 25, targetRTP: 681, efficiency: 1.25, slots: 6, maxJackpotMult: 150, cooldown: 15000,
         theme: { color: 'slate', icon: '🥈' }
     },
     {
-        name: 'Ouro', cost: 60, targetRTP: 700, efficiency: 1.3, slots: 9, maxJackpotMult: 250, cooldown: 45000,
+        name: 'Ouro', cost: 60, targetRTP: 849, efficiency: 1.375, slots: 9, maxJackpotMult: 250, cooldown: 45000,
         theme: { color: 'yellow', icon: '🥇' }
     },
     {
-        name: 'Platina', cost: 150, targetRTP: 800, efficiency: 1.4, slots: 9, maxJackpotMult: 400, cooldown: 120000,
+        name: 'Platina', cost: 150, targetRTP: 950, efficiency: 1.50, slots: 9, maxJackpotMult: 400, cooldown: 120000,
         theme: { color: 'cyan', icon: '💠' }
     },
     {
-        name: 'Diamante', cost: 400, targetRTP: 900, efficiency: 1.5, slots: 9, maxJackpotMult: 600, cooldown: 300000,
+        name: 'Diamante', cost: 400, targetRTP: 1050, efficiency: 1.625, slots: 9, maxJackpotMult: 600, cooldown: 300000,
         theme: { color: 'blue', icon: '💎' }
     },
     {
-        name: 'Titânio', cost: 1000, targetRTP: 1000, efficiency: 1.6, slots: 12, maxJackpotMult: 1000, cooldown: 600000,
+        name: 'Titânio', cost: 1000, targetRTP: 1150, efficiency: 1.75, slots: 12, maxJackpotMult: 1000, cooldown: 600000,
         theme: { color: 'zinc', icon: '⚙️' }
     },
     {
-        name: 'Obsidiana', cost: 2500, targetRTP: 1100, efficiency: 1.7, slots: 12, maxJackpotMult: 1500, cooldown: 1200000,
+        name: 'Obsidiana', cost: 2500, targetRTP: 1250, efficiency: 1.875, slots: 12, maxJackpotMult: 1500, cooldown: 1200000,
         theme: { color: 'purple', icon: '🔮' }
     },
     {
-        name: 'Celestial', cost: 6000, targetRTP: 1200, efficiency: 1.8, slots: 12, maxJackpotMult: 2500, cooldown: 2400000,
+        name: 'Celestial', cost: 6000, targetRTP: 1350, efficiency: 2.00, slots: 12, maxJackpotMult: 2500, cooldown: 2400000,
         theme: { color: 'indigo', icon: '🌌' }
     },
     {
-        name: 'Divino', cost: 15000, targetRTP: 1300, efficiency: 1.9, slots: 12, maxJackpotMult: 4000, cooldown: 7200000,
+        name: 'Divino', cost: 15000, targetRTP: 1500, efficiency: 2.125, slots: 12, maxJackpotMult: 4000, cooldown: 7200000,
         theme: { color: 'pink', icon: '👑', glow: 'animate-pulse' }
     }
 ];
 
 export const SCRATCH_PRIZE_TIERS = [
-    { id: 'divine',    name: 'Divino',    mult: 800, prob: 0.00008335, minTier: 7, color: 'text-pink-500' }, // Obsidiana+
-    { id: 'exalted',   name: 'Exaltado',  mult: 400, prob: 0.0001667,  minTier: 5, color: 'text-cyan-400' }, // Diamante+
-    { id: 'ancient',   name: 'Ancestral', mult: 200, prob: 0.0004171,  minTier: 2, color: 'text-purple-400' }, // Prata+
-    { id: 'mythic',    name: 'Mítico',    mult: 100, prob: 0.00167,    minTier: 0, color: 'text-red-500' },
-    { id: 'legendary', name: 'Lendário',  mult: 50,  prob: 0.003361,   minTier: 0, color: 'text-orange-400' },
-    { id: 'epic',      name: 'Épico',     mult: 40,  prob: 0.006781,   minTier: 0, color: 'text-yellow-400' },
-    { id: 'rare',      name: 'Raro',      mult: 30,  prob: 0.008512,   minTier: 0, color: 'text-blue-400' },
-    { id: 'uncommon',  name: 'Incomum',   mult: 20,  prob: 0.017407,   minTier: 0, color: 'text-green-400' },
-    { id: 'common',    name: 'Comum',     mult: 4,   prob: 0.076581,   minTier: 0, color: 'text-gray-400' },
+    { id: 'divino', name: 'Divino', mult: 800, prob: 0.00008, minTier: 7, color: 'text-pink-500' },
+    { id: 'celestial', name: 'Celestial', mult: 600, prob: 0.00012, minTier: 7, color: 'text-cyan-300' },
+    { id: 'exaltado', name: 'Exaltado', mult: 400, prob: 0.0002, minTier: 5, color: 'text-purple-300' },
+    { id: 'supremo', name: 'Supremo', mult: 300, prob: 0.00035, minTier: 5, color: 'text-indigo-400' },
+    { id: 'ancestral', name: 'Ancestral', mult: 200, prob: 0.0005, minTier: 2, color: 'text-violet-400' },
+    { id: 'primordial', name: 'Primordial', mult: 150, prob: 0.0008, minTier: 2, color: 'text-fuchsia-400' },
+    { id: 'arcano', name: 'Arcano', mult: 120, prob: 0.0012, minTier: 2, color: 'text-purple-400' },
+    { id: 'mítico', name: 'Mítico', mult: 100, prob: 0.0018, minTier: 0, color: 'text-red-500' },
+    { id: 'lendário', name: 'Lendário', mult: 80, prob: 0.0025, minTier: 0, color: 'text-orange-500' },
+    { id: 'épico', name: 'Épico', mult: 65, prob: 0.004, minTier: 0, color: 'text-yellow-500' },
+    { id: 'raro', name: 'Raro', mult: 50, prob: 0.0065, minTier: 0, color: 'text-blue-500' },
+    { id: 'incomum', name: 'Incomum', mult: 35, prob: 0.012, minTier: 0, color: 'text-green-500' },
+    { id: 'comum', name: 'Comum', mult: 22, prob: 0.025, minTier: 0, color: 'text-green-400' },
+    { id: 'básico', name: 'Básico', mult: 15, prob: 0.035, minTier: 0, color: 'text-gray-300' },
+    { id: 'simples', name: 'Simples', mult: 10, prob: 0.045, minTier: 0, color: 'text-gray-400' },
+    { id: 'modesto', name: 'Modesto', mult: 6, prob: 0.055, minTier: 0, color: 'text-gray-500' },
+    { id: 'mínimo', name: 'Mínimo', mult: 3, prob: 0.065, minTier: 0, color: 'text-slate-500' },
+    { id: 'migalha', name: 'Migalha', mult: 1.5, prob: 0.075, minTier: 0, color: 'text-slate-600' }
 ];
 
 export const SCRATCH_CARD_INFLATION_V3 = [1.50, 4.00, 12.00, 45.00, 120.00, 450.00, 2000.00, 7500.00, 25000.00, 75000.00];
