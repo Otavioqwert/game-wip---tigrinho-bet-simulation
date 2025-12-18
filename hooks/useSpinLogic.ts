@@ -124,7 +124,8 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                 if (syms[0] === '⭐') {
                     spinsToProcess += 5;
                 } else {
-                    win = bet * midMultiplierValue(syms[0]) * 0.05;
+                    // AJUSTE: O valor agora é 0.5 (metade) do prêmio total da linha
+                    win = bet * midMultiplierValue(syms[0]) * 0.5;
                 }
             }
             results.push({ symbols: syms, win, isWin });
