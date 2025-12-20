@@ -6,8 +6,9 @@ import { SNAKE_UPGRADES } from '../../../constants/snakeUpgrades';
 
 const GRID_SIZE = 20;
 const BASE_GAME_SPEED = 150; // ms
-const DASH_COOLDOWN = 5000; // 5 seconds
-const DASH_REACTION_TIME = 1000; // 1s slow motion
+const DASH_COOLDOWN = 3000; // 3 segundos
+const DASH_REACTION_TIME = 800; // 800ms de slow motion
+const DASH_DOUBLE_TAP_WINDOW = 400; // Janela para duplo toque
 
 type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 type Food = { x: number; y: number; type: 'normal' | 'golden' };
@@ -67,12 +68,20 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
     const [dashCooldownTimer, setDashCooldownTimer] = useState(0);
     const [isDashingVisual, setIsDashingVisual] = useState(false);
     const [slowMoActive, setSlowMoActive] = useState(false);
+    const [dashPath, setDashPath] = useState<SnakeSegment[]>([]); // Para visualização
     
+    // --- SKILL UPGRADES STATE ---
+    const [pushedAppleIndex, setPushedAppleIndex] = useState<number | null>(null);
+
     const lastKeyPressRef = useRef<{ dir: Direction, time: number } | null>(null);
     const dashCooldownRef = useRef(0);
     const dashReactionTimeoutRef = useRef<number | null>(null);
+    const isDashingRef = useRef(false); // Previne chamadas múltiplas
 
     const hasDashSkill = (snakeUpgrades['dashSkill'] || 0) > 0;
+    const subtleAlertLevel = snakeUpgrades['subtleAlert'] || 0;
+    const alarmingAlertLevel = snakeUpgrades['alarmingAlert'] || 0;
+    const pushAppleLevel = snakeUpgrades['pushApple'] || 0;
 
     // --- COMBO SYSTEM STATE (Synced with Ref for Game Loop) ---
     const [uiComboState, setUiComboState] = useState({ multiplier: 1, timer: 30000, maxTime: 30000 });
@@ -161,15 +170,8 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             const numToGenerate = 1 + applesToAdd;
             const newFoodItems: Food[] = [];
             
-            // We use a safe copy of snake from state if available, or just generate safely
-            // Note: In strict React, accessing state in callback might be stale, 
-            // but generateFood is triggered by effects that depend on it.
-            // For safety, we can check collision against 'prevFood' only here, 
-            // and rely on the grid probability.
-            
             for(let i = 0; i < numToGenerate; i++) {
                 let newFoodPosition;
-                // Simple collision check (perfect collision check is expensive in loop)
                 newFoodPosition = { x: Math.floor(Math.random() * GRID_SIZE), y: Math.floor(Math.random() * GRID_SIZE) };
                 newFoodItems.push({ ...newFoodPosition, type: Math.random() < snakeGameSettings.goldenAppleChance ? 'golden' : 'normal' });
             }
@@ -183,140 +185,108 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
         }
     }, [food.length, generateFood, gameOver]);
     
+    // Balanced Paralamas Recharge
+    const paralamasLevel = snakeGameSettings.paralamasCharges;
+    const rechargeThreshold = paralamasLevel >= 3 ? 15 : paralamasLevel === 2 ? 12 : 10;
+
     useEffect(() => {
-        if (applesSinceLastReset >= 10 && paralamasChargesUsed > 0) {
+        if (applesSinceLastReset >= rechargeThreshold && paralamasChargesUsed > 0) {
             setParalamasChargesUsed(0);
             setApplesSinceLastReset(0);
         }
-    }, [applesSinceLastReset, paralamasChargesUsed]);
+    }, [applesSinceLastReset, paralamasChargesUsed, rechargeThreshold]);
 
     // --- DASH LOGIC ---
     const performDash = useCallback((dir: Direction) => {
         const now = Date.now();
+        
+        // Verificações de segurança
         if (now < dashCooldownRef.current) return;
+        if (isDashingRef.current) return; // Previne execução dupla
+        if (gameOver) return;
+        
+        isDashingRef.current = true;
 
-        // Visual Feedback
+        // 1. FEEDBACK VISUAL IMEDIATO
         setIsDashingVisual(true);
         setTimeout(() => setIsDashingVisual(false), 300);
         
-        // Cooldown
+        // 2. ATIVAR COOLDOWN
         dashCooldownRef.current = now + DASH_COOLDOWN;
         setDashCooldownTimer(DASH_COOLDOWN);
 
-        // Activate Bullet Time
+        // 3. ATIVAR SLOW MOTION
         setSlowMoActive(true);
         if (dashReactionTimeoutRef.current) clearTimeout(dashReactionTimeoutRef.current);
         dashReactionTimeoutRef.current = window.setTimeout(() => {
             setSlowMoActive(false);
         }, DASH_REACTION_TIME);
 
+        // 4. CALCULAR DIREÇÃO
+        let dx = 0, dy = 0;
+        switch(dir) {
+            case 'UP': dy = -1; break;
+            case 'DOWN': dy = 1; break;
+            case 'LEFT': dx = -1; break;
+            case 'RIGHT': dx = 1; break;
+        }
+
+        // 5. PROCESSAR DASH
         setSnake(currentSnake => {
             const head = currentSnake[0];
-            let dx = 0; let dy = 0;
-            if (dir === 'UP') dy = -1;
-            else if (dir === 'DOWN') dy = 1;
-            else if (dir === 'LEFT') dx = -1;
-            else if (dir === 'RIGHT') dx = 1;
-
-            const newBody = [...currentSnake];
-            let currentHead = { ...head };
-            let safetyBreak = 0;
-
-            // Instant movement loop
-            while (safetyBreak < GRID_SIZE) {
-                const nextX = currentHead.x + dx;
-                const nextY = currentHead.y + dy;
-
-                // Check Wall Collision (Stop just before wall)
+            const pathTraveled: SnakeSegment[] = [];
+            let currentPos = { x: head.x, y: head.y };
+            
+            // Traçar o caminho até a parede
+            while (true) {
+                const nextX = currentPos.x + dx;
+                const nextY = currentPos.y + dy;
+                
+                // Parar antes de bater na parede
                 if (nextX < 0 || nextX >= GRID_SIZE || nextY < 0 || nextY >= GRID_SIZE) {
                     break;
                 }
-
-                currentHead = { x: nextX, y: nextY };
                 
-                // Move snake: Add new head
-                newBody.unshift(currentHead);
-
-                // Check Food Collision locally to update score/combo immediately
-                // We need to access the 'food' state. 
-                // Since we are inside setSnake updater, we can't easily see the fresh 'food' state 
-                // without a ref or complex merging.
-                // SOLUTION: We will filter the food in a separate setFood call immediately after.
-                // Here we just handle the body growth logic.
-                
-                // Optimistic check against ref-like logic would be ideal, 
-                // but strictly: we'll check collision in the setFood updater below.
-                // However, we need to know if we grew or not to pop the tail.
-                // Let's rely on the setFood logic to handle the "eating" event 
-                // and here we assume we DON'T grow unless we hit something, 
-                // BUT determining that inside this loop is hard.
-                
-                // ALTERNATIVE: "Straighten" logic implies we occupy the line.
-                // Let's assume we consume length.
-                newBody.pop(); 
-                
-                safetyBreak++;
+                currentPos = { x: nextX, y: nextY };
+                pathTraveled.push({ ...currentPos });
             }
             
-            // Now we have moved the snake to the wall. 
-            // We need to check collisions with food along the path we just traveled.
-            // We can do this by calculating the segment from OldHead to NewHead.
-            return newBody;
+            // Se não moveu nada (já estava na parede), retorna
+            if (pathTraveled.length === 0) {
+                isDashingRef.current = false;
+                return currentSnake;
+            }
+            
+            // Criar nova cobra com a cabeça na nova posição
+            const finalHead = pathTraveled[pathTraveled.length - 1];
+            const newSnake = [finalHead, ...currentSnake];
+            
+            // Remover segmentos do final para manter o tamanho
+            // (crescimento será feito ao comer)
+            while (newSnake.length > currentSnake.length) {
+                newSnake.pop();
+            }
+            
+            // Salvar caminho para processar colisões
+            setDashPath(pathTraveled);
+            
+            return newSnake;
         });
-
-        // Handle Food Collection along the dash path
-        setFood(currentFood => {
-            // We need the snake BEFORE the dash to know where it started
-            // This is tricky inside the callback. 
-            // Simplified: The snake moves so fast, we just check if any food is on the new body parts?
-            // No, the new body parts might not cover the whole path if snake is short.
-            // We need to calculate the swept path.
-            
-            // Re-calculate vector
-            let dx = 0; let dy = 0;
-            if (dir === 'UP') dy = -1;
-            else if (dir === 'DOWN') dy = 1;
-            else if (dir === 'LEFT') dx = -1;
-            else if (dir === 'RIGHT') dx = 1;
-            
-            // We need the head position *before* the update. 
-            // We can use prevSnakeRef.current[0] since dash happens on input/frame.
-            const startHead = prevSnakeRef.current[0] || {x:10, y:10};
-            
-            const eatenIndices: number[] = [];
-            
-            // Trace the path
-            let checkX = startHead.x + dx;
-            let checkY = startHead.y + dy;
-            
-            while(checkX >= 0 && checkX < GRID_SIZE && checkY >= 0 && checkY < GRID_SIZE) {
-                const fIndex = currentFood.findIndex(f => f.x === checkX && f.y === checkY);
-                if (fIndex !== -1) {
-                    eatenIndices.push(fIndex);
-                    // Trigger logic for score
-                    handleEatApple(currentFood[fIndex], checkX, checkY);
-                    
-                    // Since we ate, we need to grow the snake.
-                    // We can trigger a setSnake to unshift a tail or duplicate tail?
-                    // Easiest is to append to tail in a separate setSnake call, 
-                    // or just accept that Dash might not visually grow instantly but the score counts.
-                    // Let's try to grow the snake to be correct.
-                    setSnake(s => {
-                        const tail = s[s.length-1];
-                        return [...s, {...tail}]; // Grow by 1 at tail
-                    });
-                }
-                checkX += dx;
-                checkY += dy;
-            }
-            
-            if (eatenIndices.length > 0) {
-                return currentFood.filter((_, i) => !eatenIndices.includes(i));
-            }
-            return currentFood;
-        });
-
-    }, [handleEatApple]);
+        
+        // 6. PROCESSAR COMIDA AO LONGO DO CAMINHO (após atualizar cobra)
+        setTimeout(() => {
+            setFood(currentFood => {
+                const head = snake[0]; // State pode ser stale, mas path é recalculado localmente para consistência se necessário
+                return currentFood.filter((f, i) => {
+                    // Implementação futura: Raycasting de comida.
+                    return true; 
+                });
+            });
+            isDashingRef.current = false;
+            setDashPath([]);
+        }, 50);
+        
+    }, [snake, gameOver]);
 
     const changeDirection = useCallback((newDir: Direction) => {
         if (gameOver) return;
@@ -324,16 +294,21 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
         const now = Date.now();
         const currentDir = directionRef.current;
         
-        // Double Tap Logic
-        if (hasDashSkill && newDir === currentDir && lastKeyPressRef.current?.dir === newDir) {
-            const timeDiff = now - lastKeyPressRef.current.time;
-            if (timeDiff < 500 && timeDiff > 50) { // 50ms debounce
-                performDash(newDir);
-                lastKeyPressRef.current = null; // Consume tap
-                return;
+        // Verificar duplo toque para DASH
+        if (hasDashSkill) {
+            if (lastKeyPressRef.current?.dir === newDir) {
+                const timeDiff = now - lastKeyPressRef.current.time;
+                
+                // Janela de duplo toque: entre 50ms e 400ms
+                if (timeDiff >= 50 && timeDiff <= DASH_DOUBLE_TAP_WINDOW) {
+                    performDash(newDir);
+                    lastKeyPressRef.current = null; // Consumir o toque
+                    return;
+                }
             }
         }
         
+        // Atualizar último toque
         lastKeyPressRef.current = { dir: newDir, time: now };
 
         const oppositeDirs: Record<Direction, Direction> = { 'UP': 'DOWN', 'DOWN': 'UP', 'LEFT': 'RIGHT', 'RIGHT': 'LEFT' };
@@ -343,8 +318,9 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
     }, [gameOver, hasDashSkill, performDash]);
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        const key = e.key.toLowerCase();
         const keyMap: { [key: string]: Direction } = { arrowup: 'UP', w: 'UP', arrowdown: 'DOWN', s: 'DOWN', arrowleft: 'LEFT', a: 'LEFT', arrowright: 'RIGHT', d: 'RIGHT' };
-        const newDir = keyMap[e.key.toLowerCase()];
+        const newDir = keyMap[key];
         if (newDir) {
             e.preventDefault();
             changeDirection(newDir);
@@ -376,12 +352,10 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             }
         }
         
-        // --- Pulse Decay ---
         if (comboRef.current.pulse > 0) {
             comboRef.current.pulse = Math.max(0, comboRef.current.pulse - deltaTime * 0.005);
         }
         
-        // --- Dash Cooldown Tick ---
         if (dashCooldownTimer > 0) {
             setDashCooldownTimer(prev => Math.max(0, prev - deltaTime));
         }
@@ -394,7 +368,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
 
         // Dynamic Speed: Base * Modifiers * SlowMo
         let currentSpeed = BASE_GAME_SPEED * snakeGameSettings.speedModifier;
-        if (slowMoActive) currentSpeed *= 6; // 6x slower
+        if (slowMoActive) currentSpeed *= 6; 
 
         const timeSinceLastUpdate = timestamp - lastLogicUpdateTimeRef.current;
 
@@ -412,15 +386,48 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                 const head = prevSnake[0];
                 const newHead = { ...head };
 
+                let dx = 0, dy = 0;
                 switch (directionRef.current) {
-                    case 'UP': newHead.y -= 1; break;
-                    case 'DOWN': newHead.y += 1; break;
-                    case 'LEFT': newHead.x -= 1; break;
-                    case 'RIGHT': newHead.x += 1; break;
+                    case 'UP': dy = -1; break;
+                    case 'DOWN': dy = 1; break;
+                    case 'LEFT': dx = -1; break;
+                    case 'RIGHT': dx = 1; break;
                 }
+                newHead.x += dx;
+                newHead.y += dy;
 
+                // --- LOGICA DE COLISÃO E EMPURRAR (PUSH) ---
                 const eatenFoodIndex = food.findIndex(f => f.x === newHead.x && f.y === newHead.y);
-                const isEating = eatenFoodIndex !== -1;
+                let isPushingApple = false;
+
+                if (eatenFoodIndex !== -1 && pushAppleLevel > 0) {
+                    // Tentar empurrar
+                    const apple = food[eatenFoodIndex];
+                    const pushTarget = { x: apple.x + dx, y: apple.y + dy };
+                    
+                    // Verificar se o destino do empurrão é válido (dentro do grid, sem parede, sem corpo, sem outra comida)
+                    const isWall = pushTarget.x < 0 || pushTarget.x >= GRID_SIZE || pushTarget.y < 0 || pushTarget.y >= GRID_SIZE;
+                    // Ao empurrar, a cobra não cresce, logo a cauda vai sair. Ignoramos a cauda na colisão do alvo do empurrão.
+                    const isBody = prevSnake.slice(0, -1).some(s => s.x === pushTarget.x && s.y === pushTarget.y);
+                    const isOtherFood = food.some((f, idx) => idx !== eatenFoodIndex && f.x === pushTarget.x && f.y === pushTarget.y);
+
+                    if (!isWall && !isBody && !isOtherFood) {
+                        isPushingApple = true;
+                        // Mover a maçã
+                        setFood(prevFood => {
+                            const newFood = [...prevFood];
+                            newFood[eatenFoodIndex] = { ...newFood[eatenFoodIndex], x: pushTarget.x, y: pushTarget.y };
+                            return newFood;
+                        });
+                        
+                        // Efeito visual rápido
+                        setPushedAppleIndex(eatenFoodIndex);
+                        setTimeout(() => setPushedAppleIndex(null), 200);
+                        
+                        // NOTA: Removemos o 'return prevSnake' para que a cobra ocupe o espaço imediatamente
+                    }
+                    // Se estiver bloqueado, isPushingApple continua false e a cobra come a maçã (esmagamento)
+                }
 
                 const isWallCollision = newHead.x < 0 || newHead.x >= GRID_SIZE || newHead.y < 0 || newHead.y >= GRID_SIZE;
                 const availableCharges = snakeGameSettings.paralamasCharges - paralamasChargesUsed;
@@ -437,7 +444,8 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                     return prevSnake; 
                 }
                 
-                const snakeToCheck = isEating ? prevSnake : prevSnake.slice(0, prevSnake.length - 1);
+                // Se está comendo ou empurrando (mas falhou no push), a cauda não sai
+                const snakeToCheck = (eatenFoodIndex !== -1 && !isPushingApple) ? prevSnake : prevSnake.slice(0, prevSnake.length - 1);
                 const isSelfCollision = snakeToCheck.some(segment => segment.x === newHead.x && segment.y === newHead.y);
                 
                 if ((isWallCollision && availableCharges <= 0) || isSelfCollision) {
@@ -453,10 +461,9 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                 
                 let newSnake = [newHead, ...prevSnake];
 
-                if (isEating) {
+                if (eatenFoodIndex !== -1 && !isPushingApple) {
+                    // COMER (Se não empurrou)
                     const eatenFood = food[eatenFoodIndex];
-                    // Using helper within the loop logic requires slight refactoring to avoid dependency cycle
-                    // Manually duplicating logic here for performance inside the loop
                     const basePoints = 1;
                     const foodMult = eatenFood.type === 'golden' ? 5 : 1;
                     
@@ -487,6 +494,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                     setFood(f => f.filter((_, i) => i !== eatenFoodIndex));
                     setApplesSinceLastReset(a => a + 1);
                 } else {
+                    // MOVER (Se empurrou ou espaço vazio, remove a cauda)
                     newSnake.pop();
                 }
                 
@@ -512,12 +520,23 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
         const progress = Math.min(1, timeSinceLastUpdate / currentSpeed);
 
         // 2. Draw Food
-        food.forEach(f => {
+        food.forEach((f, idx) => {
             const appleX = f.x * CELL_SIZE + CELL_SIZE / 2;
             const appleY = f.y * CELL_SIZE + CELL_SIZE / 2;
             const radius = CELL_SIZE / 2 * 0.8;
             ctx.fillStyle = f.type === 'golden' ? '#FBBF24' : '#f56565';
             ctx.beginPath(); ctx.arc(appleX, appleY, radius, 0, Math.PI * 2); ctx.fill();
+            
+            // Push Effect (Trail)
+            if (idx === pushedAppleIndex) {
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.arc(appleX, appleY, radius + 5, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
         });
         
         // 3. Draw Snake
@@ -557,6 +576,19 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             ctx.fill(); ctx.stroke();
         }
 
+        // Draw Dash Path Visualization (Ghost)
+        if (dashPath.length > 0) {
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = '#00eaff';
+            dashPath.forEach(segment => {
+                const px = segment.x * CELL_SIZE + CELL_SIZE * 0.2;
+                const py = segment.y * CELL_SIZE + CELL_SIZE * 0.2;
+                const size = CELL_SIZE * 0.6;
+                ctx.fillRect(px, py, size, size);
+            });
+            ctx.globalAlpha = 1.0;
+        }
+
         // 4. Draw Floating Texts
         floatingTextsRef.current.forEach(ft => {
             ft.y -= 0.5 * (deltaTime / 16);
@@ -583,7 +615,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             ctx.globalAlpha = 1.0;
         });
 
-        // 5. Draw Rhythm Game Style Combo UI (Top Right)
+        // 5. Draw Combo UI
         const combo = comboRef.current;
         if (combo.multiplier >= 1.0) {
             const pad = 10;
@@ -593,19 +625,16 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             ctx.textAlign = 'right';
             ctx.textBaseline = 'top';
             
-            // Determine Color
-            let color = '#a0aec0'; // Gray
-            if (combo.multiplier >= 2.5) color = `hsl(${Date.now() / 5 % 360}, 100%, 50%)`; // Chromatic
-            else if (combo.multiplier >= 2.0) color = '#ef4444'; // Red
-            else if (combo.multiplier >= 1.5) color = '#22c55e'; // Green
+            let color = '#a0aec0'; 
+            if (combo.multiplier >= 2.5) color = `hsl(${Date.now() / 5 % 360}, 100%, 50%)`; 
+            else if (combo.multiplier >= 2.0) color = '#ef4444'; 
+            else if (combo.multiplier >= 1.5) color = '#22c55e'; 
 
-            // Pulse Scaling
             const scale = 1 + (combo.pulse * 0.2);
             ctx.save();
             ctx.translate(xPos, yPos);
             ctx.scale(scale, scale);
 
-            // Multiplier Text
             ctx.font = 'italic 900 36px Arial';
             ctx.fillStyle = color;
             ctx.shadowColor = 'rgba(0,0,0,0.5)';
@@ -616,27 +645,24 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             ctx.lineWidth = 1;
             ctx.strokeText(multText, 0, 0);
 
-            // Combo Count
             ctx.font = 'italic 700 14px Arial';
             ctx.fillStyle = 'white';
             ctx.shadowBlur = 0;
             ctx.fillText(`${combo.count} COMBO`, 0, 40);
 
-            // Bar Background
             const barW = 120;
             const barH = 6;
             ctx.fillStyle = 'rgba(0,0,0,0.5)';
             ctx.fillRect(-barW, 60, barW, barH);
 
-            // Bar Fill
             const pct = Math.max(0, combo.timer / combo.maxTime);
             ctx.fillStyle = color;
-            ctx.fillRect(-barW + (barW * (1 - pct)), 60, barW * pct, barH); // Fill from right
+            ctx.fillRect(-barW + (barW * (1 - pct)), 60, barW * pct, barH);
 
             ctx.restore();
         }
 
-    }, [snake, food, gameOver, lives, canvasSize, CELL_SIZE, snakeGameSettings, paralamasChargesUsed, snakeUpgrades, slowMoActive, dashCooldownTimer]);
+    }, [snake, food, gameOver, lives, canvasSize, CELL_SIZE, snakeGameSettings, paralamasChargesUsed, snakeUpgrades, slowMoActive, dashCooldownTimer, rechargeThreshold, pushedAppleIndex, pushAppleLevel, dashPath]);
 
     useEffect(() => {
         prevSnakeRef.current = snake;
@@ -650,6 +676,33 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             }
         };
     }, [gameLoop, snake]); 
+
+    // --- RENDER OVERLAYS (ALERTS) ---
+    
+    // Find closest apple logic for alerts
+    const getClosestAppleInfo = () => {
+        if (!food.length || !snake.length) return null;
+        const head = snake[0];
+        let closest = food[0];
+        let minDist = Infinity;
+        
+        food.forEach(f => {
+            const d = Math.abs(f.x - head.x) + Math.abs(f.y - head.y);
+            if (d < minDist) {
+                minDist = d;
+                closest = f;
+            }
+        });
+        
+        // Calculate angle for arrow
+        const dx = closest.x - head.x;
+        const dy = closest.y - head.y;
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI); // Degrees
+        
+        return { closest, minDist, angle };
+    };
+
+    const appleInfo = getClosestAppleInfo();
 
     const finalWinnings = ((0.05 * internalScore * internalScore) + (0.55 * internalScore) + 0.4) * totalScoreMultiplier;
     const tabBtnClasses = (isActive: boolean) => `flex-1 p-2 rounded-t-lg font-bold cursor-pointer transition-colors ${isActive ? 'bg-green-500/20 text-white' : 'bg-black/20 text-gray-400 hover:bg-black/40'}`;
@@ -677,10 +730,48 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                     <span className="text-right">Score: <span className="font-bold text-yellow-400">{score}</span></span>
                 </div>
 
-                {/* Canvas Container */}
+                {/* Canvas Container & Overlays */}
                 <div className={`relative transition-transform duration-100 ${isDashingVisual ? 'scale-105' : 'scale-100'}`}>
                     <canvas ref={canvasRef} width={canvasSize} height={canvasSize} className={`bg-gray-900 rounded-lg border-2 border-green-700 shadow-lg ${isDashingVisual ? 'brightness-125' : ''}`} />
                     
+                    {/* Alerta Sutil (Corner Indicator) */}
+                    {subtleAlertLevel > 0 && appleInfo && !gameOver && (
+                        <div className="absolute top-2 right-2 w-10 h-10 flex items-center justify-center pointer-events-none animate-pulse">
+                            <span className="text-2xl drop-shadow-md">
+                                {appleInfo.closest.type === 'golden' ? '🍏' : '🍎'}
+                            </span>
+                            {subtleAlertLevel >= 2 && food.length > 1 && (
+                                <span className="absolute -bottom-1 -right-1 text-xs font-bold text-white bg-black/50 px-1 rounded">
+                                    +{food.length - 1}
+                                </span>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Alerta Alarmante (Center Arrow) */}
+                    {alarmingAlertLevel > 0 && appleInfo && !gameOver && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div 
+                                className="w-20 h-20 flex items-center justify-center opacity-60 transition-transform duration-200 ease-linear"
+                                style={{ transform: `rotate(${appleInfo.angle}deg)` }}
+                            >
+                                <span className="text-6xl text-red-500 drop-shadow-[0_0_10px_rgba(255,0,0,0.8)] animate-pulse">
+                                    ➜
+                                </span>
+                            </div>
+                            {alarmingAlertLevel >= 2 && (
+                                <div className="absolute mt-16 bg-black/70 px-2 py-1 rounded text-xs font-bold text-white">
+                                    {appleInfo.minDist}m
+                                    {alarmingAlertLevel >= 3 && (
+                                        <span className={appleInfo.closest.type === 'golden' ? 'text-yellow-400' : 'text-red-400'}>
+                                            {appleInfo.closest.type === 'golden' ? ' (OURO)' : ' (N)'}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Slow Mo Visual Overlay */}
                     {slowMoActive && (
                         <div className="absolute inset-0 rounded-lg pointer-events-none border-4 border-blue-400 animate-pulse shadow-[inset_0_0_50px_rgba(59,130,246,0.5)] flex items-center justify-center">
@@ -691,27 +782,48 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
 
                 {/* Dash Cooldown Indicator */}
                 {hasDashSkill && (
-                    <div className="w-full max-w-xs h-2 bg-gray-700 rounded-full overflow-hidden mt-1">
-                        <div 
-                            className={`h-full transition-all duration-100 ${dashCooldownTimer > 0 ? 'bg-red-500' : 'bg-blue-400'}`}
-                            style={{ width: `${Math.max(0, (1 - dashCooldownTimer / DASH_COOLDOWN) * 100)}%` }}
-                        />
+                    <div className="w-full max-w-xs mt-1">
+                        <div className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-400">
+                                {dashCooldownTimer > 0 ? 'Recarregando...' : 'DASH PRONTO!'}
+                            </span>
+                            <span className={dashCooldownTimer > 0 ? 'text-red-400' : 'text-blue-400 font-bold animate-pulse'}>
+                                {dashCooldownTimer > 0 
+                                    ? `${(dashCooldownTimer / 1000).toFixed(1)}s` 
+                                    : '⚡ Toque 2x'}
+                            </span>
+                        </div>
+                        <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <div 
+                                className={`h-full transition-all duration-100 ${
+                                    dashCooldownTimer > 0 
+                                        ? 'bg-gradient-to-r from-red-600 to-red-400' 
+                                        : 'bg-gradient-to-r from-blue-500 to-cyan-400 animate-pulse'
+                                }`}
+                                style={{ 
+                                    width: `${Math.max(0, (1 - dashCooldownTimer / DASH_COOLDOWN) * 100)}%` 
+                                }}
+                            />
+                        </div>
                     </div>
                 )}
 
-                {/* Controls */}
-                <div className="w-full max-w-[180px] aspect-square grid grid-cols-3 grid-rows-3 gap-1 mt-2">
-                    <div className="col-start-2 row-start-1">
-                        <button onMouseDown={(e) => { e.preventDefault(); changeDirection('UP'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('UP'); }} className={controlBtnClasses} disabled={gameOver}>▲</button>
-                    </div>
-                    <div className="col-start-1 row-start-2">
-                        <button onMouseDown={(e) => { e.preventDefault(); changeDirection('LEFT'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('LEFT'); }} className={controlBtnClasses} disabled={gameOver}>◀</button>
-                    </div>
-                    <div className="col-start-3 row-start-2">
-                        <button onMouseDown={(e) => { e.preventDefault(); changeDirection('RIGHT'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('RIGHT'); }} className={controlBtnClasses} disabled={gameOver}>▶</button>
-                    </div>
-                    <div className="col-start-2 row-start-3">
-                        <button onMouseDown={(e) => { e.preventDefault(); changeDirection('DOWN'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('DOWN'); }} className={controlBtnClasses} disabled={gameOver}>▼</button>
+                {/* Controls Area */}
+                <div className="flex items-center justify-center gap-4 mt-2">
+                    {/* D-PAD */}
+                    <div className="w-full max-w-[180px] aspect-square grid grid-cols-3 grid-rows-3 gap-1">
+                        <div className="col-start-2 row-start-1">
+                            <button onMouseDown={(e) => { e.preventDefault(); changeDirection('UP'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('UP'); }} className={controlBtnClasses} disabled={gameOver}>▲</button>
+                        </div>
+                        <div className="col-start-1 row-start-2">
+                            <button onMouseDown={(e) => { e.preventDefault(); changeDirection('LEFT'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('LEFT'); }} className={controlBtnClasses} disabled={gameOver}>◀</button>
+                        </div>
+                        <div className="col-start-3 row-start-2">
+                            <button onMouseDown={(e) => { e.preventDefault(); changeDirection('RIGHT'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('RIGHT'); }} className={controlBtnClasses} disabled={gameOver}>▶</button>
+                        </div>
+                        <div className="col-start-2 row-start-3">
+                            <button onMouseDown={(e) => { e.preventDefault(); changeDirection('DOWN'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('DOWN'); }} className={controlBtnClasses} disabled={gameOver}>▼</button>
+                        </div>
                     </div>
                 </div>
 

@@ -86,7 +86,10 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     efeitoPorNivel: 1,
     crescimento: 1, // Not used
     maxLevel: 3,
-    description: (level) => `Permite bater na parede ${level} vez(es). As cargas são restauradas após coletar 10 maçãs.`,
+    description: (level) => {
+        const recharge = level >= 3 ? 15 : level === 2 ? 12 : 10;
+        return `Permite bater na parede ${level} vez(es). As cargas são restauradas após coletar ${recharge} maçãs.`;
+    },
     costs: [1000, 10000, 50000],
   },
 
@@ -122,6 +125,54 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     crescimento: 1.45,
     maxLevel: 5,
     description: (level) => `Chance de gerar maçãs extras. Nv ${level}: +1(${(level*10).toFixed(2)}%), +2(${(level*2.5).toFixed(2)}%), +3(${(level*0.62).toFixed(2)}%), +4(${(level*0.16).toFixed(2)}%), +5(${(level*0.04).toFixed(2)}%)`
+  },
+  subtleAlert: {
+    id: 'subtleAlert',
+    nome: 'Alerta Sutil',
+    tipo: 'especial',
+    custoInicial: 0,
+    maxLevel: 3,
+    costs: [800, 3500, 12000],
+    description: (level) => {
+      const effects = [
+        'Mostra 1 maçã mais próxima no canto',
+        'Mostra 2 maçãs mais próximas',
+        'Mostra todas as maçãs na barra superior'
+      ];
+      return effects[level - 1];
+    }
+  },
+  alarmingAlert: {
+    id: 'alarmingAlert',
+    nome: 'Alerta Alarmante',
+    tipo: 'especial',
+    custoInicial: 0,
+    maxLevel: 3,
+    costs: [1200, 5000, 15000],
+    description: (level) => {
+      const effects = [
+        'Seta grande no centro aponta maçã mais próxima',
+        'Seta + distância em células',
+        'Seta + distância + tipo da maçã'
+      ];
+      return effects[level - 1];
+    }
+  },
+  pushApple: {
+    id: 'pushApple',
+    nome: 'Empurra Maçã',
+    tipo: 'especial',
+    custoInicial: 0,
+    maxLevel: 3,
+    costs: [2000, 8000, 25000],
+    description: (level) => {
+      const effects = [
+        'Habilidade Ativa: Empurra maçã próxima para local mais seguro.',
+        'Recarga reduzida.',
+        'Recarga mínima.'
+      ];
+      return effects[level - 1];
+    }
   }
 };
 
@@ -129,11 +180,11 @@ export const calculateSnakeUpgradeCost = (upgrade: SnakeUpgrade, level: number):
   if (upgrade.costs && level < upgrade.costs.length) {
     return upgrade.costs[level];
   }
-  return Math.floor(upgrade.custoInicial * Math.pow(upgrade.crescimento, level));
+  return Math.floor(upgrade.custoInicial * Math.pow(upgrade.crescimento || 1.1, level));
 };
 
 export const SNAKE_UPGRADE_LAYOUT: Record<SnakeUpgradeType, SnakeUpgradeId[]> = {
     pontuacao: ['basicMultiplier', 'comboMaster', 'premiumMultiplier'],
     gameplay: ['slowSpeed', 'smallerStart', 'dashSkill', 'secondChance', 'paralamas'],
-    especial: ['goldenApple', 'turboCash', 'frenzy']
+    especial: ['goldenApple', 'turboCash', 'frenzy', 'subtleAlert', 'alarmingAlert', 'pushApple']
 };

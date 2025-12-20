@@ -153,7 +153,7 @@ export interface ActiveScratchCard {
 }
 
 // --- Snake Minigame Upgrade Types ---
-export type SnakeUpgradeId = 'basicMultiplier' | 'comboMaster' | 'premiumMultiplier' | 'slowSpeed' | 'smallerStart' | 'dashSkill' | 'secondChance' | 'goldenApple' | 'turboCash' | 'frenzy' | 'paralamas';
+export type SnakeUpgradeId = 'basicMultiplier' | 'comboMaster' | 'premiumMultiplier' | 'slowSpeed' | 'smallerStart' | 'dashSkill' | 'secondChance' | 'goldenApple' | 'turboCash' | 'frenzy' | 'paralamas' | 'subtleAlert' | 'alarmingAlert' | 'pushApple';
 export type SnakeUpgradeType = 'pontuacao' | 'gameplay' | 'especial';
 
 export interface SnakeUpgrade {
@@ -161,8 +161,8 @@ export interface SnakeUpgrade {
     nome: string;
     tipo: SnakeUpgradeType;
     custoInicial: number;
-    efeitoPorNivel: number;
-    crescimento: number;
+    efeitoPorNivel?: number; // Optional now since some use custom logic
+    crescimento?: number; // Optional
     maxLevel: number;
     description: (level: number) => string;
     efeitoMaximo?: number;
