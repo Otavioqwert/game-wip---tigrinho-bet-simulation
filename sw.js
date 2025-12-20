@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'tigrinho-idle-v1';
+const CACHE_NAME = 'tigrinho-idle-v1.3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -7,13 +7,13 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting(); // Força o SW a ativar imediatamente
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
         return cache.addAll(urlsToCache);
       })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -28,27 +28,24 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  self.clients.claim();
+  self.clients.claim(); // Controla a página imediatamente
 });
 
 self.addEventListener('fetch', (event) => {
+  // Estratégia Stale-While-Revalidate para arquivos estáticos
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Se a rede responder, atualiza o cache (Estratégia Network First)
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
-        }
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME)
-          .then((cache) => {
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Cache apenas respostas válidas e do mesmo domínio
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
           });
-        return response;
-      })
-      .catch(() => {
-        // Se a rede falhar (offline), tenta o cache
-        return caches.match(event.request);
-      })
+        }
+        return networkResponse;
+      });
+      return cachedResponse || fetchPromise;
+    })
   );
 });
