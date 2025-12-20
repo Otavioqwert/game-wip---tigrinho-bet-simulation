@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { SnakeUpgradeId } from '../../../types';
 import SnakeUpgrades from './SnakeUpgrades';
 import { SNAKE_UPGRADES } from '../../../constants/snakeUpgrades';
+import VirtualJoystick from './VirtualJoystick';
 
 const GRID_SIZE = 20;
 const BASE_GAME_SPEED = 150; // ms
@@ -62,6 +63,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
     const [lives, setLives] = useState(snakeGameSettings.lives);
     const [gameOverTab, setGameOverTab] = useState('result');
     const [canvasSize, setCanvasSize] = useState(400);
+    const [isMobile, setIsMobile] = useState(false);
     const [paralamasChargesUsed, setParalamasChargesUsed] = useState(0);
     const [applesSinceLastReset, setApplesSinceLastReset] = useState(0);
 
@@ -86,7 +88,6 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
     const pushAppleLevel = snakeUpgrades['pushApple'] || 0;
 
     // --- COMBO SYSTEM STATE (Synced with Ref for Game Loop) ---
-    // Added 'pulse', 'shake', 'isActive', 'count' to state to drive React animations
     const [uiComboState, setUiComboState] = useState({ 
         multiplier: 1, 
         count: 0,
@@ -121,9 +122,22 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
 
     useEffect(() => {
         const handleResize = () => {
-            const verticalPadding = 320; 
-            const horizontalPadding = 40;
-            const size = Math.min(window.innerWidth - horizontalPadding, window.innerHeight - verticalPadding);
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            // Check mobile status based on width
+            const mobile = width < 768;
+            setIsMobile(mobile);
+
+            // Responsive padding
+            const horizontalPadding = mobile ? 20 : 40;
+            // Mobile needs more vertical space for joystick (bottom) and UI (top)
+            const verticalPadding = mobile ? 380 : 320; 
+            
+            const availableWidth = width - horizontalPadding;
+            const availableHeight = height - verticalPadding;
+            
+            const size = Math.min(availableWidth, availableHeight);
             setCanvasSize(Math.max(200, size));
         };
         handleResize();
@@ -940,23 +954,29 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                     </div>
                 )}
 
-                {/* Controls Area */}
-                <div className="flex items-center justify-center gap-4 mt-2">
-                    {/* D-PAD */}
-                    <div className="w-full max-w-[180px] aspect-square grid grid-cols-3 grid-rows-3 gap-1">
-                        <div className="col-start-2 row-start-1">
-                            <button onMouseDown={(e) => { e.preventDefault(); changeDirection('UP'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('UP'); }} className={controlBtnClasses} disabled={gameOver}>▲</button>
+                {/* Controls Area: Responsive Switch */}
+                <div className="flex items-center justify-center gap-4 mt-2 w-full">
+                    {isMobile ? (
+                        <div className="flex justify-center pb-2">
+                            <VirtualJoystick onDirectionChange={changeDirection} size={140} />
                         </div>
-                        <div className="col-start-1 row-start-2">
-                            <button onMouseDown={(e) => { e.preventDefault(); changeDirection('LEFT'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('LEFT'); }} className={controlBtnClasses} disabled={gameOver}>◀</button>
+                    ) : (
+                        /* D-PAD (Desktop Only) */
+                        <div className="w-full max-w-[180px] aspect-square grid grid-cols-3 grid-rows-3 gap-1">
+                            <div className="col-start-2 row-start-1">
+                                <button onMouseDown={(e) => { e.preventDefault(); changeDirection('UP'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('UP'); }} className={controlBtnClasses} disabled={gameOver}>▲</button>
+                            </div>
+                            <div className="col-start-1 row-start-2">
+                                <button onMouseDown={(e) => { e.preventDefault(); changeDirection('LEFT'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('LEFT'); }} className={controlBtnClasses} disabled={gameOver}>◀</button>
+                            </div>
+                            <div className="col-start-3 row-start-2">
+                                <button onMouseDown={(e) => { e.preventDefault(); changeDirection('RIGHT'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('RIGHT'); }} className={controlBtnClasses} disabled={gameOver}>▶</button>
+                            </div>
+                            <div className="col-start-2 row-start-3">
+                                <button onMouseDown={(e) => { e.preventDefault(); changeDirection('DOWN'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('DOWN'); }} className={controlBtnClasses} disabled={gameOver}>▼</button>
+                            </div>
                         </div>
-                        <div className="col-start-3 row-start-2">
-                            <button onMouseDown={(e) => { e.preventDefault(); changeDirection('RIGHT'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('RIGHT'); }} className={controlBtnClasses} disabled={gameOver}>▶</button>
-                        </div>
-                        <div className="col-start-2 row-start-3">
-                            <button onMouseDown={(e) => { e.preventDefault(); changeDirection('DOWN'); }} onTouchStart={(e) => { e.preventDefault(); changeDirection('DOWN'); }} className={controlBtnClasses} disabled={gameOver}>▼</button>
-                        </div>
-                    </div>
+                    )}
                 </div>
 
                 {gameOver && (
