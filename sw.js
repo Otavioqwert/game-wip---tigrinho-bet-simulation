@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'tigrinho-idle-v1.4';
+const CACHE_NAME = 'tigrinho-idle-v1.5-fix';
 const urlsToCache = [
   '/',
   '/index.html',
