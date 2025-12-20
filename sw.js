@@ -1,13 +1,14 @@
 
-const CACHE_NAME = 'tigrinho-idle-v1.3';
+const CACHE_NAME = 'tigrinho-idle-v1.4';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/icon.svg'
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Força o SW a ativar imediatamente
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -28,15 +29,13 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  self.clients.claim(); // Controla a página imediatamente
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Estratégia Stale-While-Revalidate para arquivos estáticos
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Cache apenas respostas válidas e do mesmo domínio
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {

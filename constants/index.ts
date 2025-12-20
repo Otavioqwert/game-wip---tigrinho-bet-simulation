@@ -2,7 +2,7 @@
 import type { ScratchCardTierV3, CookieRecipe, BakeryProduct, BakeryProductId } from '../types';
 export * from './economy';
 
-export const APP_VERSION = "v1.3 (Clone + PWA)"; // Versão atualizada
+export const APP_VERSION = "v1.4 (Final PWA)";
 
 export const MID_SELL: Record<string, number> = {'🍭':0.01,'🍦':0.02,'🍧':0.03};
 export const MID_BASE: Record<string, number> = {'🍭':0.2,'🍦':0.3,'🍧':0.4};
