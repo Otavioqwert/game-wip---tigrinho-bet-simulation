@@ -20,6 +20,13 @@
         will-change: transform, filter;
     }
 
+    /* Previne seleção de texto no celular (app feel) */
+    body {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
     /* Animação de Giro Contínuo (Blur Vertical) */
     @keyframes motion-blur-spin {
       0% {
@@ -29,7 +36,7 @@
       }
       50% {
         transform: translateY(10%) scaleY(1.2);
-        filter: blur(4px); /* Blur aumentado para suavizar a troca de texto */
+        filter: blur(4px);
         opacity: 0.6;
       }
       100% {
@@ -84,10 +91,12 @@
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
     "react-dom": "https://esm.sh/react-dom@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
