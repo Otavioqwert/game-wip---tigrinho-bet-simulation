@@ -2,8 +2,7 @@
 import React, { useState } from 'react';
 import { 
     SCRATCH_CARD_TIERS_V3, 
-    LOTERICA_INJECTION_COSTS, 
-    LOTERICA_INJECTION_REDUCTIONS,
+    LOTERICA_INJECTION_CONFIG_V2,
     SCRATCH_CARD_UNLOCK_THRESHOLDS,
     SCRATCH_PRIZE_TIERS
 } from '../../constants';
@@ -91,8 +90,10 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                     // Injection Cooldown Check
                     const injectionCd = lotericaState.injectionCooldownRemaining[index] || 0;
 
-                    // Luck Factor: +8% chance per tier level
-                    const tierLuckFactor = 1 + (index * 0.08);
+                    // Luck Factor calculation based on updated formula
+                    const linear = index * 0.15;
+                    const scaled = Math.pow(index / 9, 0.7) * 0.40;
+                    const tierLuckFactor = 1 + linear + scaled;
                     
                     // Slot Base Value for Display - FIX: Use BASE Cost, not currentCost
                     const baseSlotValue = tier.cost / tier.slots;
@@ -240,7 +241,10 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                                 onClick={() => injetarLoterica(index)}
                                                 className="text-[10px] font-black text-purple-300 hover:text-purple-100 transition-colors uppercase underline underline-offset-2"
                                             >
-                                                Injetar Capital (-{(LOTERICA_INJECTION_REDUCTIONS[index] * 100).toFixed(0)}% inflação)
+                                                💉 Injetar (-{(LOTERICA_INJECTION_CONFIG_V2[index].reduction * 100).toFixed(0)}% inflação)
+                                                <span className="block text-[9px] text-gray-400 no-underline">
+                                                    ${(currentCost * LOTERICA_INJECTION_CONFIG_V2[index].costMultiplier).toLocaleString()}
+                                                </span>
                                             </button>
                                         )}
                                     </div>

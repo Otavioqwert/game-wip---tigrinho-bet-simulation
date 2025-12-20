@@ -146,8 +146,36 @@ export const SCRATCH_PRIZE_TIERS = [
     { id: 'migalha', name: 'Migalha', mult: 1.5, prob: 0.075, minTier: 0, color: 'text-slate-600' }
 ];
 
-export const SCRATCH_CARD_INFLATION_V3 = [1.50, 4.00, 12.00, 45.00, 120.00, 450.00, 2000.00, 7500.00, 25000.00, 75000.00];
+// Sistema de Inflação Híbrido V2
+// Fórmula: novoPreço = (preçoAtual × (1 + percentPerPurchase)) + (baseCost × flatPerPurchase)
+export const SCRATCH_INFLATION_CONFIG_V2 = [
+    { percentPerPurchase: 0.05, flatPerPurchase: 0,    exponent: 1.0 },  // Tier 0: Papelão
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.03, exponent: 1.0 },  // Tier 1: Bronze
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.06, exponent: 1.0 },  // Tier 2: Prata
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.09, exponent: 1.0 },  // Tier 3: Ouro
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.12, exponent: 1.0 },  // Tier 4: Platina
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.15, exponent: 1.0 },  // Tier 5: Diamante
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.18, exponent: 1.0 },  // Tier 6: Titânio
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.21, exponent: 1.0 },  // Tier 7: Obsidiana
+    { percentPerPurchase: 0.07, flatPerPurchase: 0.24, exponent: 1.0 },  // Tier 8: Celestial (+0.02)
+    { percentPerPurchase: 0.08, flatPerPurchase: 0.27, exponent: 1.0 }   // Tier 9: Divino (+0.03)
+];
+
 export const SCRATCH_CARD_UNLOCK_THRESHOLDS = [0, 50, 250, 1000, 5000, 20000, 100000, 500000, 2500000, 10000000];
-export const LOTERICA_INJECTION_COOLDOWN = 14400000;
-export const LOTERICA_INJECTION_COSTS = [3, 3, 4, 5, 6, 7, 8, 9, 10, 12];
-export const LOTERICA_INJECTION_REDUCTIONS = [0.60, 0.60, 0.55, 0.55, 0.55, 0.55, 0.60, 0.60, 0.60, 0.65];
+
+// Sistema de Injeção Lotérica V2
+// costMultiplier: multiplicador do custo atual da raspadinha
+// reduction: % de compras que serão removidas (0.80 = remove 80%)
+// cooldown: tempo em ms até poder injetar novamente
+export const LOTERICA_INJECTION_CONFIG_V2 = [
+    { costMultiplier: 0.5, reduction: 0.80, cooldown: 3600000  },  // Tier 0: 1h cooldown
+    { costMultiplier: 0.6, reduction: 0.78, cooldown: 5400000  },  // Tier 1: 1.5h
+    { costMultiplier: 0.8, reduction: 0.75, cooldown: 7200000  },  // Tier 2: 2h
+    { costMultiplier: 1.0, reduction: 0.72, cooldown: 10800000 },  // Tier 3: 3h
+    { costMultiplier: 1.3, reduction: 0.70, cooldown: 10800000 },  // Tier 4: 3h
+    { costMultiplier: 1.6, reduction: 0.68, cooldown: 14400000 },  // Tier 5: 4h
+    { costMultiplier: 2.0, reduction: 0.65, cooldown: 14400000 },  // Tier 6: 4h
+    { costMultiplier: 2.5, reduction: 0.63, cooldown: 14400000 },  // Tier 7: 4h
+    { costMultiplier: 3.0, reduction: 0.60, cooldown: 14400000 },  // Tier 8: 4h
+    { costMultiplier: 3.5, reduction: 0.58, cooldown: 14400000 }   // Tier 9: 4h
+];
