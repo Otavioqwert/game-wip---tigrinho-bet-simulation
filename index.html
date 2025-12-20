@@ -1,9 +1,14 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a0e0e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Tigrinho">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" href="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f42f.png">
   <title>Tigrinho 3x3 Otimizado 2025 - React Version</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -75,5 +80,18 @@
 </head>
 <body>
   <div id="root"></div>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('SW registrado com sucesso:', registration.scope);
+          })
+          .catch(err => {
+            console.log('Falha ao registrar SW:', err);
+          });
+      });
+    }
+  </script>
 </body>
 </html>

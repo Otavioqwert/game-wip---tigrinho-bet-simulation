@@ -86,24 +86,36 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
     const pushAppleLevel = snakeUpgrades['pushApple'] || 0;
 
     // --- COMBO SYSTEM STATE (Synced with Ref for Game Loop) ---
-    // Added 'pulse' and 'shake' to state to drive React animations
-    const [uiComboState, setUiComboState] = useState({ multiplier: 1, timer: 30000, maxTime: 30000, pulse: 0, shake: 0 });
+    // Added 'pulse', 'shake', 'isActive', 'count' to state to drive React animations
+    const [uiComboState, setUiComboState] = useState({ 
+        multiplier: 1, 
+        count: 0,
+        timer: 0, 
+        maxTime: 30000, 
+        pulse: 0, 
+        shake: 0, 
+        isActive: false 
+    });
     
     // Refs for animation and game state
     const animationFrameRef = useRef<number>(0);
     const lastLogicUpdateTimeRef = useRef(0);
     const lastFrameTimeRef = useRef(0);
-    const directionRef = useRef<Direction>('RIGHT');
+    
+    // Direction Refs
+    const directionRef = useRef<Direction>('RIGHT'); // Intended direction
+    const lastMoveDirRef = useRef<Direction>('RIGHT'); // Actually executed direction (Physics)
+    
     const prevSnakeRef = useRef<SnakeSegment[]>([]);
     
     // Game Logic Refs
     const comboRef = useRef({
-        multiplier: 1.0,
-        count: 0,
-        timer: 30000, // ms
-        maxTime: 30000, // ms
-        active: false,
-        pulse: 0 
+        multiplier: 1.0,      // Multiplicador atual (1.0 = sem combo)
+        count: 0,             // Quantas maçãs no combo atual
+        timer: 0,             // Tempo restante (ms)
+        maxTime: 30000,       // Tempo máximo atual (ms)
+        isActive: false,      // Combo está ativo? (visual)
+        pulse: 0              // Animação de pulso (0-1)
     });
     const floatingTextsRef = useRef<FloatingText[]>([]);
 
@@ -126,43 +138,78 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
         const basePoints = 1;
         const foodMult = eatenFood.type === 'golden' ? 5 : 1;
         
+        // --- 1. UPGRADE BONUS ---
         const upgradeLevel = snakeUpgrades['comboMaster'] || 0;
         const upgradeBoost = upgradeLevel * 0.0025;
         const increment = 0.01 + upgradeBoost;
 
-        comboRef.current.multiplier += increment;
-        comboRef.current.count += 1;
+        // --- 2. INCREMENTAR MULTIPLIER ---
+        const isFirstApple = comboRef.current.count === 0;
         
-        // --- LOGICA DE TIMER (FIXED 10% REDUCTION) ---
-        const currentMax = comboRef.current.maxTime;
-        const newMax = Math.max(1500, currentMax * 0.90);
+        if (isFirstApple) {
+            // Primeira maçã: Iniciar combo
+            comboRef.current.multiplier = 1.0 + increment;
+            comboRef.current.count = 1;
+            comboRef.current.maxTime = 30000;
+            comboRef.current.timer = 30000;
+            comboRef.current.isActive = true;
+        } else {
+            // Maçãs subsequentes: Incrementar e reduzir timer
+            comboRef.current.multiplier += increment;
+            comboRef.current.count += 1;
+            
+            // --- 3. CURVA PROGRESSIVA DO TIMER ---
+            const currentMax = comboRef.current.maxTime;
+            let newMax = currentMax;
+
+            if (currentMax > 4000) {
+                // Fase inicial (30s → 4s): Redução agressiva de 10%
+                newMax = currentMax * 0.90;
+            } else if (currentMax > 2000) {
+                // Fase intermediária (4s → 2s): Redução moderada de 5%
+                newMax = currentMax * 0.95;
+            } else {
+                // Fase crítica (< 2s): Redução mínima de 50ms
+                // Piso absoluto em 1.2s para permitir combo longo
+                newMax = Math.max(1200, currentMax - 50);
+            }
+            
+            comboRef.current.maxTime = newMax;
+            comboRef.current.timer = newMax;
+        }
         
-        comboRef.current.maxTime = newMax;
-        comboRef.current.timer = newMax; // Reseta o timer pro novo máximo (que é menor)
         comboRef.current.pulse = 1.0;
 
-        const pointsGained = basePoints * foodMult * comboRef.current.multiplier;
+        // --- 4. CALCULAR SCORE ---
+        // Garante que multiplier sempre >= 1.0 (nunca nerfa)
+        const effectiveMultiplier = Math.max(1.0, comboRef.current.multiplier);
+        const pointsGained = basePoints * foodMult * effectiveMultiplier;
 
+        // --- 5. FLOATING TEXT ---
         floatingTextsRef.current.push({
             id: Date.now() + Math.random(),
             x: headX * CELL_SIZE,
             y: headY * CELL_SIZE,
             text: `+${(increment * 100).toFixed(2)}%`,
-            subText: `${(newMax/1000).toFixed(1)}s`, // Show new time limit in floating text too
+            subText: `${comboRef.current.count}x | ${(comboRef.current.maxTime / 1000).toFixed(1)}s`,
             life: 1.0,
             color: eatenFood.type === 'golden' ? '#FBBF24' : '#ffffff'
         });
         
+        // --- 6. ATUALIZAR ESTADOS ---
         setScore(s => s + 1);
         setInternalScore(s => s + pointsGained);
         setApplesSinceLastReset(a => a + 1);
         
-        // Trigger UI Shake & Force Update for Timer Bar Snap
+        // Trigger UI update com shake
         setUiComboState(prev => ({ 
             ...prev, 
-            shake: Math.random(),
-            timer: newMax, // Snap visually
-            maxTime: newMax
+            multiplier: comboRef.current.multiplier,
+            count: comboRef.current.count,
+            timer: comboRef.current.timer,
+            maxTime: comboRef.current.maxTime,
+            isActive: comboRef.current.isActive,
+            shake: Math.random()
         }));
     }, [CELL_SIZE, snakeUpgrades]);
 
@@ -257,6 +304,9 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             case 'RIGHT': dx = 1; break;
         }
 
+        // Update Physics Ref to prevent reversing immediately after dash
+        lastMoveDirRef.current = dir;
+
         // 5. PROCESSAR TRAJETÓRIA E COMIDA
         setSnake(currentSnake => {
             const head = currentSnake[0];
@@ -284,16 +334,11 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             }
 
             // Identificar maçãs no caminho (usando o estado atual de 'food')
-            // Nota: Como 'setFood' é assíncrono, calculamos aqui para usar no crescimento
             const eatenIndices: number[] = [];
             pathTraveled.forEach(pos => {
-                // Check food prop direct from closure might be stale, but collision logic 
-                // in functional update below handles visual removal. 
-                // Here we need to know HOW MANY to grow.
                 food.forEach((f, idx) => {
                     if (f.x === pos.x && f.y === pos.y) {
                         eatenIndices.push(idx);
-                        // Trigger score update immediately
                         handleEatApple(f, pos.x, pos.y); 
                     }
                 });
@@ -304,21 +349,15 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                 setFood(prevFood => prevFood.filter((_, i) => !eatenIndices.includes(i)));
             }
 
-            // CONSTRUIR NOVA COBRA (Correção do Bug de Repartir)
-            // O novo corpo é: [Caminho Reverso] + [Corpo Antigo]
-            // Caminho reverso: Se moveu A->B->C, o novo topo é C, depois B, depois A.
+            // CONSTRUIR NOVA COBRA
             const newHeadAndNeck = [...pathTraveled].reverse();
             const fullNewBody = [...newHeadAndNeck, ...currentSnake];
             
             // Calcular novo comprimento
-            // Tamanho original + Maçãs comidas
             const newLength = currentSnake.length + eatenIndices.length;
-            
-            // Cortar o excesso da cauda para manter o tamanho correto
             const finalSnake = fullNewBody.slice(0, newLength);
             
             setDashPath(pathTraveled); // Rastro visual
-            
             return finalSnake;
         });
         
@@ -334,13 +373,20 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
         if (gameOver) return;
         
         const now = Date.now();
-        const currentDir = directionRef.current;
+        const oppositeDirs: Record<Direction, Direction> = { 'UP': 'DOWN', 'DOWN': 'UP', 'LEFT': 'RIGHT', 'RIGHT': 'LEFT' };
         
+        // --- VALIDATION AGAINST LAST *PHYSICAL* MOVE ---
+        // Previne colisão contra o próprio pescoço em inputs rápidos
+        // Se a cobra moveu-se para a DIREITA no último frame, e o jogador aperta ESQUERDA, ignoramos.
+        // Mesmo que o jogador tenha apertado CIMA 1ms antes, se o frame ainda não atualizou, o lastMove ainda é DIREITA.
+        if (newDir === oppositeDirs[lastMoveDirRef.current]) {
+            return;
+        }
+
         // Verificar duplo toque para DASH
         if (hasDashSkill) {
             if (lastKeyPressRef.current?.dir === newDir) {
                 const timeDiff = now - lastKeyPressRef.current.time;
-                
                 // Janela de duplo toque: entre 50ms e 400ms
                 if (timeDiff >= 50 && timeDiff <= DASH_DOUBLE_TAP_WINDOW) {
                     performDash(newDir);
@@ -353,10 +399,8 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
         // Atualizar último toque
         lastKeyPressRef.current = { dir: newDir, time: now };
 
-        const oppositeDirs: Record<Direction, Direction> = { 'UP': 'DOWN', 'DOWN': 'UP', 'LEFT': 'RIGHT', 'RIGHT': 'LEFT' };
-        
-        // Se a nova direção for válida
-        if (newDir !== oppositeDirs[currentDir]) {
+        // Atualizar direção intencional (se não for oposta à atual intencional - check extra leve)
+        if (newDir !== oppositeDirs[directionRef.current]) {
             directionRef.current = newDir;
 
             // --- TRIGGER DE RESPOSTA IMEDIATA ---
@@ -365,14 +409,11 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             // 1. Slow Motion Skip
             if (slowMoActive) {
                 setSlowMoActive(false);
-                if (dashReactionTimeoutRef.current) {
-                    clearTimeout(dashReactionTimeoutRef.current);
-                }
+                if (dashReactionTimeoutRef.current) clearTimeout(dashReactionTimeoutRef.current);
                 shouldUpdateImmediately = true;
             }
 
             // 2. Wall Grace Period Rescue
-            // Se estamos travados na parede e o jogador virou para uma direção segura, força o update já
             if (wallCollisionGraceRef.current) {
                 shouldUpdateImmediately = true;
             }
@@ -407,31 +448,33 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
         const deltaTime = timestamp - lastFrameTimeRef.current;
         lastFrameTimeRef.current = timestamp;
 
-        // --- Timer Logic ---
-        if (comboRef.current.timer > 0) {
+        // --- COMBO TIMER LOGIC ---
+        if (comboRef.current.isActive && comboRef.current.timer > 0) {
             comboRef.current.timer -= deltaTime;
             if (comboRef.current.timer <= 0) {
-                // RESET DO COMBO
                 comboRef.current.timer = 0;
                 comboRef.current.multiplier = 1.0;
                 comboRef.current.count = 0;
-                comboRef.current.maxTime = 30000; // Reset to 30s default
+                comboRef.current.maxTime = 30000;
+                comboRef.current.isActive = false;
+                comboRef.current.pulse = 0;
             }
         }
-        
+
         if (comboRef.current.pulse > 0) {
             comboRef.current.pulse = Math.max(0, comboRef.current.pulse - deltaTime * 0.005);
         }
-        
+
         setUiComboState(prev => ({
             ...prev,
             multiplier: comboRef.current.multiplier,
+            count: comboRef.current.count,
             timer: comboRef.current.timer,
-            maxTime: comboRef.current.maxTime, // IMPORTANT: Ensure maxTime visual is synced
-            pulse: comboRef.current.pulse
+            maxTime: comboRef.current.maxTime,
+            pulse: comboRef.current.pulse,
+            isActive: comboRef.current.isActive
         }));
 
-        // Dynamic Speed: Base * Modifiers * SlowMo
         let currentSpeed = BASE_GAME_SPEED * snakeGameSettings.speedModifier;
         if (slowMoActive) currentSpeed *= 6; 
 
@@ -441,6 +484,9 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
         if (timeSinceLastUpdate > currentSpeed) {
             lastLogicUpdateTimeRef.current = timestamp;
             prevSnakeRef.current = snake;
+            
+            // CRITICAL FIX: Sync physics direction with intended direction at the moment of move
+            lastMoveDirRef.current = directionRef.current;
 
             setSnake(prevSnake => {
                 if (prevSnake.length === 0) {
@@ -452,6 +498,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                 const newHead = { ...head };
 
                 let dx = 0, dy = 0;
+                // Use directionRef.current (Intended) which is now synced to lastMoveDirRef
                 switch (directionRef.current) {
                     case 'UP': dy = -1; break;
                     case 'DOWN': dy = 1; break;
@@ -467,7 +514,6 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                 if (isWallCollision) {
                     const now = performance.now();
                     
-                    // 1. PRIORIDADE: COYOTE TIME (Grace Period)
                     if (!wallCollisionGraceRef.current) {
                         wallCollisionGraceRef.current = now;
                         return prevSnake; 
@@ -477,7 +523,6 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                         }
                     }
 
-                    // 2. PRIORIDADE: PARALAMAS (Escudo)
                     if (availableCharges > 0) {
                         setParalamasChargesUsed(c => c + 1);
                         setApplesSinceLastReset(0);
@@ -488,7 +533,9 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                         else if (newHead.y >= GRID_SIZE) { newHead.y = GRID_SIZE - 3; newDirection = Math.random() < 0.5 ? 'LEFT' : 'RIGHT'; } 
                         else if (newHead.x < 0) { newHead.x = 2; newDirection = Math.random() < 0.5 ? 'UP' : 'DOWN'; } 
                         else { newHead.x = GRID_SIZE - 3; newDirection = Math.random() < 0.5 ? 'UP' : 'DOWN'; }
+                        
                         directionRef.current = newDirection;
+                        lastMoveDirRef.current = newDirection; // Sync on teleport
                         return prevSnake; 
                     }
                 } else {
@@ -503,6 +550,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                     if (lives > 1) {
                         setLives(l => l - 1);
                         directionRef.current = 'RIGHT';
+                        lastMoveDirRef.current = 'RIGHT';
                         wallCollisionGraceRef.current = null;
                         return getInitialSnake(snakeGameSettings.initialLength);
                     } else {
@@ -515,41 +563,8 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
 
                 if (eatenFoodIndex !== -1) {
                     const eatenFood = food[eatenFoodIndex];
-                    const basePoints = 1;
-                    const foodMult = eatenFood.type === 'golden' ? 5 : 1;
-                    
-                    const upgradeLevel = snakeUpgrades['comboMaster'] || 0;
-                    const upgradeBoost = upgradeLevel * 0.0025; 
-                    const increment = 0.01 + upgradeBoost;
-
-                    comboRef.current.multiplier += increment;
-                    comboRef.current.count += 1;
-                    
-                    // --- TIMER LOGIC FIX ---
-                    const currentMax = comboRef.current.maxTime;
-                    const newMax = Math.max(1500, currentMax * 0.90); // 10% reduction per apple
-                    
-                    comboRef.current.maxTime = newMax;
-                    comboRef.current.timer = newMax; 
-                    comboRef.current.pulse = 1.0;
-                    
-                    const pointsGained = basePoints * foodMult * comboRef.current.multiplier;
-
-                    // Floating Text
-                    floatingTextsRef.current.push({
-                        id: Date.now() + Math.random(),
-                        x: newHead.x * CELL_SIZE,
-                        y: newHead.y * CELL_SIZE,
-                        text: `+${(increment * 100).toFixed(2)}%`,
-                        subText: `${(newMax/1000).toFixed(1)}s`, 
-                        life: 1.0,
-                        color: eatenFood.type === 'golden' ? '#FBBF24' : '#ffffff'
-                    });
-
-                    setScore(s => s + 1);
-                    setInternalScore(s => s + pointsGained);
+                    handleEatApple(eatenFood, newHead.x, newHead.y);
                     setFood(f => f.filter((_, i) => i !== eatenFoodIndex));
-                    setApplesSinceLastReset(a => a + 1);
                 } else {
                     newSnake.pop();
                 }
@@ -594,7 +609,6 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
         const ctx = canvas?.getContext('2d');
         if (!ctx) return;
         
-        // 1. Draw Background
         ctx.fillStyle = '#1a202c'; 
         ctx.fillRect(0, 0, canvasSize, canvasSize);
         ctx.strokeStyle = '#2d3748';
@@ -606,7 +620,6 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
 
         const progress = Math.min(1, timeSinceLastUpdate / currentSpeed);
 
-        // 2. Draw Food
         food.forEach((f, idx) => {
             const appleX = f.x * CELL_SIZE + CELL_SIZE / 2;
             const appleY = f.y * CELL_SIZE + CELL_SIZE / 2;
@@ -614,7 +627,6 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             ctx.fillStyle = f.type === 'golden' ? '#FBBF24' : '#f56565';
             ctx.beginPath(); ctx.arc(appleX, appleY, radius, 0, Math.PI * 2); ctx.fill();
             
-            // Push Effect (Trail)
             if (idx === pushedAppleIndex) {
                 ctx.strokeStyle = 'white';
                 ctx.lineWidth = 2;
@@ -626,7 +638,6 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             }
         });
         
-        // 3. Draw Snake
         const snakeBodyGradient = ctx.createLinearGradient(0, 0, 0, canvasSize);
         if (slowMoActive) {
             snakeBodyGradient.addColorStop(0, '#00eaff');
@@ -663,7 +674,6 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             ctx.fill(); ctx.stroke();
         }
 
-        // Draw Dash Path Visualization (Ghost)
         if (dashPath.length > 0) {
             ctx.globalAlpha = 0.3;
             ctx.fillStyle = '#00eaff';
@@ -676,7 +686,6 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             ctx.globalAlpha = 1.0;
         }
 
-        // 4. Draw Floating Texts
         floatingTextsRef.current.forEach(ft => {
             ft.y -= 0.5 * (deltaTime / 16);
             ft.life -= 0.02 * (deltaTime / 16);
@@ -702,7 +711,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             ctx.globalAlpha = 1.0;
         });
 
-    }, [snake, food, gameOver, lives, canvasSize, CELL_SIZE, snakeGameSettings, paralamasChargesUsed, snakeUpgrades, slowMoActive, rechargeThreshold, pushedAppleIndex, pushAppleLevel, dashPath]);
+    }, [snake, food, gameOver, lives, canvasSize, CELL_SIZE, snakeGameSettings, paralamasChargesUsed, snakeUpgrades, slowMoActive, rechargeThreshold, pushedAppleIndex, pushAppleLevel, dashPath, handleEatApple]);
 
     useEffect(() => {
         prevSnakeRef.current = snake;
@@ -719,7 +728,6 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
 
     // --- RENDER OVERLAYS (ALERTS) ---
     
-    // Find closest apple logic for alerts
     const getClosestAppleInfo = () => {
         if (!food.length || !snake.length) return null;
         const head = snake[0];
@@ -734,10 +742,9 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
             }
         });
         
-        // Calculate angle for arrow
         const dx = closest.x - head.x;
         const dy = closest.y - head.y;
-        const angle = Math.atan2(dy, dx) * (180 / Math.PI); // Degrees
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI); 
         
         return { closest, minDist, angle };
     };
@@ -748,7 +755,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
     const tabBtnClasses = (isActive: boolean) => `flex-1 p-2 rounded-t-lg font-bold cursor-pointer transition-colors ${isActive ? 'bg-green-500/20 text-white' : 'bg-black/20 text-gray-400 hover:bg-black/40'}`;
     const controlBtnClasses = "w-full h-full bg-gray-700 text-white font-bold py-2 rounded-lg hover:bg-gray-600 active:bg-green-500 active:scale-95 transition-all disabled:opacity-50 disabled:active:bg-gray-700 disabled:active:scale-100";
 
-    const isComboActive = uiComboState.multiplier >= 1.5;
+    const isComboActive = uiComboState.multiplier >= 1.01;
 
     return (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -772,7 +779,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                     <span className="text-right">Score: <span className="font-bold text-yellow-400">{score}</span></span>
                 </div>
 
-                {/* Paralamas Indicator (ESSENTIAL) */}
+                {/* Paralamas Indicator */}
                 {snakeGameSettings.paralamasCharges > 0 && (
                     <div className="flex items-center justify-between w-full max-w-md text-xs mt-1 bg-blue-900/40 px-3 py-2 rounded-lg border border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
                         <span className="text-blue-300 font-bold flex items-center gap-1">
@@ -795,68 +802,71 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                     </div>
                 )}
 
-                {/* Combo Display - HUD PREMIUM (Estilo Arcade) */}
-                <div 
-                    key={uiComboState.shake} // Trigger animation on change
-                    className={`absolute right-2 top-[12%] flex flex-col items-end pointer-events-none z-20 origin-right transition-transform duration-75`}
-                    style={{ 
-                        transform: `scale(${1 + uiComboState.pulse * 0.15}) rotate(${(Math.random() - 0.5) * 5 * uiComboState.pulse}deg)` 
-                    }}
-                >
-                    {/* Background Plate */}
-                    <div className="absolute inset-0 bg-black/60 -skew-x-12 transform scale-125 border-r-4 border-yellow-500/50 blur-sm"></div>
-                    
-                    <div className="relative flex flex-col items-end pr-2">
-                        {/* Main Multiplier Text */}
-                        <span 
-                            className={`text-6xl font-mono font-black italic tracking-tighter drop-shadow-2xl leading-none transition-colors duration-300
-                            ${isComboActive 
-                                ? 'text-transparent bg-clip-text bg-gradient-to-t from-red-600 via-rose-500 to-white' // Vibrant Pink/Red
-                                : 'text-gray-500'}`}
-                            style={{ 
-                                textShadow: isComboActive 
-                                    ? '3px 3px 0px rgba(0,0,0,1), -1px -1px 0 rgba(255,0,255,0.2), 1px 1px 0 rgba(0,255,255,0.2)' 
-                                    : '1px 1px 0px rgba(0,0,0,0.5)'
-                            }}
-                        >
-                            {uiComboState.multiplier.toFixed(2)}<span className="text-3xl">x</span>
-                        </span>
+                {/* Combo Display */}
+                {uiComboState.isActive && uiComboState.timer > 0 && (
+                    <div 
+                        key={uiComboState.shake}
+                        className="absolute right-2 top-[12%] flex flex-col items-end pointer-events-none z-20 origin-right transition-all duration-300"
+                        style={{ 
+                            transform: `scale(${1 + uiComboState.pulse * 0.15}) rotate(${(Math.random() - 0.5) * 5 * uiComboState.pulse}deg)` 
+                        }}
+                    >
+                        {/* Background Plate */}
+                        <div className="absolute inset-0 bg-black/70 -skew-x-12 transform scale-125 border-r-4 border-yellow-500/60 blur-[2px]"></div>
                         
-                        <span className={`text-[10px] font-black uppercase tracking-[0.3em] bg-black/50 px-2 -mt-1 transform -skew-x-12 border border-white/20
-                            ${isComboActive ? 'text-white/90' : 'text-gray-600'}`}>
-                            COMBO STREAK
-                        </span>
-                    </div>
-                    
-                    {/* Timer Bar (Stylized) */}
-                    <div className={`w-40 h-4 bg-gray-900 rounded-sm overflow-hidden border-2 mt-2 shadow-[0_0_15px_rgba(0,0,0,0.8)] skew-x-[-12deg] relative flex items-center justify-center ${isComboActive ? 'border-white/20' : 'border-gray-700'}`}>
-                        {/* Warning Strip - Only if active and low */}
-                        {isComboActive && (uiComboState.timer / uiComboState.maxTime) < 0.3 && (
-                            <div className="absolute inset-0 bg-red-900/50 animate-pulse z-10"></div>
-                        )}
-                        <div 
-                            className={`absolute left-0 top-0 bottom-0 transition-all duration-100 ease-linear
-                            ${isComboActive 
-                                ? 'bg-gradient-to-r from-pink-600 via-red-500 to-yellow-500' // Vibrant "Hot" Gradient
-                                : 'bg-gray-600'}`}
-                            style={{ width: `${(uiComboState.timer / uiComboState.maxTime) * 100}%` }}
-                        >
-                            {/* Shine Effect */}
-                            {isComboActive && <div className="absolute top-0 right-0 bottom-0 w-full bg-gradient-to-b from-white/20 to-transparent"></div>}
+                        <div className="relative flex flex-col items-end pr-3">
+                            {/* Main Multiplier Text */}
+                            <span 
+                                className="text-6xl font-mono font-black italic tracking-tighter drop-shadow-2xl leading-none text-transparent bg-clip-text bg-gradient-to-t from-red-600 via-rose-400 to-white"
+                                style={{ 
+                                    textShadow: '3px 3px 0px rgba(0,0,0,1), -1px -1px 0 rgba(255,0,255,0.3), 1px 1px 0 rgba(0,255,255,0.3)',
+                                    filter: `brightness(${1 + uiComboState.pulse * 0.3})`
+                                }}
+                            >
+                                {uiComboState.multiplier.toFixed(2)}<span className="text-3xl">x</span>
+                            </span>
+                            
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/90 bg-black/50 px-2 -mt-1 transform -skew-x-12 border border-white/20">
+                                {uiComboState.count}x COMBO
+                            </span>
                         </div>
                         
-                        {/* ABSOLUTE TIME TEXT - Shows "Current / Max" explicitly */}
-                        <span className="relative z-20 text-[10px] font-bold text-white drop-shadow-md font-mono tracking-widest">
-                            {(uiComboState.timer / 1000).toFixed(1)}s <span className="opacity-50 text-[9px]">/ {(uiComboState.maxTime / 1000).toFixed(1)}s</span>
-                        </span>
+                        {/* Timer Bar Container */}
+                        <div className="w-44 h-5 bg-gray-900 rounded-sm overflow-hidden border-2 border-white/30 mt-2 shadow-[0_0_15px_rgba(0,0,0,0.8)] skew-x-[-12deg] relative">
+                            {(uiComboState.timer / uiComboState.maxTime) < 0.3 && (
+                                <div className="absolute inset-0 bg-red-600/40 animate-pulse z-10"></div>
+                            )}
+                            
+                            <div 
+                                className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-pink-600 via-red-500 to-orange-400 transition-all duration-100 ease-linear"
+                                style={{ width: `${(uiComboState.timer / uiComboState.maxTime) * 100}%` }}
+                            >
+                                <div className="absolute top-0 right-0 bottom-0 w-full bg-gradient-to-b from-white/30 to-transparent"></div>
+                            </div>
+                            
+                            <div className="absolute inset-0 flex items-center justify-center z-20">
+                                <span className="text-[11px] font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)] font-mono tracking-wider">
+                                    {(uiComboState.timer / 1000).toFixed(1)}s 
+                                    <span className="text-[9px] opacity-70 ml-1">
+                                        / {(uiComboState.maxTime / 1000).toFixed(1)}s
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-1 text-right pr-1">
+                            <span className="text-[9px] uppercase tracking-widest text-yellow-300/80 font-bold">
+                                {uiComboState.count} {uiComboState.count === 1 ? 'MAÇÃ' : 'MAÇÃS'}
+                            </span>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Canvas Container & Overlays */}
                 <div className={`relative transition-transform duration-100 ${isDashingVisual ? 'scale-105' : 'scale-100'}`}>
                     <canvas ref={canvasRef} width={canvasSize} height={canvasSize} className={`bg-gray-900 rounded-lg border-2 border-green-700 shadow-lg ${isDashingVisual ? 'brightness-125' : ''}`} />
                     
-                    {/* Alerta Sutil (Corner Indicator) */}
+                    {/* Alerta Sutil */}
                     {subtleAlertLevel > 0 && appleInfo && !gameOver && (
                         <div className="absolute top-2 right-2 w-10 h-10 flex items-center justify-center pointer-events-none animate-pulse">
                             <span className="text-2xl drop-shadow-md">
@@ -870,7 +880,7 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
                         </div>
                     )}
 
-                    {/* Alerta Alarmante (Center Arrow) */}
+                    {/* Alerta Alarmante */}
                     {alarmingAlertLevel > 0 && appleInfo && !gameOver && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div 
