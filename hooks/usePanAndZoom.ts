@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react';
+
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 10;
@@ -17,6 +18,30 @@ export const usePanAndZoom = () => {
         startPos: { x: 0, y: 0 },
         lastPos: { x: 0, y: 0 },
     });
+
+    // AUTO-SCALE LOGIC: Adjust zoom on resize/load for mobile
+    useEffect(() => {
+        const handleResize = () => {
+            const width = window.innerWidth;
+            // If screen is smaller than 450px (typical mobile), scale down content to fit comfortably
+            // 430px serves as a "target design width" including margins
+            if (width < 450) {
+                const idealScale = width / 430;
+                setScale(idealScale);
+            } else {
+                // On larger screens, ensure at least scale 1 initially
+                // We check if scale is currently < 1 (mobile scale) to reset it when moving to desktop
+                // But we preserve manual zoom-in if user is already zoomed in > 1
+                setScale(prev => prev < 1 ? 1 : prev);
+            }
+        };
+
+        // Initial calculation
+        handleResize();
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const resetPan = useCallback(() => {
         setOffset({ x: 0, y: 0 });
@@ -51,15 +76,17 @@ export const usePanAndZoom = () => {
 
         setScale(clampedScale);
         
+        // Reset pan if zoomed out to base or less (to keep centered feel)
+        // Adjusted logic to allow panning even when zoomed out if explicitly desired, but standard behavior usually resets.
         if (clampedScale <= 1 && scale > 1) { 
-            resetPan();
+            // Optional: resetPan(); 
         } else if (clampedScale > 1) {
             setOffset({ x: newOffsetX, y: newOffsetY });
         }
     }, [scale, offset, resetPan]);
     
     const startPan = (point: { clientX: number, clientY: number }) => {
-        if (scale <= 1) return;
+        // Allow pan at any scale if pan mode is active, essentially
         panState.current.isMouseDown = true;
         panState.current.startPos = { x: point.clientX, y: point.clientY };
         panState.current.lastPos = { x: point.clientX, y: point.clientY };
@@ -113,7 +140,7 @@ export const usePanAndZoom = () => {
         },
         onTouchStart: (e: React.TouchEvent) => {
             if (!isPanModeActive || (e.target as HTMLElement).closest('button, a, input')) return;
-            if (scale <= 1) return; // Allow tab swipe when not zoomed
+            // Removed "scale <= 1" check to allow panning even when zoomed out if mode is active
             if (e.touches.length === 1) {
                 startPan(e.touches[0]);
             }
@@ -141,8 +168,9 @@ export const usePanAndZoom = () => {
 
     const style = {
         transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
-        cursor: isPanModeActive && scale > 1 ? (isGrabbing ? 'grabbing' : 'grab') : 'auto',
-        touchAction: 'none',
+        transformOrigin: 'top center', // Helps with the auto-scaling fitting from top
+        cursor: isPanModeActive ? (isGrabbing ? 'grabbing' : 'grab') : 'auto',
+        touchAction: isPanModeActive ? 'none' : 'auto',
         userSelect: isGrabbing ? 'none' : 'auto'
     } as const;
 

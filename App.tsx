@@ -33,7 +33,7 @@ const App: React.FC = () => {
     const swipeThreshold = 50;
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        if (scale > 1) return; // Disable swipe when zoomed
+        if (scale > 1) return; // Disable swipe when zoomed in (allow pan instead)
         touchStart.current = e.targetTouches[0].clientX;
         touchEnd.current = e.targetTouches[0].clientX;
     };
@@ -68,14 +68,13 @@ const App: React.FC = () => {
 
 
     return (
-        <div className={`h-screen flex flex-col items-center font-sans text-white bg-gradient-to-br ${BG_CLASS} transition-all duration-500 py-4 sm:py-8 px-4 overflow-hidden`}>
+        <div className={`h-screen flex flex-col items-center font-sans text-white bg-gradient-to-br ${BG_CLASS} transition-all duration-500 py-2 sm:py-8 px-1 sm:px-4 overflow-hidden`}>
             {game.isSnakeGameActive && <SnakeGame
                 onClose={game.endSnakeGame}
                 bal={game.bal}
                 snakeUpgrades={game.snakeUpgrades}
                 buySnakeUpgrade={game.buySnakeUpgrade}
                 snakeGameSettings={game.snakeGameSettings}
-                // Fix: Correct property name to grandeGanhoMultiplier (from usePrestigeSkills hook)
                 totalScoreMultiplier={game.grandeGanhoMultiplier * game.scoreMultiplier}
                 resetSnakeUpgrades={game.resetSnakeUpgrades}
             />}
@@ -138,9 +137,9 @@ const App: React.FC = () => {
                 penalty={game.itemPenaltyDue}
                 inventory={game.inv}
             />
-            <div className="fixed left-4 top-4 bg-black/35 p-2 rounded-lg flex items-center gap-2 border-2 border-yellow-500 shadow-lg z-10">
+            <div className="fixed left-2 top-2 sm:left-4 sm:top-4 bg-black/35 p-1 sm:p-2 rounded-lg flex items-center gap-2 border-2 border-yellow-500 shadow-lg z-10 scale-90 sm:scale-100 origin-top-left">
                 <button onClick={zoomOut} className="px-2 font-bold text-lg leading-none bg-yellow-500 text-stone-900 rounded disabled:opacity-50" disabled={scale <= 0.25}>-</button>
-                <span className="font-bold text-white tabular-nums">{scale.toFixed(2)}x</span>
+                <span className="font-bold text-white tabular-nums text-xs sm:text-base">{scale.toFixed(2)}x</span>
                 <button onClick={zoomIn} className="px-2 font-bold text-lg leading-none bg-yellow-500 text-stone-900 rounded disabled:opacity-50" disabled={scale >= 10}>+</button>
                 <button
                     onClick={togglePanMode}
@@ -159,14 +158,15 @@ const App: React.FC = () => {
             </div>
 
             {/* Top Level Navigation */}
-            <div className="w-full max-w-2xl mb-4">
-                <div className="flex gap-4">
+            <div className="w-full max-w-2xl mb-2 sm:mb-4 px-2">
+                <div className="flex gap-2 sm:gap-4">
                     <button
                         onClick={() => setTopLevelTab('caça-niquel')}
                         className={`
                             ${topLevelBtnBaseClasses}
                             bg-yellow-950 text-yellow-300 border-2 border-yellow-500
                             shadow-[0_0_5px_#eab308,0_0_15px_#ca8a04]
+                            text-sm sm:text-lg
                             ${topLevelTab === 'caça-niquel' ? topLevelBtnActiveClasses : topLevelBtnInactiveClasses}
                         `}
                     >
@@ -178,6 +178,7 @@ const App: React.FC = () => {
                             ${topLevelBtnBaseClasses}
                             bg-black text-purple-300 border-2 border-purple-500
                             shadow-[0_0_5px_#a855f7,0_0_15px_#8b5cf6]
+                            text-sm sm:text-lg
                             ${topLevelTab === 'prestigio' ? topLevelBtnActiveClasses : topLevelBtnInactiveClasses}
                         `}
                     >
@@ -198,7 +199,7 @@ const App: React.FC = () => {
                     {isPrestigeView ? (
                         <MemoPrestigeTab {...game} />
                     ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-[#2a1810] to-[#1f1108] rounded-3xl p-5 shadow-2xl shadow-yellow-500/10 border-4 border-yellow-800 flex flex-col">
+                        <div className="w-full h-full bg-gradient-to-br from-[#2a1810] to-[#1f1108] rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-2xl shadow-yellow-500/10 border-2 sm:border-4 border-yellow-800 flex flex-col">
                             <Header
                                 bal={game.bal}
                                 betVal={game.betVal}
@@ -213,7 +214,7 @@ const App: React.FC = () => {
                             {/* Main Tabs Navigation */}
                             <div className="flex gap-1 mb-2">
                                 {['Caça-Níquel', 'Inventário', 'Lojas', 'Config'].map((label, i) => (
-                                    <button key={i} onClick={() => setMainActiveTab(i)} className={tabBtnClasses(mainActiveTab === i)}>
+                                    <button key={i} onClick={() => setMainActiveTab(i)} className={`${tabBtnClasses(mainActiveTab === i)} text-xs sm:text-base`}>
                                         {label}
                                     </button>
                                 ))}
@@ -221,7 +222,7 @@ const App: React.FC = () => {
 
                             {/* Main Content Area */}
                             <main 
-                                className="bg-black/30 rounded-b-lg rounded-tr-lg p-4 flex-grow overflow-y-auto"
+                                className="bg-black/30 rounded-b-lg rounded-tr-lg p-2 sm:p-4 flex-grow overflow-y-auto"
                                 onTouchStart={handleTouchStart}
                                 onTouchMove={handleTouchMove}
                                 onTouchEnd={handleTouchEnd}
