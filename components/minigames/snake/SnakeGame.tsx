@@ -106,6 +106,8 @@ const SnakeGame: React.FC<SnakeGameProps> = (props) => {
     // Direction Refs
     const directionRef = useRef<Direction>('RIGHT'); // Intended direction
     const lastMoveDirRef = useRef<Direction>('RIGHT'); // Actually executed direction (Physics)
+     // Input queue para movimento mais suave com confirmação de grid (improvement para responsividade)
+     const directionQueueRef = useRef<Direction[]>([]);
     
     const prevSnakeRef = useRef<SnakeSegment[]>([]);
     
