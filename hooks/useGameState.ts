@@ -4,7 +4,7 @@ import type { Inventory, Multipliers, PanificadoraLevels, RoiSaldo, Renegotiatio
 import { prepareSaveState, EMPTY_FEVER_SNAPSHOT, type FeverSnapshot } from '../utils/feverStateIsolation';
 
 const SAVE_KEY = 'tigrinho-save-game';
-const SAVE_VERSION = 28; // Updated Version for Fever State Isolation
+const SAVE_VERSION = 29; // Updated Version for 1 Initial Bakery Slot
 
 export interface ItemPenalty { amount: number; }
 
@@ -45,9 +45,7 @@ const getInitialState = (): SavedState => ({
         inventory: { cookie: 0, cupcake: 0, cake: 0 },
         upgradeLevels: { cookie: 0, cupcake: 0, cake: 0 },
         craftingSlots: [
-            { id: 0, productId: null, startTime: null, endTime: null, quantity: 0 },
-            { id: 1, productId: null, startTime: null, endTime: null, quantity: 0 },
-            { id: 2, productId: null, startTime: null, endTime: null, quantity: 0 }
+            { id: 0, productId: null, startTime: null, endTime: null, quantity: 0 }
         ],
         extraSlots: 0,
         speedLevel: 0
@@ -120,7 +118,7 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
         
         // Usamos Date.now() como ID único do save para diferenciar cada salvamento
         const timestamp = Date.now();
-        localStorage.setItem(SAVE_KEY, `V28:${timestamp}:${encoded}`);
+        localStorage.setItem(SAVE_KEY, `V29:${timestamp}:${encoded}`);
         
         if (isManual) showMsg("✅ Jogo salvo!", 2000, true);
     }, [showMsg]);
