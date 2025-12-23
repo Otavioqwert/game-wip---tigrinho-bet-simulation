@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { BAKERY_PRODUCTS } from '../constants';
 import type { BakeryState, BakeryProductId, CraftingSlot } from '../types';
@@ -44,7 +43,13 @@ export const useBakeryLogic = (props: BakeryLogicProps) => {
     }, []);
 
     const getSpeedUpgradeCost = useCallback((level: number): number => {
-        return 1500 * (level + 1);
+        // Curva quadrática: força investimento progressivo mas alcançável
+        // Level 1: $5.800 | Level 5: $17.000 | Level 10: $52.000 | Level 20: $152.000
+        // Total para maxar (0→20): ~$1.400.000
+        const base = 2000;
+        const linearFactor = 1500;
+        const quadraticFactor = 300;
+        return Math.floor(base + (linearFactor * level) + (quadraticFactor * level * level));
     }, []);
 
     const calculateSpeedDiscount = useCallback((level: number): number => {
