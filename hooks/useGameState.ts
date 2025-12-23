@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { INITIAL_INVENTORY, INITIAL_MULTIPLIERS } from '../constants';
-import type { Inventory, Multipliers, PanificadoraLevels, RoiSaldo, RenegotiationTier, ActiveCookie, ScratchCardMetrics, LotericaInjectionState, BakeryState } from '../types';
+import type { Inventory, Multipliers, PanificadoraLevels, RoiSaldo, RenegotiationTier, ActiveCookie, ScratchCardMetrics, LotericaInjectionState, BakeryState, CraftingSlot } from '../types';
 import { prepareSaveState, EMPTY_FEVER_SNAPSHOT, type FeverSnapshot } from '../utils/feverStateIsolation';
 
 const SAVE_KEY = 'tigrinho-save-game';
@@ -53,6 +53,57 @@ const getInitialState = (): SavedState => ({
     feverSnapshot: EMPTY_FEVER_SNAPSHOT
 });
 
+// VALIDAÇÃO E CORREÇÃO AUTOMÁTICA DE CRAFTING SLOTS
+const validateAndFixCraftingSlots = (bakery: BakeryState): BakeryState => {
+    const expectedSlotCount = 1 + bakery.extraSlots;
+    const currentSlotCount = bakery.craftingSlots.length;
+
+    // Se tiver a quantidade correta, retorna sem modificação
+    if (currentSlotCount === expectedSlotCount) {
+        return bakery;
+    }
+
+    console.log(`[Bakery Fix] Detectado ${currentSlotCount} slots, mas deveria ter ${expectedSlotCount} (1 base + ${bakery.extraSlots} extras)`);
+
+    // Se tiver MAIS slots que deveria (save antigo com 3 slots iniciais)
+    if (currentSlotCount > expectedSlotCount) {
+        // Mantém apenas os slots ocupados + completa até expectedSlotCount
+        const occupiedSlots = bakery.craftingSlots.filter(slot => slot.productId !== null);
+        const emptySlots = bakery.craftingSlots.filter(slot => slot.productId === null);
+        
+        // Usa os ocupados primeiro, depois preenche com vazios até o limite
+        const fixedSlots: CraftingSlot[] = [];
+        
+        // Adiciona slots ocupados primeiro
+        for (let i = 0; i < Math.min(occupiedSlots.length, expectedSlotCount); i++) {
+            fixedSlots.push({ ...occupiedSlots[i], id: i });
+        }
+        
+        // Completa com slots vazios
+        for (let i = fixedSlots.length; i < expectedSlotCount; i++) {
+            fixedSlots.push({ id: i, productId: null, startTime: null, endTime: null, quantity: 0 });
+        }
+        
+        console.log(`[Bakery Fix] Reduzido de ${currentSlotCount} para ${expectedSlotCount} slots. Slots ocupados preservados: ${occupiedSlots.length}`);
+        
+        return { ...bakery, craftingSlots: fixedSlots };
+    }
+
+    // Se tiver MENOS slots que deveria (caso improvável, mas trata mesmo assim)
+    if (currentSlotCount < expectedSlotCount) {
+        const fixedSlots = [...bakery.craftingSlots];
+        for (let i = currentSlotCount; i < expectedSlotCount; i++) {
+            fixedSlots.push({ id: i, productId: null, startTime: null, endTime: null, quantity: 0 });
+        }
+        
+        console.log(`[Bakery Fix] Expandido de ${currentSlotCount} para ${expectedSlotCount} slots`);
+        
+        return { ...bakery, craftingSlots: fixedSlots };
+    }
+
+    return bakery;
+};
+
 export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e?: boolean) => void }) => {
     const [state, setState] = useState<SavedState>(getInitialState());
     
@@ -84,6 +135,9 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
                     if (decoded.bakery) {
                         merged.bakery = { ...getInitialState().bakery, ...decoded.bakery };
                     }
+                    
+                    // VALIDAÇÃO AUTOMÁTICA: Corrige craftingSlots baseado em extraSlots
+                    merged.bakery = validateAndFixCraftingSlots(merged.bakery);
                     
                     // Ensure feverSnapshot exists
                     if (!decoded.feverSnapshot) {
