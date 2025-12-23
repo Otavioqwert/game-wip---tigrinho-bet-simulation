@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useGameState } from './useGameState';
 import { useFebreDoce } from './useFebreDoce';
@@ -151,9 +150,8 @@ export const useGameLogic = () => {
         creditLimit: secondarySkills.creditLimit,
         multUpgradeBonus: secondarySkills.multUpgradeBonus,
         handleSpend, handleGain,
-        sweetLadderActive: febreDoce.sweetLadderActive,
-        sweetLadderD: febreDoce.sweetLadderD,
-        setSweetLadderD: febreDoce.setSweetLadderD
+        // FIX: Passar o hook completo ao invés de props separadas
+        sweetLadder: febreDoce.sweetLadder
     });
 
     const shopLogic = useShopLogic({
