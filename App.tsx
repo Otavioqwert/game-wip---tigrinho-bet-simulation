@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import { usePanAndZoom } from './hooks/usePanAndZoom';
@@ -101,9 +100,7 @@ const App: React.FC = () => {
             )}
 
             {/* Fever Report Modal */}
-            65
-            103
-            (
+            {game.feverReport && (
                 <FeverReportModal
                     report={game.feverReport}
                     onClose={game.closeFeverReport}
