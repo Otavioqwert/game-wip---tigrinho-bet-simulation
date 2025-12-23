@@ -65,8 +65,8 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 3250,
         type: 'item', risk: 'safe', tier: 'budget',
         icon: '🔗',
-        contents: { items: { '🍭': 5, '🍦': 5, '🍧': 5 }, multipliers: {} },
-        description: 'Mecânica de Combo: Acertos com doces (mesmo com ⭐) aumentam a corrente. Se errar, zera! Bônus massivo para correntes longas.'
+        contents: { items: {}, multipliers: {} },
+        description: 'Mecânica: Acertos com doces aumentam corrente (+$10 por nível). 7 acertos = +1 vida (máx 2). Errou sem vida = -50% corrente.'
     },
     {
         id: 'pkg_star_junior',
