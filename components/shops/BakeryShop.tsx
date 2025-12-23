@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { BAKERY_PRODUCTS } from '../../constants';
 import type { BakeryState, BakeryProductId, CraftingSlot } from '../../types';
@@ -72,7 +71,7 @@ const BakeryShop: React.FC<BakeryShopProps> = (props) => {
                 {/* --- CRAFTING TAB --- */}
                 {activeTab === 'craft' && (
                     <div className="space-y-6">
-                        {/* s - Layout Flex Centralizado e Simétrico */}
+                        {/* Crafting Slots - Layout Flex Centralizado e Simétrico */}
                         <div className="flex flex-wrap justify-center gap-3">
                             {bakeryState.craftings.map((slot, i) => {
                                 const isActive = slot.productId !== null && slot.endTime !== null;
@@ -113,7 +112,7 @@ const BakeryShop: React.FC<BakeryShopProps> = (props) => {
                             {Object.values(BAKERY_PRODUCTS).map(prod => {
                                 const modifiedTime = getModifiedCraftTime(prod.craftTime * 1000, bakeryState.speedLevel);
                                 const canAfford = sugar >= prod.craftCost;
-                                const hasSlot = bakeryState.craftingSlots.some(s => s.productId === null);
+                                const hasSlot = bakeryState.craftings.some(s => s.productId === null);
 
                                 return (
                                     <div key={prod.id} className="bg-black/30 border border-gray-700 rounded-lg p-3 flex items-center justify-between">
