@@ -18,9 +18,7 @@ export const SWEET_LADDER_CONFIG = {
   HITS_PER_LIFE: 10,       // 10 acertos = +1 vida
   MAX_LIVES: 2,            // Máximo de 2 vidas por corrente
   BASE_SLOTS: 1,           // Começa com apenas 1 slot de corrente
-  SLOTS_PER_MILESTONE: 1,  // Ganha +1 slot a cada milestone
-  SLOT_MILESTONE: 5,       // A cada 5 níveis de chain ganha +1 slot
-  MAX_SLOTS: 8,            // Máximo absoluto de slots
+  MAX_SLOTS: 8, // Todos os 8 slots disponíveis imediatamente (sem desbloqueio progressivo)
   CHAIN_DECAY: 1.0,        // Quebra total ao errar (100% decay = chain vai para 0)
   MIN_CHAIN: 0,            // Corrente zera completamente ao errar sem vida
 } as const;
@@ -50,7 +48,8 @@ export function createInitialState(): SweetLadderState {
  * Ex: chain 0-4 = 1 slot, chain 5-9 = 2 slots, chain 10-14 = 3 slots, etc
  */
 function calculateAvailableSlots(highestChainLevel: number): number {
-  const { BASE_SLOTS, SLOTS_PER_MILESTONE, SLOT_MILESTONE, MAX_SLOTS } = SWEET_LADDER_CONFIG;
+   // Todos os 8 slots estão disponíveis imediatamente
+  return SWEET_LADDER_CONFIG.MAX_SLOTS;
   const milestones = Math.floor(highestChainLevel / SLOT_MILESTONE);
   const totalSlots = BASE_SLOTS + (milestones * SLOTS_PER_MILESTONE);
   return Math.min(totalSlots, MAX_SLOTS);
