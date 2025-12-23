@@ -2,6 +2,8 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { MID, SUGAR_CONVERSION, SYM } from '../constants';
 import { getRandomSymbolFromInventory, calculateMidMultiplierValue, createWeightSnapshot, spinFromSnapshot } from '../utils/spinCalculations';
 import type { SymbolKey, MidSymbolKey, Inventory, Multipliers, PanificadoraLevels, SkillId, RoiSaldo, ActiveCookie, StarBonusState, StarBonusResult, CoinFlipState } from '../types';
+import type { UseSweetLadderResult } from './useSweetLadder';
+import { isCandySymbol } from '../utils/mechanics/sweetLadder';
 
 interface SpinLogicProps {
     bal: number;
@@ -36,9 +38,7 @@ interface SpinLogicProps {
     activeCookies: ActiveCookie[];
     setActiveCookies: React.Dispatch<React.SetStateAction<ActiveCookie[]>>;
     setSugar: React.Dispatch<React.SetStateAction<number>>;
-    sweetLadderActive: boolean;
-    sweetLadderD: number;
-    setSweetLadderD: React.Dispatch<React.SetStateAction<number>>;
+    sweetLadder: UseSweetLadderResult;
 }
 
 export const useSpinLogic = (props: SpinLogicProps) => {
@@ -262,7 +262,7 @@ export const useSpinLogic = (props: SpinLogicProps) => {
             setGrid(nextGrid);
             if (allStopped) {
                 setTimeout(() => {
-                    const { applyFinalGain, febreDocesAtivo, betValFebre, betVal, febreDocesGiros, handleGain, setFebreDocesGiros, showMsg, setWinMsg, endFever, setUnluckyPot, momentoLevel, setMomentoLevel, momentoProgress, setMomentoProgress, setInv, setSugar, activeCookies, setActiveCookies, sweetLadderActive, sweetLadderD, setSweetLadderD } = propsRef.current;
+                    const { applyFinalGain, febreDocesAtivo, betValFebre, betVal, febreDocesGiros, handleGain, setFebreDocesGiros, showMsg, setWinMsg, endFever, setUnluckyPot, momentoLevel, setMomentoLevel, momentoProgress, setMomentoProgress, setInv, setSugar, activeCookies, setActiveCookies, sweetLadder } = propsRef.current;
                     setStoppingColumns([false, false, false]);
                     const result = getSpinResult(animationState.current.finalGrid, animationState.current.availableKeys);
                     
@@ -270,15 +270,31 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                     const cookieMult = febreDocesAtivo ? 1 : activeCookies.reduce((acc, c) => acc * c.multiplier, 1);
                     const boostedOther = result.totalOtherWin * cookieMult;
                     
+                    // 🔗 SWEET LADDER PROCESSING
                     let ladderBonus = 0;
-                    if (febreDocesAtivo && sweetLadderActive) {
+                    if (febreDocesAtivo && sweetLadder.state.isActive) {
                         if (result.sweetLinesCount > 0) {
-                            let curD = sweetLadderD;
-                            for (let i = 0; i < result.sweetLinesCount; i++) { curD++; ladderBonus += (curD * 10); }
-                            setSweetLadderD(curD);
-                        } else {
-                            if (sweetLadderD > 0) showMsg(`Corrente Quebrada! (Estava em ${sweetLadderD}x)`, 1500, true);
-                            setSweetLadderD(0);
+                            // Acertou doce(s)
+                            for (let i = 0; i < result.sweetLinesCount; i++) {
+                                const ladderResult = sweetLadder.onSymbolHit('🍭'); // Qualquer doce
+                                ladderBonus += ladderResult.bonus;
+                                
+                                // Notificações
+                                if (ladderResult.gainedLife) {
+                                    showMsg(`💚 +1 Vida! (Total: ${sweetLadder.state.lives})`, 2000, true);
+                                }
+                            }
+                            // Mostra progresso da corrente
+                            showMsg(`🔗 Corrente: ${sweetLadder.state.chain} (+$${ladderBonus})`, 1500);
+                        } else if (result.hitCount > 0) {
+                            // Acertou linha mas NÃO foi doce
+                            const missResult = sweetLadder.onSymbolHit('🐯'); // Não-doce
+                            
+                            if (missResult.usedLife) {
+                                showMsg(`💔 Usou 1 vida! (Restam: ${sweetLadder.state.lives})`, 2000, true);
+                            } else if (sweetLadder.state.chain > 0) {
+                                showMsg(`💥 Corrente caiu para ${sweetLadder.state.chain}!`, 2000, true);
+                            }
                         }
                     }
                     
