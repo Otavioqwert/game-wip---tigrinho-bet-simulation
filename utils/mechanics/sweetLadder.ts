@@ -14,7 +14,7 @@ export interface SweetLadderState {
 }
 
 export const SWEET_LADDER_CONFIG = {
-  BONUS_PER_LEVEL: 10,     // $10 por nível de corrente
+   BONUS_PER_LEVEL: 20, // $20 por nível de corrente
   HITS_PER_LIFE: 10,       // 10 acertos = +1 vida
   MAX_LIVES: 2,            // Máximo de 2 vidas por corrente
   BASE_SLOTS: 1,           // Começa com apenas 1 slot de corrente
