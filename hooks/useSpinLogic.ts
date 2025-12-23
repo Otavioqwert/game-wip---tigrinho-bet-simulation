@@ -275,6 +275,11 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                             const ladderResult = sweetLadder.onCandyLinesHit(result.sweetLinesCount);
                             ladderBonus = ladderResult.totalBonus;
                             
+                            // Notificação de slots desbloqueados
+                            if (ladderResult.slotsUnlocked > 0) {
+                                showMsg(`🔓 Desbloqueou +${ladderResult.slotsUnlocked} Slot! (${sweetLadder.availableSlots}/8)`, 3000, true);
+                            }
+                            
                             if (ladderResult.livesGained > 0) {
                                 showMsg(`💚 +${ladderResult.livesGained} Vida${ladderResult.livesGained > 1 ? 's' : ''}! (Total: ${sweetLadder.totalLives})`, 2000, true);
                             }
@@ -297,7 +302,8 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                         
                         // Mostra estado atual (se tiver correntes ativas)
                         if (sweetLadder.totalChains > 0) {
-                            showMsg(`🔗 ${sweetLadder.totalChains} Corrente${sweetLadder.totalChains > 1 ? 's' : ''} | Max: ${sweetLadder.highestChain} | Vidas: ${sweetLadder.totalLives}`, 1500);
+                            const slotsInfo = sweetLadder.nextSlotAt > 0 ? ` | Próx slot: ${sweetLadder.nextSlotAt}` : '';
+                            showMsg(`🔗 ${sweetLadder.totalChains}/${sweetLadder.availableSlots} Slots | Max: ${sweetLadder.highestChain} | Vidas: ${sweetLadder.totalLives}${slotsInfo}`, 1500);
                         }
                     }
                     
