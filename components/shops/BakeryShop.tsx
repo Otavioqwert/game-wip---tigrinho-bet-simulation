@@ -72,9 +72,9 @@ const BakeryShop: React.FC<BakeryShopProps> = (props) => {
                 {/* --- CRAFTING TAB --- */}
                 {activeTab === 'craft' && (
                     <div className="space-y-6">
-                        {/* Slots - Layout Flex Centralizado e Simétrico */}
+                        {/* s - Layout Flex Centralizado e Simétrico */}
                         <div className="flex flex-wrap justify-center gap-3">
-                            {bakeryState.craftingSlots.map((slot, i) => {
+                            {bakeryState.craftings.map((slot, i) => {
                                 const isActive = slot.productId !== null && slot.endTime !== null;
                                 let progress = 0;
                                 let timeLeft = 0;
@@ -202,7 +202,7 @@ const BakeryShop: React.FC<BakeryShopProps> = (props) => {
                             <div className="bg-purple-900/10 border border-purple-500/30 rounded-lg p-3 mb-2 flex justify-between items-center">
                                 <div>
                                     <div className="font-bold text-purple-200">Novo Forno</div>
-                                    <div className="text-xs text-purple-400">Total Atual: {3 + bakeryState.extraSlots}</div>
+                                    <div className="text-xs text-purple-400">Total Atual: {1 + bakeryState.extraSlots}</div>
                                 </div>
                                 <button
                                     onClick={buyExtraSlot}
