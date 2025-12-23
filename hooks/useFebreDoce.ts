@@ -3,6 +3,7 @@ import type { RoiSaldo, Inventory, SymbolKey, FeverPackage, PurchasedPackage, Fe
 import { ALL_FEVER_PACKAGES } from '../constants/feverPackages';
 import { SYM, INITIAL_INVENTORY, INITIAL_MULTIPLIERS } from '../constants';
 import { useSweetLadder } from './useSweetLadder';
+import { createFeverSnapshot, restoreFromSnapshot, EMPTY_FEVER_SNAPSHOT, type FeverSnapshot } from '../utils/feverStateIsolation';
 
 interface FebreDoceProps {
     roiSaldo: RoiSaldo;
@@ -14,12 +15,14 @@ interface FebreDoceProps {
     bal: number;
     setBal: React.Dispatch<React.SetStateAction<number>>;
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
+    feverSnapshot: FeverSnapshot;
+    setFeverSnapshot: (snapshot: FeverSnapshot) => void;
 }
 
 export type FeverPhase = 'IDLE' | 'SETUP' | 'ACTIVE';
 
 export const useFebreDoce = (props: FebreDoceProps) => {
-    const { roiSaldo, setRoiSaldo, inv, setInv, mult, setMult, bal, setBal, showMsg } = props;
+    const { roiSaldo, setRoiSaldo, inv, setInv, mult, setMult, bal, setBal, showMsg, feverSnapshot, setFeverSnapshot } = props;
 
     const [feverPhase, setFeverPhase] = useState<FeverPhase>('IDLE');
     const [cooldownEnd, setCooldownEnd] = useState<number | null>(null);
@@ -36,9 +39,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
     // Report State
     const [feverReport, setFeverReport] = useState<FeverReport | null>(null);
     const [startBalance, setStartBalance] = useState(0);
-    
-    // Backup states
-    const originalState = useRef<{ inv: Inventory | null, mult: Multipliers | null }>({ inv: null, mult: null });
 
     // --- Persistence & Cooldown ---
     useEffect(() => {
@@ -247,9 +247,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
             // Allow starting with 0 packages
         }
 
-        // 1. Save state
-        originalState.current.inv = { ...inv };
-        originalState.current.mult = { ...mult };
         setStartBalance(bal); // Snapshot balance AFTER buying packages
 
         // 2. Prepare Fever Inventory & Multipliers
@@ -304,6 +301,10 @@ export const useFebreDoce = (props: FebreDoceProps) => {
             totalSpins = Math.floor(totalSpins / 4);
         }
 
+        // CREATE FEVER SNAPSHOT BEFORE CHANGING STATE
+        const snapshot = createFeverSnapshot(inv, mult, feverInv, feverMult);
+        setFeverSnapshot(snapshot);
+
         // 4. Apply State
         setInv(feverInv);
         setMult(feverMult);
@@ -319,7 +320,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
 
         showMsg(hasApostador ? "🔥 FEBRE DO APOSTADOR! (Aposta $100 / Giros reduzidos)" : "🔥 FEBRE DOCE INICIADA! 🔥", 3000, true);
 
-    }, [inv, mult, selectedPackages, setInv, setMult, showMsg, bal, sweetLadder]);
+    }, [inv, mult, selectedPackages, setInv, setMult, showMsg, bal, sweetLadder, setFeverSnapshot]);
 
     const endFever = useCallback(() => {
         // Calculate report
@@ -332,12 +333,15 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         };
         setFeverReport(report);
         
-        // Restore State immediately to ensure clean UI behind modal
-        if (originalState.current.inv) setInv(originalState.current.inv);
-        if (originalState.current.mult) setMult(originalState.current.mult);
+        // RESTORE STATE FROM SNAPSHOT
+        const restored = restoreFromSnapshot(feverSnapshot);
+        if (restored) {
+            setInv(restored.inv);
+            setMult(restored.mult);
+        }
         
-        originalState.current.inv = null;
-        originalState.current.mult = null;
+        // Clear snapshot
+        setFeverSnapshot(EMPTY_FEVER_SNAPSHOT);
 
         setFeverPhase('IDLE');
         setFebreDocesGiros(0);
@@ -351,7 +355,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         setCooldownEnd(end);
         localStorage.setItem('tigrinho_fever_cooldown', end.toString());
 
-    }, [setInv, setMult, showMsg, bal, startBalance, initialTotalSpins, selectedPackages, sweetLadder]);
+    }, [setInv, setMult, showMsg, bal, startBalance, initialTotalSpins, selectedPackages, sweetLadder, feverSnapshot, setFeverSnapshot]);
 
     const closeFeverReport = useCallback(() => {
         setFeverReport(null);
