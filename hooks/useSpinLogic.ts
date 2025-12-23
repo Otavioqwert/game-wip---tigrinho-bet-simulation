@@ -278,12 +278,15 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                                 showMsg(`💚 +1 Vida! (Total: ${sweetLadder.state.lives})`, 2000, true);
                             }
                         } else if (result.hitCount > 0) {
+                            // CAPTURA chain ANTES de processar o miss
+                            const chainBeforeMiss = sweetLadder.state.chain;
                             const missResult = sweetLadder.onSymbolHit('🐯');
                             
                             if (missResult.usedLife) {
                                 showMsg(`💔 Usou 1 vida! (Restam: ${sweetLadder.state.lives})`, 2000, true);
-                            } else if (sweetLadder.state.chain > 0) {
-                                showMsg(`💥 Corrente QUEBROU! (Era ${sweetLadder.state.chain})`, 2500, true);
+                            } else if (chainBeforeMiss > 0) {
+                                // Usa o valor ANTES da quebra
+                                showMsg(`💥 Corrente QUEBROU! (Era ${chainBeforeMiss})`, 2500, true);
                             }
                         }
                         
