@@ -174,12 +174,12 @@ export const useFebreDoce = (props: FebreDoceProps) => {
       // Add Item
       result.items[sym] = (result.items[sym] || 0) + 1;
       
-      // Apply multiplier levels (+25% per level ONLY for tier symbols)
-      if (tierSymbols.includes(sym)) {
-        // Tier symbols: +25% por nível = 1 + (level * 0.25)
-        const levels = Math.floor(Math.random() * 20) + 1; // 1-20 levels
-        const multiplier = 1 + (levels * 0.25); // Converts to 1.25x to 6x
-        result.multipliers[sym] = (result.multipliers[sym] || 0) + multiplier;
+// Apply multiplier levels (1-80 levels for tier symbols, stored as levels not multipliers)
+        if (tierSymbols.includes(sym)) {
+        // Tier symbols: Adiciona níveis (1-80) para cálculo posterior
+        const levels = Math.floor(Math.random() * 80) + 1; // 1-80 níveis
+        result.multipliers[sym] = (result.multipliers[sym] || 0) + levels; // Soma os NÍVEIS
+      }
       } else if (!sweetSymbols.includes(sym)) {
         // Other non-sweet items get standard multiplier logic
         const levels = Math.floor(Math.random() * 20) + 1;
