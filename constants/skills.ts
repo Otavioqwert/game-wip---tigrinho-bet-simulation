@@ -32,7 +32,7 @@ export const SKILLS: Record<SkillId, Skill> = {
     caminhoEconomia: {
         id: 'caminhoEconomia',
         name: 'Caminho da Economia',
-        description: (level) => `Reduz o custo de todas as compras na loja em ${level * 5}% e concede +$${(level * 0.1).toFixed(2)} por segundo.`,
+        description: (level) => `Reduz o custo de todas as compras na loja em ${level * 2}% e concede +$${(level * 0.1).toFixed(2)} por segundo.`,
         tier: 2,
         dependencies: [{ id: 'grandeGanho', level: 5 }],
         getCost: (level) => 200 + level * 25,
