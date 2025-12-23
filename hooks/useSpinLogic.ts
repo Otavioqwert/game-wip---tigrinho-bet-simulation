@@ -267,32 +267,37 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                     const cookieMult = febreDocesAtivo ? 1 : activeCookies.reduce((acc, c) => acc * c.multiplier, 1);
                     const boostedOther = result.totalOtherWin * cookieMult;
                     
-                    // 🔗 SWEET LADDER PROCESSING (Process ONCE per spin)
+                    // 🔗 SWEET LADDER PROCESSING (Múltiplas correntes paralelas)
                     let ladderBonus = 0;
                     if (febreDocesAtivo && sweetLadder.state.isActive) {
                         if (result.sweetLinesCount > 0) {
-                            // Acertou linha de doce
-                            const ladderResult = sweetLadder.onSymbolHit('🍭');
-                            ladderBonus = ladderResult.bonus;
+                            // Acertou N linhas de doce
+                            const ladderResult = sweetLadder.onCandyLinesHit(result.sweetLinesCount);
+                            ladderBonus = ladderResult.totalBonus;
                             
-                            if (ladderResult.gainedLife) {
-                                showMsg(`💚 +1 Vida! (Total: ${sweetLadder.state.lives})`, 2000, true);
+                            if (ladderResult.livesGained > 0) {
+                                showMsg(`💚 +${ladderResult.livesGained} Vida${ladderResult.livesGained > 1 ? 's' : ''}! (Total: ${sweetLadder.totalLives})`, 2000, true);
+                            }
+                            
+                            if (ladderResult.chainsCreated > 0) {
+                                showMsg(`⛓️ +${ladderResult.chainsCreated} Corrente${ladderResult.chainsCreated > 1 ? 's' : ''}! (Total: ${sweetLadder.totalChains})`, 2000, true);
                             }
                         } else {
-                            // NãO acertou doce (seja acerto de outra linha OU miss total)
-                            const chainBeforeMiss = sweetLadder.state.chain;
-                            const missResult = sweetLadder.onSymbolHit('🐯');
+                            // Miss: nenhuma linha de doce
+                            const missResult = sweetLadder.onMiss();
                             
-                            if (missResult.usedLife) {
-                                showMsg(`💔 Usou 1 vida! (Restam: ${sweetLadder.state.lives})`, 2000, true);
-                            } else if (chainBeforeMiss > 0) {
-                                showMsg(`💥 Corrente QUEBROU! (Era ${chainBeforeMiss})`, 2500, true);
+                            if (missResult.livesUsed > 0) {
+                                showMsg(`💔 ${missResult.livesUsed} Vida${missResult.livesUsed > 1 ? 's' : ''} usada${missResult.livesUsed > 1 ? 's' : ''}! (Restam: ${sweetLadder.totalLives})`, 2000, true);
+                            }
+                            
+                            if (missResult.chainsBroken > 0) {
+                                showMsg(`💥 ${missResult.chainsBroken} Corrente${missResult.chainsBroken > 1 ? 's' : ''} quebrada${missResult.chainsBroken > 1 ? 's' : ''}!`, 2500, true);
                             }
                         }
                         
-                        // Mostra estado atual
-                        if (sweetLadder.state.chain > 0) {
-                            showMsg(`🔗 Corrente: ${sweetLadder.state.chain} | Vidas: ${sweetLadder.state.lives}`, 1500);
+                        // Mostra estado atual (se tiver correntes ativas)
+                        if (sweetLadder.totalChains > 0) {
+                            showMsg(`🔗 ${sweetLadder.totalChains} Corrente${sweetLadder.totalChains > 1 ? 's' : ''} | Max: ${sweetLadder.highestChain} | Vidas: ${sweetLadder.totalLives}`, 1500);
                         }
                     }
                     
