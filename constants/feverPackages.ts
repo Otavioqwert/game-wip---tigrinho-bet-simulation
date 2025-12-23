@@ -66,7 +66,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         type: 'item', risk: 'safe', tier: 'budget',
         icon: '🔗',
         contents: { items: {}, multipliers: {} },
-        description: 'Mecânica: Acertos com doces aumentam corrente (+$10 por nível). 7 acertos = +1 vida (máx 2). Errou sem vida = -50% corrente.'
+        description: 'Até 8 correntes paralelas! +$10/nível. A cada 10 acertos, +1 vida (máx 2). +1 slot a cada 5 níveis. Erro sem vida = quebra.'
     },
     {
         id: 'pkg_star_junior',
@@ -218,7 +218,7 @@ export const BET_PACKAGES: FeverPackage[] = [
         cost: 25000,
         type: 'bet', tier: 'mid',
         spins: 100,
-        icon: '🎩',
+        icon: '🏪',
         description: '100 Spins ($250/giro) - ROI -40%'
     },
     {
@@ -226,7 +226,7 @@ export const BET_PACKAGES: FeverPackage[] = [
         name: '🎲 Gambler Spins',
         cost: 5000,
         type: 'bet', risk: 'risk', tier: 'mid',
-        icon: '🃏',
+        icon: '🎴',
         spins: 'VARIABLE',
         rolls: {
             bad: { spins: 20, chance: 0.40 },
