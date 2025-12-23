@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { RoiSaldo, Inventory, SymbolKey, FeverPackage, PurchasedPackage, FeverContentResult, Multipliers, FeverReport } from '../types';
 import { ALL_FEVER_PACKAGES } from '../constants/feverPackages';
 import { SYM, INITIAL_INVENTORY, INITIAL_MULTIPLIERS } from '../constants';
+import { useSweetLadder } from './useSweetLadder';
 
 interface FebreDoceProps {
     roiSaldo: RoiSaldo;
@@ -29,9 +30,8 @@ export const useFebreDoce = (props: FebreDoceProps) => {
     const [betValFebre, setBetValFebre] = useState(10); // Default base bet
     const [initialTotalSpins, setInitialTotalSpins] = useState(0); // Track total spins for report
     
-    // Mechanics State
-    const [sweetLadderActive, setSweetLadderActive] = useState(false);
-    const [sweetLadderD, setSweetLadderD] = useState(0);
+    // Sweet Ladder Hook (mecânica separada)
+    const sweetLadder = useSweetLadder();
     
     // Report State
     const [feverReport, setFeverReport] = useState<FeverReport | null>(null);
@@ -152,7 +152,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         return result;
     };
     
-    // NEW GENERATOR: Completely Random Chest (1-20 items, 1-80x mult)
     // NEW GENERATOR: Baú do Apostador v1.1 (1-20 items, +25% per level for tier symbols)
   const generateRandomChestContents = (): FeverContentResult => {
     const result: FeverContentResult = { items: {}, multipliers: {} };
@@ -173,13 +172,13 @@ export const useFebreDoce = (props: FebreDoceProps) => {
       // Add Item
       result.items[sym] = (result.items[sym] || 0) + 1;
       
-// Apply multiplier levels (1-80 levels for tier symbols, stored as levels not multipliers)
-        if (tierSymbols.includes(sym)) {
+      // Apply multiplier levels (1-80 levels for tier symbols, stored as levels not multipliers)
+      if (tierSymbols.includes(sym)) {
         // Tier symbols: Adiciona níveis (1-80) para cálculo posterior
         const levels = Math.floor(Math.random() * 80) + 1; // 1-80 níveis
         result.multipliers[sym] = (result.multipliers[sym] || 0) + levels; // Soma os NÍVEIS
-      }
- else if (!sweetSymbols.includes(sym)) {        // Other non-sweet items get standard multiplier logic
+      } else if (!sweetSymbols.includes(sym)) {
+        // Other non-sweet items get standard multiplier logic
         const levels = Math.floor(Math.random() * 20) + 1;
         result.multipliers[sym] = (result.multipliers[sym] || 0) + levels;
       }
@@ -187,7 +186,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
     }
     
     return result;
-  }
+  };
 
     const buyPackage = useCallback((pkg: FeverPackage) => {
         if (selectedPackages.length >= 3) {
@@ -313,13 +312,14 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         setFeverPhase('ACTIVE');
         setBetValFebre(activeBet);
         
-        // Reset/Set Ladder State
-        setSweetLadderActive(ladderActive);
-        setSweetLadderD(0);
+        // Activate Sweet Ladder if package was bought
+        if (ladderActive) {
+            sweetLadder.activateMechanic();
+        }
 
         showMsg(hasApostador ? "🔥 FEBRE DO APOSTADOR! (Aposta $100 / Giros reduzidos)" : "🔥 FEBRE DOCE INICIADA! 🔥", 3000, true);
 
-    }, [inv, mult, selectedPackages, setInv, setMult, showMsg, bal]);
+    }, [inv, mult, selectedPackages, setInv, setMult, showMsg, bal, sweetLadder]);
 
     const endFever = useCallback(() => {
         // Calculate report
@@ -342,18 +342,16 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         setFeverPhase('IDLE');
         setFebreDocesGiros(0);
         setSelectedPackages([]);
-        setSweetLadderActive(false);
-        setSweetLadderD(0);
+        
+        // Deactivate Sweet Ladder
+        sweetLadder.deactivateMechanic();
 
         // Set Cooldown (30 minutes)
         const end = Date.now() + (30 * 60 * 1000);
         setCooldownEnd(end);
         localStorage.setItem('tigrinho_fever_cooldown', end.toString());
-        
-        // Show report msg
-        // showMsg("Febre Doce terminou! Veja o relatório.", 5000, true);
 
-    }, [setInv, setMult, showMsg, bal, startBalance, initialTotalSpins, selectedPackages]);
+    }, [setInv, setMult, showMsg, bal, startBalance, initialTotalSpins, selectedPackages, sweetLadder]);
 
     const closeFeverReport = useCallback(() => {
         setFeverReport(null);
@@ -371,9 +369,10 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         setFebreDocesGiros,
         betValFebre,
         cooldownEnd,
-        sweetLadderActive,
-        sweetLadderD,
-        setSweetLadderD,
+        
+        // Sweet Ladder (expor para uso externo)
+        sweetLadder,
+        
         feverReport,
         closeFeverReport
     };
