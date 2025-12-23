@@ -108,12 +108,35 @@ export const useSpinLogic = (props: SpinLogicProps) => {
     }, [starBonusState.totalWin]);
 
     const triggerStarBonus = useCallback((validKeys: SymbolKey[], bet: number, lines: number) => {
-        const { inv, applyFinalGain } = propsRef.current;
+        const { inv, applyFinalGain, setInv, setSugar, showMsg } = propsRef.current;
         const results: StarBonusResult[] = [];
         let rawTotalWin = 0;
         let spinsToProcess = 90 * lines;
         
         const snapshot = createWeightSnapshot(inv, validKeys);
+
+        // FIX: +5 doces aleatórios por linha de estrela (era +5 total, agora é +5 * lines)
+        const candyRewards: Partial<Record<MidSymbolKey, number>> = {};
+        let totalSugar = 0;
+        
+        for (let lineIdx = 0; lineIdx < lines; lineIdx++) {
+            for (let i = 0; i < 5; i++) {
+                const randomCandy = MID[Math.floor(Math.random() * MID.length)] as MidSymbolKey;
+                candyRewards[randomCandy] = (candyRewards[randomCandy] || 0) + 1;
+                totalSugar += SUGAR_CONVERSION[randomCandy];
+            }
+        }
+
+        // Adiciona doces ao inventário
+        setInv(prev => {
+            const next = { ...prev };
+            Object.entries(candyRewards).forEach(([k, v]) => {
+                next[k as MidSymbolKey] = (next[k as MidSymbolKey] || 0) + v!;
+            });
+            return next;
+        });
+        setSugar(prev => prev + totalSugar);
+        showMsg(`⭐ Star Jr! +${lines * 5} doces aleatórios (+${totalSugar} 🍬)`, 3000, true);
 
         for (let i = 0; i < spinsToProcess; i++) {
             const syms = [spinFromSnapshot(snapshot), spinFromSnapshot(snapshot), spinFromSnapshot(snapshot)] as SymbolKey[];
@@ -274,29 +297,26 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                     let ladderBonus = 0;
                     if (febreDocesAtivo && sweetLadder.state.isActive) {
                         if (result.sweetLinesCount > 0) {
-                            // Acertou doce(s)
-                            for (let i = 0; i < result.sweetLinesCount; i++) {
-                                const ladderResult = sweetLadder.onSymbolHit('🍭'); // Qualquer doce
-                                ladderBonus += ladderResult.bonus;
-                                
-                                // Notificações de vida
-                                if (ladderResult.gainedLife) {
-                                    showMsg(`💚 +1 Vida! (Total: ${sweetLadder.state.lives})`, 2000, true);
-                                }
+                            // Acertou doce(s) - processa APENAS UMA VEZ por spin
+                            const ladderResult = sweetLadder.onSymbolHit('🍭');
+                            ladderBonus = ladderResult.bonus;
+                            
+                            if (ladderResult.gainedLife) {
+                                showMsg(`💚 +1 Vida! (Total: ${sweetLadder.state.lives})`, 2000, true);
                             }
                         } else if (result.hitCount > 0) {
-                            // Acertou linha mas NÃO foi doce - PROCESSA APENAS UMA VEZ
-                            const missResult = sweetLadder.onSymbolHit('🐯'); // Não-doce
+                            // Acertou linha mas NÃO foi doce - processa APENAS UMA VEZ
+                            const missResult = sweetLadder.onSymbolHit('🐯');
                             
                             if (missResult.usedLife) {
                                 showMsg(`💔 Usou 1 vida! (Restam: ${sweetLadder.state.lives})`, 2000, true);
                             } else if (sweetLadder.state.chain > 0) {
-                                showMsg(`💥 Corrente caiu para ${sweetLadder.state.chain}!`, 2000, true);
+                                showMsg(`💥 Corrente QUEBROU! (Era ${sweetLadder.state.chain})`, 2500, true);
                             }
                         }
                         
-                        // SEMPRE mostra estado da corrente (mesmo se 0)
-                        if (sweetLadder.state.chain > 0 || result.sweetLinesCount > 0) {
+                        // Mostra estado da corrente apenas se houver progresso
+                        if (sweetLadder.state.chain > 0) {
                             showMsg(`🔗 Corrente: ${sweetLadder.state.chain} | Vidas: ${sweetLadder.state.lives}`, 1500);
                         }
                     }
