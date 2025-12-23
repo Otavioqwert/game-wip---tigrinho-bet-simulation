@@ -154,27 +154,42 @@ export const useFebreDoce = (props: FebreDoceProps) => {
     };
     
     // NEW GENERATOR: Completely Random Chest (1-20 items, 1-80x mult)
-    const generateRandomChestContents = (): FeverContentResult => {
-        const result: FeverContentResult = { items: {}, multipliers: {} };
-        const keys = Object.keys(SYM) as SymbolKey[];
-        
-        // 1 to 20 items
-        const quantity = Math.floor(Math.random() * 20) + 1;
-        
-        for (let i = 0; i < quantity; i++) {
-            // Totally random item
-            const sym = keys[Math.floor(Math.random() * keys.length)];
-            
-            // Add Item
-            result.items[sym] = (result.items[sym] || 0) + 1;
-            
-            // Add Multiplier (1x to 80x)
-            const multVal = Math.floor(Math.random() * 80) + 1;
-            result.multipliers[sym] = (result.multipliers[sym] || 0) + multVal;
-        }
-        
-        return result;
-    };
+    // NEW GENERATOR: Baú do Apostador v1.1 (1-20 items, +25% per level for tier symbols)
+  const generateRandomChestContents = (): FeverContentResult => {
+    const result: FeverContentResult = { items: {}, multipliers: {} };
+    const keys = Object.keys(SYM) as SymbolKey[];
+    
+    // Tier symbols that get +25% per level bonus
+    const tierSymbols = ['🐯', '🍀', '💵', '💎'];
+    // Sweet items that are NOT affected by multiplier bonus
+    const sweetSymbols = ['🍭', '🍦', '🍧'];
+    
+    // 1 to 20 items
+    const quantity = Math.floor(Math.random() * 20) + 1;
+    
+    for (let i = 0; i < quantity; i++) {
+      // Totally random item
+      const sym = keys[Math.floor(Math.random() * keys.length)];
+      
+      // Add Item
+      result.items[sym] = (result.items[sym] || 0) + 1;
+      
+      // Apply multiplier levels (+25% per level ONLY for tier symbols)
+      if (tierSymbols.includes(sym)) {
+        // Tier symbols: +25% por nível = 1 + (level * 0.25)
+        const levels = Math.floor(Math.random() * 20) + 1; // 1-20 levels
+        const multiplier = 1 + (levels * 0.25); // Converts to 1.25x to 6x
+        result.multipliers[sym] = (result.multipliers[sym] || 0) + multiplier;
+      } else if (!sweetSymbols.includes(sym)) {
+        // Other non-sweet items get standard multiplier logic
+        const levels = Math.floor(Math.random() * 20) + 1;
+        result.multipliers[sym] = (result.multipliers[sym] || 0) + levels;
+      }
+      // Doces (🍭🍦🍧) são apenas adicionados, sem multiplicadores
+    }
+    
+    return result;
+  }
 
     const buyPackage = useCallback((pkg: FeverPackage) => {
         if (selectedPackages.length >= 3) {
