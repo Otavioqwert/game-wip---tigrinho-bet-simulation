@@ -1,4 +1,3 @@
-
 import React, { useCallback, useState } from 'react';
 import { SYM, MID, MIDMAX, SUGAR_CONVERSION } from '../constants';
 import type { SymbolKey, MidSymbolKey, Inventory, Multipliers, PanificadoraLevels, RoiSaldo, SkillId, TokenFlipState } from '../types';
@@ -54,16 +53,34 @@ export const useShopLogic = (props: ShopLogicProps) => {
 
     const getPrice = useCallback((k: SymbolKey): number => {
         let price: number;
-        if (k === '☄️') price = (SYM[k]?.p || 50) * Math.pow(1.5, inv[k] || 0);
-        else if (k === '⭐') price = estrelaPrecoAtual;
-        else if (k === '🪙') price = 1 + totalTokenPurchases;
+        
+        // COMETA: Aplica modifier no expoente de crescimento (1.5 base)
+        if (k === '☄️') {
+            const growthRate = 1 + ((1.5 - 1) * priceIncreaseModifier); // 1.5 reduz para 1.4, 1.3, etc
+            price = (SYM[k]?.p || 50) * Math.pow(growthRate, inv[k] || 0);
+        }
+        // ESTRELA: Preço acumulado (já aplica modifier no incremento)
+        else if (k === '⭐') {
+            price = estrelaPrecoAtual;
+        }
+        // FICHA: Crescimento linear com modifier
+        else if (k === '🪙') {
+            price = 1 + (totalTokenPurchases * priceIncreaseModifier);
+        }
+        // MID (DOCES): Crescimento linear com modifier
         else {
             const midConfig = { '🍭': { b: 2, i: 0.2 }, '🍦': { b: 3, i: 0.3 }, '🍧': { b: 4, i: 0.4 } };
             if (MID.includes(k as MidSymbolKey)) {
                 const midSym = k as MidSymbolKey;
                 price = midConfig[midSym].b + (inv[k] || 0) * (midConfig[midSym].i * priceIncreaseModifier);
-            } else price = Math.max((inv[k] || 0) * (SYM[k]?.v || 0) * 2, SYM[k]?.p || 0);
+            } 
+            // SÍMBOLOS NORMAIS: Crescimento padrão
+            else {
+                price = Math.max((inv[k] || 0) * (SYM[k]?.v || 0) * 2, SYM[k]?.p || 0);
+            }
         }
+        
+        // Aplica desconto da Economia
         return price * economiaCostMultiplier;
     }, [inv, estrelaPrecoAtual, economiaCostMultiplier, priceIncreaseModifier, totalTokenPurchases]);
 
@@ -73,7 +90,10 @@ export const useShopLogic = (props: ShopLogicProps) => {
         if (handleSpend(pr * (1 - cashbackMultiplier))) {
             setInv(p => ({ ...p, [k]: (p[k] || 0) + 1 }));
             if (MID.includes(k as MidSymbolKey)) setSugar(prev => prev + (SUGAR_CONVERSION[k as MidSymbolKey] || 0));
+            
+            // Incremento de preço da estrela com modifier
             if (k === '⭐') setEstrelaPrecoAtual(p => p + (estrelaPrecoAtual * priceIncreaseModifier));
+            
             if (k === '🪙') setTotalTokenPurchases(p => p + 1);
         }
     }, [getPrice, cashbackMultiplier, handleSpend, setInv, setSugar, estrelaPrecoAtual, setEstrelaPrecoAtual, priceIncreaseModifier, momentoLevel, setTotalTokenPurchases]);
@@ -93,12 +113,13 @@ export const useShopLogic = (props: ShopLogicProps) => {
     const sellMeteor = useCallback(() => {
         const meteorCount = inv['☄️'] || 0;
         if (meteorCount <= 0) return;
-        const lastBoughtPrice = (SYM['☄️']?.p || 50) * Math.pow(1.5, Math.max(0, meteorCount - 1));
+        const growthRate = 1 + ((1.5 - 1) * priceIncreaseModifier);
+        const lastBoughtPrice = (SYM['☄️']?.p || 50) * Math.pow(growthRate, Math.max(0, meteorCount - 1));
         const refundAmount = lastBoughtPrice * 0.5 * economiaCostMultiplier; 
         setInv(p => ({ ...p, '☄️': Math.max(0, (p['☄️'] || 0) - 1) }));
         handleGain(refundAmount);
         showMsg(`Meteoro vendido! +$${refundAmount.toFixed(2)}`, 3000, true);
-    }, [inv, handleGain, showMsg, economiaCostMultiplier]);
+    }, [inv, handleGain, showMsg, economiaCostMultiplier, priceIncreaseModifier]);
 
     const flipTokens = useCallback((amount: number) => {
         const owned = inv['🪙'] || 0;
@@ -117,12 +138,23 @@ export const useShopLogic = (props: ShopLogicProps) => {
     const multPrice = useCallback((sym: SymbolKey): number | null => {
         const currentMult = mult[sym] || 0;
         let price: number | null;
-        if (sym === '☄️' && getSkillLevel('caminhoCometa') > 0) price = (Math.floor(currentMult) + 1) * 10;
-        else if (sym === '⭐' || sym === '☄️' || sym === '🪙') return null;
+        
+        if (sym === '☄️' && getSkillLevel('caminhoCometa') > 0) {
+            price = (Math.floor(currentMult) + 1) * 10;
+        }
+        else if (sym === '⭐' || sym === '☄️' || sym === '🪙') {
+            return null;
+        }
         else if (MID.includes(sym as MidSymbolKey)) {
             if (currentMult >= MIDMAX) return null;
             price = midMultiplierValue(sym) * 20;
-        } else price = (SYM[sym]?.v || 0) * Math.pow(1.5, currentMult) * priceIncreaseModifier;
+        } 
+        else {
+            // Aplicar priceIncreaseModifier no expoente do upgrade
+            const growthRate = 1 + ((1.5 - 1) * priceIncreaseModifier);
+            price = (SYM[sym]?.v || 0) * Math.pow(growthRate, currentMult);
+        }
+        
         return (isFinite(price) && price > 0) ? price * economiaCostMultiplier : null;
     }, [mult, midMultiplierValue, economiaCostMultiplier, getSkillLevel, priceIncreaseModifier]);
 
