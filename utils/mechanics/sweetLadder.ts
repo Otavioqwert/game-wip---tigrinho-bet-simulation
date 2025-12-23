@@ -10,10 +10,10 @@ export interface SweetLadderState {
 
 export const SWEET_LADDER_CONFIG = {
   BONUS_PER_LEVEL: 10,     // $10 por nível de corrente
-  HITS_PER_LIFE: 7,        // 7 acertos = +1 vida
+  HITS_PER_LIFE: 10,       // 10 acertos = +1 vida (nerf de 7 para 10)
   MAX_LIVES: 2,            // Máximo de 2 vidas
-  CHAIN_DECAY: 0.5,        // -50% ao errar sem vida
-  MIN_CHAIN: 1,            // Mínimo de corrente (não zera)
+  CHAIN_DECAY: 1.0,        // Quebra total ao errar (100% decay = chain vai para 0)
+  MIN_CHAIN: 0,            // Corrente zera completamente ao errar sem vida
 } as const;
 
 export const CANDY_SYMBOLS = ['🍭', '🍦', '🍧'] as const;
@@ -98,16 +98,11 @@ export function processMiss(state: SweetLadderState): {
     };
   }
 
-  // Sem vida? Corrente cai pela metade (mínimo 1)
-  const newChain = Math.max(
-    SWEET_LADDER_CONFIG.MIN_CHAIN,
-    Math.floor(state.chain * SWEET_LADDER_CONFIG.CHAIN_DECAY)
-  );
-
+  // Sem vida? Corrente QUEBRA COMPLETAMENTE (zera)
   return {
     newState: {
       ...state,
-      chain: newChain,
+      chain: 0, // Quebra total
     },
     usedLife: false,
   };
