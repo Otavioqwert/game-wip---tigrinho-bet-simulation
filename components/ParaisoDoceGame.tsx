@@ -33,7 +33,7 @@ export function ParaisoDoceGame({ onClose, onPayout }: ParaisoDoceGameProps) {
     setTimeout(() => setIsSpinning(false), 1000);
   };
 
-  return (return (
+  return (
     <div className={styles.container}>
       <h1 className={styles.title}>🍰 Paraiso Doce 2.0 🍰</h1>
 
