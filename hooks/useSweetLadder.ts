@@ -21,6 +21,8 @@ export interface UseSweetLadderResult {
   totalLives: number;
   averageChain: number;
   totalBonusEarned: number;
+  availableSlots: number;    // Slots disponíveis atualmente
+  nextSlotAt: number;        // Próximo slot em que nível (-1 se já max)
   
   // Ações
   activateMechanic: () => void;
@@ -34,6 +36,7 @@ export interface UseSweetLadderResult {
     totalBonus: number;
     livesGained: number;
     chainsCreated: number;
+    slotsUnlocked: number;
   };
   
   /**
@@ -50,6 +53,8 @@ export interface UseSweetLadderResult {
 /**
  * Hook para gerenciar a mecânica Sweet Ladder (Doce Corrente) com múltiplas correntes paralelas
  * 
+ * Começa com apenas 1 slot de corrente. Desbloqueia +1 slot a cada 5 níveis de chain (até 8 slots).
+ * 
  * @example
  * const sweetLadder = useSweetLadder();
  * 
@@ -60,6 +65,9 @@ export interface UseSweetLadderResult {
  * if (candyLinesCount > 0) {
  *   const result = sweetLadder.onCandyLinesHit(candyLinesCount);
  *   addMoney(result.totalBonus);
+ *   if (result.slotsUnlocked > 0) {
+ *     showNotification(`Desbloqueou +${result.slotsUnlocked} slot!`);
+ *   }
  * } else {
  *   sweetLadder.onMiss();
  * }
@@ -80,7 +88,7 @@ export function useSweetLadder(): UseSweetLadderResult {
   // Processa N linhas de doce acertadas
   const onCandyLinesHit = useCallback((candyLinesHit: number) => {
     if (!state.isActive || candyLinesHit <= 0) {
-      return { totalBonus: 0, livesGained: 0, chainsCreated: 0 };
+      return { totalBonus: 0, livesGained: 0, chainsCreated: 0, slotsUnlocked: 0 };
     }
 
     const result = processMultipleHits(state, candyLinesHit);
@@ -90,6 +98,7 @@ export function useSweetLadder(): UseSweetLadderResult {
       totalBonus: result.totalBonus,
       livesGained: result.livesGained,
       chainsCreated: result.chainsCreated,
+      slotsUnlocked: result.slotsUnlocked,
     };
   }, [state]);
 
@@ -122,6 +131,8 @@ export function useSweetLadder(): UseSweetLadderResult {
     totalLives: summary.totalLives,
     averageChain: summary.averageChain,
     totalBonusEarned: getTotalBonusEarned(state),
+    availableSlots: summary.availableSlots,
+    nextSlotAt: summary.nextSlotAt,
     activateMechanic,
     deactivateMechanic,
     onCandyLinesHit,
