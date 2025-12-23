@@ -13,6 +13,7 @@ export const SWEET_LADDER_CONFIG = {
   HITS_PER_LIFE: 7,        // 7 acertos = +1 vida
   MAX_LIVES: 2,            // Máximo de 2 vidas
   CHAIN_DECAY: 0.5,        // -50% ao errar sem vida
+  MIN_CHAIN: 1,            // Mínimo de corrente (não zera)
 } as const;
 
 export const CANDY_SYMBOLS = ['🍭', '🍦', '🍧'] as const;
@@ -77,7 +78,12 @@ export function processMiss(state: SweetLadderState): {
   newState: SweetLadderState;
   usedLife: boolean;
 } {
-  if (!state.isActive || state.chain === 0) {
+  if (!state.isActive) {
+    return { newState: state, usedLife: false };
+  }
+
+  // Se corrente é 0, não faz nada (ainda não começou)
+  if (state.chain === 0) {
     return { newState: state, usedLife: false };
   }
 
@@ -92,8 +98,11 @@ export function processMiss(state: SweetLadderState): {
     };
   }
 
-  // Sem vida? Corrente cai pela metade
-  const newChain = Math.floor(state.chain * SWEET_LADDER_CONFIG.CHAIN_DECAY);
+  // Sem vida? Corrente cai pela metade (mínimo 1)
+  const newChain = Math.max(
+    SWEET_LADDER_CONFIG.MIN_CHAIN,
+    Math.floor(state.chain * SWEET_LADDER_CONFIG.CHAIN_DECAY)
+  );
 
   return {
     newState: {
