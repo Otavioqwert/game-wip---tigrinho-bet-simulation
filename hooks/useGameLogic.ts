@@ -134,6 +134,8 @@ export const useGameLogic = () => {
         bal: gameState.bal,
         setBal: gameState.setBal,
         showMsg,
+        feverSnapshot: gameState.feverSnapshot,
+        setFeverSnapshot: gameState.setFeverSnapshot,
     });
 
     const spinLogic = useSpinLogic({
