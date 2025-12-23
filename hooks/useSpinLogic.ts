@@ -271,25 +271,26 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                     let ladderBonus = 0;
                     if (febreDocesAtivo && sweetLadder.state.isActive) {
                         if (result.sweetLinesCount > 0) {
+                            // Acertou linha de doce
                             const ladderResult = sweetLadder.onSymbolHit('🍭');
                             ladderBonus = ladderResult.bonus;
                             
                             if (ladderResult.gainedLife) {
                                 showMsg(`💚 +1 Vida! (Total: ${sweetLadder.state.lives})`, 2000, true);
                             }
-                        } else if (result.hitCount > 0) {
-                            // CAPTURA chain ANTES de processar o miss
+                        } else {
+                            // NãO acertou doce (seja acerto de outra linha OU miss total)
                             const chainBeforeMiss = sweetLadder.state.chain;
                             const missResult = sweetLadder.onSymbolHit('🐯');
                             
                             if (missResult.usedLife) {
                                 showMsg(`💔 Usou 1 vida! (Restam: ${sweetLadder.state.lives})`, 2000, true);
                             } else if (chainBeforeMiss > 0) {
-                                // Usa o valor ANTES da quebra
                                 showMsg(`💥 Corrente QUEBROU! (Era ${chainBeforeMiss})`, 2500, true);
                             }
                         }
                         
+                        // Mostra estado atual
                         if (sweetLadder.state.chain > 0) {
                             showMsg(`🔗 Corrente: ${sweetLadder.state.chain} | Vidas: ${sweetLadder.state.lives}`, 1500);
                         }
