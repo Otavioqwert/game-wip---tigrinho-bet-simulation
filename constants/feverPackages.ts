@@ -85,7 +85,7 @@ description: 'Até 8 correntes paralelas! +$20/nível. A cada 10 acertos, +1 vid
         type: 'item', risk: 'safe', tier: 'mid',
         icon: '🍬',
         contents: { items: { '🍭': 40, '🍦': 30, '🍧': 20 }, multipliers: { '🍭': 40, '🍦': 35, '🍧': 30 } }, // BUFF: +50% itens, +75% mults
-        description: 'Melhor safe do tema! (ROI +35%)' // BUFF: +5% → +35%
+                description: 'REWORK 2.0: 3x3 Divine Grid - RTP 95-300% + Progressive Bars (ROI +35%)✨' // REWORK: New Grid Mechanic + Dynamic Multipliers
     },
     {
         id: 'risk_mid_3',
