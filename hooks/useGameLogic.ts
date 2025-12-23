@@ -9,7 +9,7 @@ import { useScratchCardLogic } from './useScratchCardLogic';
 import { usePassiveIncome } from './usePassiveIncome';
 import { useSnakeUpgrades } from './useSnakeUpgrades';
 import { useFurnaceLogic } from './useFurnaceLogic';
-import { useBakeryLogic } from './useBakeryLogic'; // IMPORTED
+import { useBakeryLogic } from './useBakeryLogic';
 import { PRESTIGE_BASE_REQUIREMENT, PRESTIGE_GROWTH_FACTOR, CASH_TO_PA_RATIO } from '../constants/prestige';
 import type { SkillId, SecondarySkillId, RenegotiationTier, SymbolKey } from '../types';
 
@@ -19,7 +19,7 @@ export const useGameLogic = () => {
     const [msgTimeout, setMsgTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
     const [isSnakeGameActive, setIsSnakeGameActive] = useState(false);
-     const [isParaisoDoceActive, setIsParaisoDoceActive] = useState(false);
+    const [isParaisoDoceActive, setIsParaisoDoceActive] = useState(false);
     const [isCreditCardModalOpen, setIsCreditCardModalOpen] = useState(false);
     const [isPaymentDueModalOpen, setIsPaymentDueModalOpen] = useState(false);
     const [isItemPenaltyModalOpen, setIsItemPenaltyModalOpen] = useState(false);
@@ -123,7 +123,7 @@ export const useGameLogic = () => {
         setBakeryState: gameState.setBakeryState,
         showMsg,
         applyFinalGain: finalGainCalculation,
-        priceIncreaseModifier: secondarySkills.priceIncreaseModifier // NOVO
+        priceIncreaseModifier: secondarySkills.priceIncreaseModifier
     });
 
     const febreDoce = useFebreDoce({
@@ -147,14 +147,12 @@ export const useGameLogic = () => {
         febreDocesGiros: febreDoce.febreDocesGiros,
         setFebreDocesGiros: febreDoce.setFebreDocesGiros,
         betValFebre: febreDoce.betValFebre,
-        // Passamos a função de cálculo em vez de um multiplicador estático
         applyFinalGain: finalGainCalculation,
         showMsg, setWinMsg,
         cashbackMultiplier: secondarySkills.cashbackMultiplier,
         creditLimit: secondarySkills.creditLimit,
         multUpgradeBonus: secondarySkills.multUpgradeBonus,
         handleSpend, handleGain,
-        // FIX: Passar o hook completo ao invés de props separadas
         sweetLadder: febreDoce.sweetLadder
     });
 
@@ -257,11 +255,10 @@ export const useGameLogic = () => {
 
     return {
         ...gameState, ...febreDoce, ...spinLogic, ...shopLogic, ...prestigeSkills, ...secondarySkills,
-        ...scratchCardLogic, ...snakeUpgrades, ...furnaceLogic, ...bakeryLogic, // Spread Bakery Logic
-        bakeryState: gameState.bakery, // Alias for ShopsTabProps
+        ...scratchCardLogic, ...snakeUpgrades, ...furnaceLogic, ...bakeryLogic,
+        bakeryState: gameState.bakery,
         winMsg, extraMsg, setWinMsg, showMsg, prestigeRequirement, handlePrestige,
         isPoolInvalid: spinLogic.pool.length <= 1,
-        // Usamos agora a função de cálculo em vez de um multiplier estático
         applyFinalGain: finalGainCalculation,
         febreDocesAtivo: febreDoce.feverPhase === 'ACTIVE',
         isSnakeGameUnlocked: secondarySkills.getSecondarySkillLevel('snakeGame') > 0,
@@ -273,10 +270,18 @@ export const useGameLogic = () => {
             const final = finalGainCalculation(baseWinnings);
             handleGain(final);
         },
-         isParaisoDoceActive,
- startParaisoDoce: () => setIsParaisoDoceActive(true),
- closeParaisoDoce: () => setIsParaisoDoceActive(false),
- addParaisoPayout: (amount: number) => bal.current = (bal.current || 0) + amount,
+        // Paraiso Doce Integration
+        isParaisoDoceActive,
+        startParaisoDoce: () => setIsParaisoDoceActive(true),
+        closeParaisoDoce: () => setIsParaisoDoceActive(false),
+        addParaisoPayout: (amount: number) => {
+            const final = finalGainCalculation(amount);
+            handleGain(final);
+            showMsg(`🍬 Paraíso Doce: +$${final.toFixed(2)}!`, 2500, true);
+        },
+        paraisoDoceState: gameState.paraisoDoceState,
+        setParaisoDoceState: gameState.setParaisoDoceState,
+        // Credit Card
         isBankrupt: secondarySkills.getSecondarySkillLevel('bankruptcy') > 0 && gameState.creditCardDebt >= secondarySkills.creditLimit,
         creditCardLevel: secondarySkills.getSecondarySkillLevel('bankruptcy'),
         openCreditCardModal: () => setIsCreditCardModalOpen(true),
