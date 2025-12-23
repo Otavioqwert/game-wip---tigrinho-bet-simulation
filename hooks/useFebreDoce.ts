@@ -180,8 +180,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         const levels = Math.floor(Math.random() * 80) + 1; // 1-80 níveis
         result.multipliers[sym] = (result.multipliers[sym] || 0) + levels; // Soma os NÍVEIS
       }
-      } else if (!sweetSymbols.includes(sym)) {
-        // Other non-sweet items get standard multiplier logic
+ else if (!sweetSymbols.includes(sym)) {        // Other non-sweet items get standard multiplier logic
         const levels = Math.floor(Math.random() * 20) + 1;
         result.multipliers[sym] = (result.multipliers[sym] || 0) + levels;
       }
