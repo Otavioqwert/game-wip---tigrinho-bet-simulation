@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { RoiSaldo, Inventory, SymbolKey, FeverPackage, PurchasedPackage, FeverContentResult, Multipliers, FeverReport } from '../types';
 import { ALL_FEVER_PACKAGES } from '../constants/feverPackages';
@@ -301,8 +300,9 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         });
 
         // Apply Apostador Reduction AFTER adding all spins
+        // NERF: Changed from /3 to /4
         if (hasApostador) {
-            totalSpins = Math.floor(totalSpins / 3);
+            totalSpins = Math.floor(totalSpins / 4);
         }
 
         // 4. Apply State
