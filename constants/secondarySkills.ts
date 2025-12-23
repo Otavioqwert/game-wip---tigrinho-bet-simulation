@@ -20,7 +20,7 @@ export const SECONDARY_SKILLS: Record<SecondarySkillId, SecondarySkill> = {
     startStop: {
         id: 'startStop',
         name: 'Start/Stop',
-        description: (level) => `Kit de Partida: +$${level * 25}, +${level * 5} 🍬 e (+${Math.floor(level / 10)}x) Nv Avulso de Mult no Trevo (🍀).`,
+        description: (level) => `Início Turbinado: +$${level * 25}, +${level * 5} 🍬 por nível. A cada 10 níveis, +1 Mult Bônus de Trevo (🍀).`,
         tier: 1,
         dependencies: [],
         getCost: (level) => 1 + level,
