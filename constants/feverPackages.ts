@@ -12,8 +12,8 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 500,
         type: 'item', risk: 'safe', tier: 'budget',
         icon: '🍭',
-        contents: { items: { '🍭': 10, '🍦': 3 }, multipliers: { '🍭': 8 } },
-        description: 'Entrada barata no tema (ROI -2%)'
+        contents: { items: { '🍭': 12, '🍦': 5, '🍧': 2 }, multipliers: { '🍭': 12, '🍦': 8 } }, // BUFF: +46% itens, +150% mults
+        description: 'Entrada barata no tema (ROI +18%)' // BUFF: -2% → +18%
     },
     {
         id: 'safe_budget_2',
@@ -85,8 +85,8 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 3000,
         type: 'item', risk: 'safe', tier: 'mid',
         icon: '🍬',
-        contents: { items: { '🍭': 30, '🍦': 20, '🍧': 10 }, multipliers: { '🍭': 25, '🍦': 20, '🍧': 15 } },
-        description: 'Melhor safe do tema! (ROI +5%)'
+        contents: { items: { '🍭': 40, '🍦': 30, '🍧': 20 }, multipliers: { '🍭': 40, '🍦': 35, '🍧': 30 } }, // BUFF: +50% itens, +75% mults
+        description: 'Melhor safe do tema! (ROI +35%)' // BUFF: +5% → +35%
     },
     {
         id: 'risk_mid_3',
