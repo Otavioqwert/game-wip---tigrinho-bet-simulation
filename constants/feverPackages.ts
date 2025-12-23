@@ -107,7 +107,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         type: 'item', risk: 'risk', tier: 'mid',
         icon: '🎰',
         contents: 'TOTALLY_RANDOM_CHEST',
-        description: '11 a 20 Itens com +25% por Nível (apenas 🐯🍀💵💎)'
+        description: '1 a 20 Itens com +25% por Nível (apenas 🐯🍀💵💎)'
     },
 
     // --- TIER 3: PREMIUM ---
