@@ -1,10 +1,10 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { INITIAL_INVENTORY, INITIAL_MULTIPLIERS } from '../constants';
 import type { Inventory, Multipliers, PanificadoraLevels, RoiSaldo, RenegotiationTier, ActiveCookie, ScratchCardMetrics, LotericaInjectionState, BakeryState } from '../types';
+import { prepareSaveState, EMPTY_FEVER_SNAPSHOT, type FeverSnapshot } from '../utils/feverStateIsolation';
 
 const SAVE_KEY = 'tigrinho-save-game';
-const SAVE_VERSION = 27; // Updated Version for Bakery
+const SAVE_VERSION = 28; // Updated Version for Fever State Isolation
 
 export interface ItemPenalty { amount: number; }
 
@@ -22,6 +22,7 @@ export interface SavedState {
     scratchMetrics: ScratchCardMetrics; lotericaState: LotericaInjectionState;
     totalTokenPurchases: number; mortgageUsages: number;
     bakery: BakeryState; // New Bakery State
+    feverSnapshot: FeverSnapshot; // Fever State Isolation
 }
 
 const getInitialState = (): SavedState => ({
@@ -50,7 +51,8 @@ const getInitialState = (): SavedState => ({
         ],
         extraSlots: 0,
         speedLevel: 0
-    }
+    },
+    feverSnapshot: EMPTY_FEVER_SNAPSHOT
 });
 
 export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e?: boolean) => void }) => {
@@ -85,6 +87,11 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
                         merged.bakery = { ...getInitialState().bakery, ...decoded.bakery };
                     }
                     
+                    // Ensure feverSnapshot exists
+                    if (!decoded.feverSnapshot) {
+                        merged.feverSnapshot = EMPTY_FEVER_SNAPSHOT;
+                    }
+                    
                     setState(merged);
                 }
             } catch (e) { console.error("Load failed", e); }
@@ -92,14 +99,28 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
     }, []);
 
     const saveGame = useCallback((isManual = false) => {
-        // Usa stateRef.current para garantir que salvamos o estado mais recente
         const currentState = stateRef.current;
-        const json = JSON.stringify(currentState);
+        
+        // APLICAR ISOLAMENTO DE FEBRE ANTES DE SALVAR
+        const { inv: safeInv, mult: safeMult } = prepareSaveState(
+            currentState.inv,
+            currentState.mult,
+            currentState.feverSnapshot
+        );
+        
+        // Criar cópia do estado com inv/mult corretos
+        const safeState = {
+            ...currentState,
+            inv: safeInv,
+            mult: safeMult
+        };
+        
+        const json = JSON.stringify(safeState);
         const encoded = btoa(unescape(encodeURIComponent(json)));
         
         // Usamos Date.now() como ID único do save para diferenciar cada salvamento
         const timestamp = Date.now();
-        localStorage.setItem(SAVE_KEY, `V27:${timestamp}:${encoded}`);
+        localStorage.setItem(SAVE_KEY, `V28:${timestamp}:${encoded}`);
         
         if (isManual) showMsg("✅ Jogo salvo!", 2000, true);
     }, [showMsg]);
@@ -194,5 +215,6 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
         setTotalTokenPurchases: (v: any) => updateState(s => ({...s, totalTokenPurchases: typeof v === 'function' ? v(s.totalTokenPurchases) : v})),
         setMortgageUsages: (v: any) => updateState(s => ({...s, mortgageUsages: typeof v === 'function' ? v(s.mortgageUsages) : v})),
         setBakeryState: (v: any) => updateState(s => ({...s, bakery: typeof v === 'function' ? v(s.bakery) : v})),
+        setFeverSnapshot: (v: any) => updateState(s => ({...s, feverSnapshot: typeof v === 'function' ? v(s.feverSnapshot) : v})),
     };
 };
