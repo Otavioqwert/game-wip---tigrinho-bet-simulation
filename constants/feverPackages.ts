@@ -80,8 +80,9 @@ export const ITEM_PACKAGES: FeverPackage[] = [
 
     // --- TIER 2: MID ---
     {
-        id: 'safe_mid_1',
-        name: '🍬 Paraíso Doce',
+        id: '85
+            ',
+        name: '🍬 90',
         cost: 3000,
         type: 'item', risk: 'safe', tier: 'mid',
         icon: '🍬',
