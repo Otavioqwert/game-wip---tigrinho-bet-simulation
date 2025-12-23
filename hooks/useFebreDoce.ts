@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import type { RoiSaldo, Inventory, SymbolKey, FeverPackage, PurchasedPackage, FeverContentResult, Multipliers, FeverReport } from '../types';
+import type { RoiSaldo, Inventory, SymbolKey, FeverPackage, PurchasedPackage, FeverContentResult, Multipliers, FeverReport, MidSymbolKey } from '../types';
 import { ALL_FEVER_PACKAGES } from '../constants/feverPackages';
-import { SYM, INITIAL_INVENTORY, INITIAL_MULTIPLIERS } from '../constants';
+import { SYM, INITIAL_INVENTORY, INITIAL_MULTIPLIERS, MID, SUGAR_CONVERSION } from '../constants';
 import { useSweetLadder } from './useSweetLadder';
 import { createFeverSnapshot, restoreFromSnapshot, EMPTY_FEVER_SNAPSHOT, type FeverSnapshot } from '../utils/feverStateIsolation';
 
@@ -28,19 +28,15 @@ export const useFebreDoce = (props: FebreDoceProps) => {
     const [cooldownEnd, setCooldownEnd] = useState<number | null>(null);
     const [selectedPackages, setSelectedPackages] = useState<PurchasedPackage[]>([]);
     
-    // Fever Active State
     const [febreDocesGiros, setFebreDocesGiros] = useState(0);
-    const [betValFebre, setBetValFebre] = useState(10); // Default base bet
-    const [initialTotalSpins, setInitialTotalSpins] = useState(0); // Track total spins for report
+    const [betValFebre, setBetValFebre] = useState(10);
+    const [initialTotalSpins, setInitialTotalSpins] = useState(0);
     
-    // Sweet Ladder Hook (mecânica separada)
     const sweetLadder = useSweetLadder();
     
-    // Report State
     const [feverReport, setFeverReport] = useState<FeverReport | null>(null);
     const [startBalance, setStartBalance] = useState(0);
 
-    // --- Persistence & Cooldown ---
     useEffect(() => {
         const savedCooldown = localStorage.getItem('tigrinho_fever_cooldown');
         if (savedCooldown) {
@@ -52,8 +48,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
             }
         }
     }, []);
-
-    // --- Setup Logic ---
 
     const openFeverSetup = useCallback(() => {
         if (feverPhase !== 'IDLE') return;
@@ -68,7 +62,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
 
     const closeFeverSetup = useCallback(() => {
         if (feverPhase === 'SETUP') {
-            // REFUND LOGIC: Return money for selected packages
             if (selectedPackages.length > 0) {
                 const totalRefund = selectedPackages.reduce((acc, p) => acc + p.cost, 0);
                 setBal(b => b + totalRefund);
@@ -95,7 +88,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
             }
         }
         
-        // Fallback to last option if rounding errors
         if (!selectedOutcome) {
              const keys = Object.keys(pkg.rolls);
              selectedOutcome = pkg.rolls[keys[keys.length - 1]];
@@ -104,9 +96,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         if (pkg.type === 'bet') {
             return { result: selectedOutcome.spins, desc: `${selectedOutcome.spins} Giros` };
         } else {
-            // Check if specific contents are defined (new logic for Aposta Suprema)
             if (selectedOutcome.contents) {
-                // Create a description string
                 let parts: string[] = [];
                 if (selectedOutcome.contents.items) {
                     Object.entries(selectedOutcome.contents.items).forEach(([k, v]) => parts.push(`${v}x ${k}`));
@@ -118,30 +108,25 @@ export const useFebreDoce = (props: FebreDoceProps) => {
                 return { result: null, desc, contents: selectedOutcome.contents };
             }
 
-            // Fallback to value based generation
             return { result: selectedOutcome.value, desc: `Valor $${selectedOutcome.value}` }; 
         }
     };
 
     const generateItemsFromValue = (value: number, tier: string): FeverContentResult => {
-        // Simplified generator based on value
-        // Weights favor candies and multipliers
         const result: FeverContentResult = { items: {}, multipliers: {} };
         let remainingValue = value;
         
-        // Cost estimations for balancing generation
         const COSTS = { '🍭': 30, '🍦': 50, '🍧': 80, '🍀': 100, '💎': 500, '🐯': 2000, '☄️': 6000 };
         const MULT_COST = 50;
 
         while (remainingValue > 50) {
             const rand = Math.random();
-            if (rand < 0.6) { // Buy Multiplier
+            if (rand < 0.6) {
                  const syms = Object.keys(COSTS) as SymbolKey[];
                  const s = syms[Math.floor(Math.random() * syms.length)];
                  result.multipliers[s] = (result.multipliers[s] || 0) + 1;
                  remainingValue -= MULT_COST;
-            } else { // Buy Item
-                // Filter items affordable
+            } else {
                 const affordable = (Object.entries(COSTS) as [SymbolKey, number][]).filter(([k, v]) => v <= remainingValue);
                 if (affordable.length === 0) break;
                 const [s, c] = affordable[Math.floor(Math.random() * affordable.length)];
@@ -152,37 +137,27 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         return result;
     };
     
-    // NEW GENERATOR: Baú do Apostador v1.1 (1-20 items, +25% per level for tier symbols)
   const generateRandomChestContents = (): FeverContentResult => {
     const result: FeverContentResult = { items: {}, multipliers: {} };
     const keys = Object.keys(SYM) as SymbolKey[];
     
-    // Tier symbols that get +25% per level bonus
     const tierSymbols = ['🐯', '🍀', '💵', '💎'];
-    // Sweet items that are NOT affected by multiplier bonus
     const sweetSymbols = ['🍭', '🍦', '🍧'];
     
-    // 1 to 20 items
     const quantity = Math.floor(Math.random() * 20) + 1;
     
     for (let i = 0; i < quantity; i++) {
-      // Totally random item
       const sym = keys[Math.floor(Math.random() * keys.length)];
       
-      // Add Item
       result.items[sym] = (result.items[sym] || 0) + 1;
       
-      // Apply multiplier levels (1-80 levels for tier symbols, stored as levels not multipliers)
       if (tierSymbols.includes(sym)) {
-        // Tier symbols: Adiciona níveis (1-80) para cálculo posterior
-        const levels = Math.floor(Math.random() * 80) + 1; // 1-80 níveis
-        result.multipliers[sym] = (result.multipliers[sym] || 0) + levels; // Soma os NÍVEIS
+        const levels = Math.floor(Math.random() * 80) + 1;
+        result.multipliers[sym] = (result.multipliers[sym] || 0) + levels;
       } else if (!sweetSymbols.includes(sym)) {
-        // Other non-sweet items get standard multiplier logic
         const levels = Math.floor(Math.random() * 20) + 1;
         result.multipliers[sym] = (result.multipliers[sym] || 0) + levels;
       }
-      // Doces (🍭🍦🍧) são apenas adicionados, sem multiplicadores
     }
     
     return result;
@@ -203,27 +178,21 @@ export const useFebreDoce = (props: FebreDoceProps) => {
 
         let purchased: PurchasedPackage = { ...pkg, uniqueId: `${pkg.id}_${Date.now()}` };
 
-        // Process TOTALLY_RANDOM_CHEST (Baú do Apostador)
         if (pkg.contents === 'TOTALLY_RANDOM_CHEST') {
              const generated = generateRandomChestContents();
              purchased.contents = generated;
-             // Hiding result
              purchased.resultDescription = `❓ Conteúdo Surpresa`;
         }
-        // Process RNG Risk
         else if (pkg.risk === 'risk' && pkg.rolls) {
             const { result, desc, contents } = resolvePackageRoll(pkg);
-            // Hiding result for risk packages
             purchased.resultDescription = "❓ Conteúdo Surpresa";
             
             if (pkg.type === 'bet') {
-                purchased.spins = result; // Overwrite spins with rolled value
+                purchased.spins = result;
             } else {
                 if (contents) {
-                    // Use specific contents from the roll (e.g., Aposta Suprema Stars)
                     purchased.contents = contents;
                 } else if (typeof result === 'number') {
-                    // If item package rolled a VALUE, generate random items from it
                     const generated = generateItemsFromValue(result, pkg.tier);
                     purchased.contents = generated;
                 }
@@ -240,25 +209,18 @@ export const useFebreDoce = (props: FebreDoceProps) => {
     }, [bal, selectedPackages, setBal, showMsg]);
 
 
-    // --- Activation Logic ---
-
     const startFever = useCallback(() => {
-        if (selectedPackages.length === 0) {
-            // Allow starting with 0 packages
-        }
+        if (selectedPackages.length === 0) {}
 
-        setStartBalance(bal); // Snapshot balance AFTER buying packages
+        setStartBalance(bal);
 
-        // 2. Prepare Fever Inventory & Multipliers
         const feverInv = { ...INITIAL_INVENTORY };
-        // Zero out everything first to ensure clean slate, except maybe keep wildcard?
         (Object.keys(feverInv) as SymbolKey[]).forEach(k => feverInv[k] = 0);
-        feverInv['🍭'] = 5; feverInv['🍦'] = 5; feverInv['🍧'] = 5; // Base starter
+        feverInv['🍭'] = 5; feverInv['🍦'] = 5; feverInv['🍧'] = 5;
 
         const feverMult = { ...INITIAL_MULTIPLIERS };
 
-        // 3. Process Packages
-        let totalSpins = 25; // Base spins
+        let totalSpins = 25;
         let activeBet = 10;
         let ladderActive = false;
 
@@ -271,22 +233,24 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         
         if (hasLadder) {
             ladderActive = true;
+            // ADICIONA +5 DE CADA DOCE ao inventário da febre
+            feverInv['🍭'] += 5;
+            feverInv['🍦'] += 5;
+            feverInv['🍧'] += 5;
         }
 
         selectedPackages.forEach(pkg => {
-            if (pkg.id === 'pkg_apostador') return; // Handled separately due to logic order
+            if (pkg.id === 'pkg_apostador') return;
 
             if (pkg.type === 'bet') {
                 if (typeof pkg.spins === 'number') totalSpins += pkg.spins;
             } else if (pkg.contents && typeof pkg.contents !== 'string') {
-                // Add items
                 const c = pkg.contents as FeverContentResult;
                 if (c.items) {
                     Object.entries(c.items).forEach(([k, v]) => {
                         feverInv[k as SymbolKey] = (feverInv[k as SymbolKey] || 0) + (v as number);
                     });
                 }
-                // Add multipliers
                 if (c.multipliers) {
                     Object.entries(c.multipliers).forEach(([k, v]) => {
                         feverMult[k as SymbolKey] = (feverMult[k as SymbolKey] || 0) + (v as number);
@@ -295,25 +259,20 @@ export const useFebreDoce = (props: FebreDoceProps) => {
             }
         });
 
-        // Apply Apostador Reduction AFTER adding all spins
-        // NERF: Changed from /3 to /4
         if (hasApostador) {
             totalSpins = Math.floor(totalSpins / 4);
         }
 
-        // CREATE FEVER SNAPSHOT BEFORE CHANGING STATE
         const snapshot = createFeverSnapshot(inv, mult, feverInv, feverMult);
         setFeverSnapshot(snapshot);
 
-        // 4. Apply State
         setInv(feverInv);
         setMult(feverMult);
         setFebreDocesGiros(totalSpins);
-        setInitialTotalSpins(totalSpins); // Store for report
+        setInitialTotalSpins(totalSpins);
         setFeverPhase('ACTIVE');
         setBetValFebre(activeBet);
         
-        // Activate Sweet Ladder if package was bought
         if (ladderActive) {
             sweetLadder.activateMechanic();
         }
@@ -323,7 +282,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
     }, [inv, mult, selectedPackages, setInv, setMult, showMsg, bal, sweetLadder, setFeverSnapshot]);
 
     const endFever = useCallback(() => {
-        // Calculate report
         const endBalance = bal;
         const report: FeverReport = {
             startBalance: startBalance,
@@ -333,24 +291,20 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         };
         setFeverReport(report);
         
-        // RESTORE STATE FROM SNAPSHOT
         const restored = restoreFromSnapshot(feverSnapshot);
         if (restored) {
             setInv(restored.inv);
             setMult(restored.mult);
         }
         
-        // Clear snapshot
         setFeverSnapshot(EMPTY_FEVER_SNAPSHOT);
 
         setFeverPhase('IDLE');
         setFebreDocesGiros(0);
         setSelectedPackages([]);
         
-        // Deactivate Sweet Ladder
         sweetLadder.deactivateMechanic();
 
-        // Set Cooldown (30 minutes)
         const end = Date.now() + (30 * 60 * 1000);
         setCooldownEnd(end);
         localStorage.setItem('tigrinho_fever_cooldown', end.toString());
@@ -374,7 +328,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         betValFebre,
         cooldownEnd,
         
-        // Sweet Ladder (expor para uso externo)
         sweetLadder,
         
         feverReport,

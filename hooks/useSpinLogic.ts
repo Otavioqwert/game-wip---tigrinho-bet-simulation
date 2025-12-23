@@ -19,7 +19,6 @@ interface SpinLogicProps {
     febreDocesGiros: number;
     setFebreDocesGiros: React.Dispatch<React.SetStateAction<number>>;
     betValFebre: number;
-    // Função de aplicação de bônus (Grande Ganho + Hidra)
     applyFinalGain: (baseAmount: number) => number;
     skillLevels: Record<string, number>;
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
@@ -108,35 +107,12 @@ export const useSpinLogic = (props: SpinLogicProps) => {
     }, [starBonusState.totalWin]);
 
     const triggerStarBonus = useCallback((validKeys: SymbolKey[], bet: number, lines: number) => {
-        const { inv, applyFinalGain, setInv, setSugar, showMsg } = propsRef.current;
+        const { inv, applyFinalGain } = propsRef.current;
         const results: StarBonusResult[] = [];
         let rawTotalWin = 0;
         let spinsToProcess = 90 * lines;
         
         const snapshot = createWeightSnapshot(inv, validKeys);
-
-        // FIX: +5 doces aleatórios por linha de estrela (era +5 total, agora é +5 * lines)
-        const candyRewards: Partial<Record<MidSymbolKey, number>> = {};
-        let totalSugar = 0;
-        
-        for (let lineIdx = 0; lineIdx < lines; lineIdx++) {
-            for (let i = 0; i < 5; i++) {
-                const randomCandy = MID[Math.floor(Math.random() * MID.length)] as MidSymbolKey;
-                candyRewards[randomCandy] = (candyRewards[randomCandy] || 0) + 1;
-                totalSugar += SUGAR_CONVERSION[randomCandy];
-            }
-        }
-
-        // Adiciona doces ao inventário
-        setInv(prev => {
-            const next = { ...prev };
-            Object.entries(candyRewards).forEach(([k, v]) => {
-                next[k as MidSymbolKey] = (next[k as MidSymbolKey] || 0) + v!;
-            });
-            return next;
-        });
-        setSugar(prev => prev + totalSugar);
-        showMsg(`⭐ Star Jr! +${lines * 5} doces aleatórios (+${totalSugar} 🍬)`, 3000, true);
 
         for (let i = 0; i < spinsToProcess; i++) {
             const syms = [spinFromSnapshot(snapshot), spinFromSnapshot(snapshot), spinFromSnapshot(snapshot)] as SymbolKey[];
@@ -146,7 +122,6 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                 if (syms[0] === '⭐') {
                     spinsToProcess += 5;
                 } else {
-                    // AJUSTE: O valor agora é 0.5 (metade) do prêmio total da linha
                     win = bet * midMultiplierValue(syms[0]) * 0.5;
                 }
             }
@@ -289,15 +264,13 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                     setStoppingColumns([false, false, false]);
                     const result = getSpinResult(animationState.current.finalGrid, animationState.current.availableKeys);
                     
-                    // FIX: Cookies NÃO aplicam durante Febre Doce
                     const cookieMult = febreDocesAtivo ? 1 : activeCookies.reduce((acc, c) => acc * c.multiplier, 1);
                     const boostedOther = result.totalOtherWin * cookieMult;
                     
-                    // 🔗 SWEET LADDER PROCESSING (FIXED: Process ONCE per spin)
+                    // 🔗 SWEET LADDER PROCESSING (Process ONCE per spin)
                     let ladderBonus = 0;
                     if (febreDocesAtivo && sweetLadder.state.isActive) {
                         if (result.sweetLinesCount > 0) {
-                            // Acertou doce(s) - processa APENAS UMA VEZ por spin
                             const ladderResult = sweetLadder.onSymbolHit('🍭');
                             ladderBonus = ladderResult.bonus;
                             
@@ -305,7 +278,6 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                                 showMsg(`💚 +1 Vida! (Total: ${sweetLadder.state.lives})`, 2000, true);
                             }
                         } else if (result.hitCount > 0) {
-                            // Acertou linha mas NÃO foi doce - processa APENAS UMA VEZ
                             const missResult = sweetLadder.onSymbolHit('🐯');
                             
                             if (missResult.usedLife) {
@@ -315,17 +287,14 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                             }
                         }
                         
-                        // Mostra estado da corrente apenas se houver progresso
                         if (sweetLadder.state.chain > 0) {
                             showMsg(`🔗 Corrente: ${sweetLadder.state.chain} | Vidas: ${sweetLadder.state.lives}`, 1500);
                         }
                     }
                     
-                    // APLICA O CÁLCULO FINAL (GRANDE GANHO + HIDRA)
                     const rawTotalWinnings = result.totalSweetWin + boostedOther + ladderBonus;
                     const finalWinnings = applyFinalGain(rawTotalWinnings);
                     
-                    // FIX: Apenas decrementa cookies FORA da febre
                     if (!febreDocesAtivo && activeCookies.length > 0 && result.totalOtherWin > 0) {
                         setActiveCookies(prev => prev.map(c => ({ ...c, remainingSpins: c.remainingSpins - 1 })).filter(c => c.remainingSpins > 0));
                     }
