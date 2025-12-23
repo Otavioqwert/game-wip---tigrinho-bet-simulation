@@ -99,13 +99,15 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         description: 'Garante +3 Tigres e +50 Níveis de Mult (12.5x base extra).'
     },
     {
+
+         // ATUALIZAÇÃO: Cost ajustado para $7.5k + Mecânica de +25% por nível APENAS em 🐯🍀💵💎 (sem afetar doces 🍭🍦🍧)
         id: 'risk_mid_1',
         name: '🎰 Baú do Apostador',
-        cost: 4500,
+        cost: 7500,
         type: 'item', risk: 'risk', tier: 'mid',
         icon: '🎰',
         contents: 'TOTALLY_RANDOM_CHEST',
-        description: '1 a 20 Itens Aleatórios com Níveis de Mult de 1 a 80!'
+        description: '11 a 20 Itens com +25% por Nível (apenas 🐯🍀💵💎)'
     },
 
     // --- TIER 3: PREMIUM ---
