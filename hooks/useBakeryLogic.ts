@@ -12,12 +12,14 @@ interface BakeryLogicProps {
     setBakeryState: React.Dispatch<React.SetStateAction<BakeryState>>;
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     applyFinalGain: (baseAmount: number) => number;
+    priceIncreaseModifier: number; // NOVO: Modificador do Desacelerômetro
 }
 
 export const useBakeryLogic = (props: BakeryLogicProps) => {
     const { 
         sugar, setSugar, bal, handleSpend, handleGain, 
-        bakeryState, setBakeryState, showMsg, applyFinalGain 
+        bakeryState, setBakeryState, showMsg, applyFinalGain,
+        priceIncreaseModifier // NOVO
     } = props;
 
     // --- UTILS: COST & TIME CALCULATORS ---
@@ -26,8 +28,12 @@ export const useBakeryLogic = (props: BakeryLogicProps) => {
         const product = BAKERY_PRODUCTS[productId];
         const base = product.upgradeCost;
         const increase = product.upgradeCostIncrease;
-        return Math.floor(base * Math.pow(1.25, currentLevel) + (increase * currentLevel));
-    }, []);
+        
+        // Aplica modifier no crescimento exponencial (1.25 base)
+        const growthRate = 1 + ((1.25 - 1) * priceIncreaseModifier);
+        
+        return Math.floor(base * Math.pow(growthRate, currentLevel) + (increase * currentLevel * priceIncreaseModifier));
+    }, [priceIncreaseModifier]);
 
     const calculateProductPassiveIncome = useCallback((productId: BakeryProductId, count: number, level: number): number => {
         const product = BAKERY_PRODUCTS[productId];
@@ -37,20 +43,20 @@ export const useBakeryLogic = (props: BakeryLogicProps) => {
     }, []);
 
     const getExtraSlotCost = useCallback((currentExtraSlots: number): number => {
-        // Base: 3 slots. Level 0 extra = 3 slots total.
-        // Cost starts at 3000 for 4th slot (level 0 -> 1)
-        return 3000 * Math.pow(2, currentExtraSlots);
-    }, []);
+        // Base: 1 slot inicial. Level 0 extra = 1 slot total.
+        // Cost starts at 3000 for 2nd slot (level 0 -> 1)
+        // Aplica modifier no crescimento exponencial (2.0 base)
+        const growthRate = 1 + ((2.0 - 1) * priceIncreaseModifier);
+        return Math.floor(3000 * Math.pow(growthRate, currentExtraSlots));
+    }, [priceIncreaseModifier]);
 
     const getSpeedUpgradeCost = useCallback((level: number): number => {
-        // Curva quadrática: força investimento progressivo mas alcançável
-        // Level 1: $5.800 | Level 5: $17.000 | Level 10: $52.000 | Level 20: $152.000
-        // Total para maxar (0→20): ~$1.400.000
+        // Curva quadrática com modifier aplicado nos fatores de crescimento
         const base = 2000;
-        const linearFactor = 1500;
-        const quadraticFactor = 300;
+        const linearFactor = 1500 * priceIncreaseModifier;
+        const quadraticFactor = 300 * priceIncreaseModifier;
         return Math.floor(base + (linearFactor * level) + (quadraticFactor * level * level));
-    }, []);
+    }, [priceIncreaseModifier]);
 
     const calculateSpeedDiscount = useCallback((level: number): number => {
         let remaining = 1.0;
@@ -196,7 +202,7 @@ export const useBakeryLogic = (props: BakeryLogicProps) => {
 
     const buyExtraSlot = useCallback(() => {
         const cost = getExtraSlotCost(bakeryState.extraSlots);
-        if (bakeryState.extraSlots >= 8) { // Max 11 slots total (3 base + 8 extra)
+        if (bakeryState.extraSlots >= 8) { // Max 9 slots total (1 base + 8 extra)
              showMsg("Máximo de fornos atingido!", 2000, true);
              return;
         }
