@@ -1,4 +1,3 @@
-
 import type { FeverPackage } from '../types';
 
 // ==========================================
@@ -239,11 +238,11 @@ export const BET_PACKAGES: FeverPackage[] = [
     {
         id: 'pkg_apostador',
         name: '😎 O Apostador',
-        cost: 10000,
+        cost: 15000, // NERF: $10k → $15k
         type: 'bet', tier: 'mid',
         spins: 0, // Logic handled in activation
         icon: '🕶️',
-        description: 'Aposta sobe para $100, mas giros totais caem para 1/3.'
+        description: 'Aposta sobe para $100, mas giros totais caem para 1/4.' // NERF: /3 → /4
     },
 
     // PREMIUM / LUXURY
