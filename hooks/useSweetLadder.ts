@@ -3,10 +3,10 @@ import {
   createInitialState,
   activateSweetLadder,
   deactivateSweetLadder,
-  processHit,
+  processMultipleHits,
   processMiss,
   isCandySymbol,
-  hitsUntilNextLife,
+  getChainsSummary,
   getTotalBonusEarned,
   type SweetLadderState,
 } from '../utils/mechanics/sweetLadder';
@@ -15,23 +15,40 @@ export interface UseSweetLadderResult {
   // Estado
   state: SweetLadderState;
   
-  // Métricas
-  hitsUntilNextLife: number;
+  // Métricas agregadas
+  totalChains: number;
+  highestChain: number;
+  totalLives: number;
+  averageChain: number;
   totalBonusEarned: number;
   
   // Ações
   activateMechanic: () => void;
   deactivateMechanic: () => void;
-  onSymbolHit: (symbol: string) => {
-    bonus: number;
-    gainedLife: boolean;
-    usedLife: boolean;
+  
+  /**
+   * Processa N linhas de doce acertadas em um spin
+   * @param candyLinesHit - Número de linhas de doce (1-8)
+   */
+  onCandyLinesHit: (candyLinesHit: number) => {
+    totalBonus: number;
+    livesGained: number;
+    chainsCreated: number;
   };
+  
+  /**
+   * Processa miss (nenhuma linha de doce)
+   */
+  onMiss: () => {
+    chainsBroken: number;
+    livesUsed: number;
+  };
+  
   reset: () => void;
 }
 
 /**
- * Hook para gerenciar a mecânica Sweet Ladder (Doce Corrente)
+ * Hook para gerenciar a mecânica Sweet Ladder (Doce Corrente) com múltiplas correntes paralelas
  * 
  * @example
  * const sweetLadder = useSweetLadder();
@@ -40,9 +57,11 @@ export interface UseSweetLadderResult {
  * sweetLadder.activateMechanic();
  * 
  * // A cada spin
- * const result = sweetLadder.onSymbolHit('🍭');
- * if (result.bonus > 0) {
- *   addMoney(result.bonus);
+ * if (candyLinesCount > 0) {
+ *   const result = sweetLadder.onCandyLinesHit(candyLinesCount);
+ *   addMoney(result.totalBonus);
+ * } else {
+ *   sweetLadder.onMiss();
  * }
  */
 export function useSweetLadder(): UseSweetLadderResult {
@@ -58,33 +77,35 @@ export function useSweetLadder(): UseSweetLadderResult {
     setState(deactivateSweetLadder(state));
   }, [state]);
 
-  // Processa símbolo acertado
-  const onSymbolHit = useCallback((symbol: string) => {
+  // Processa N linhas de doce acertadas
+  const onCandyLinesHit = useCallback((candyLinesHit: number) => {
+    if (!state.isActive || candyLinesHit <= 0) {
+      return { totalBonus: 0, livesGained: 0, chainsCreated: 0 };
+    }
+
+    const result = processMultipleHits(state, candyLinesHit);
+    setState(result.newState);
+    
+    return {
+      totalBonus: result.totalBonus,
+      livesGained: result.livesGained,
+      chainsCreated: result.chainsCreated,
+    };
+  }, [state]);
+
+  // Processa miss
+  const onMiss = useCallback(() => {
     if (!state.isActive) {
-      return { bonus: 0, gainedLife: false, usedLife: false };
+      return { chainsBroken: 0, livesUsed: 0 };
     }
 
-    const isCandy = isCandySymbol(symbol);
-
-    if (isCandy) {
-      // Acertou doce
-      const result = processHit(state);
-      setState(result.newState);
-      return {
-        bonus: result.bonus,
-        gainedLife: result.gainedLife,
-        usedLife: false,
-      };
-    } else {
-      // Errou (não é doce)
-      const result = processMiss(state);
-      setState(result.newState);
-      return {
-        bonus: 0,
-        gainedLife: false,
-        usedLife: result.usedLife,
-      };
-    }
+    const result = processMiss(state);
+    setState(result.newState);
+    
+    return {
+      chainsBroken: result.chainsBroken,
+      livesUsed: result.livesUsed,
+    };
   }, [state]);
 
   // Reset completo
@@ -92,13 +113,19 @@ export function useSweetLadder(): UseSweetLadderResult {
     setState(createInitialState());
   }, []);
 
+  const summary = getChainsSummary(state);
+
   return {
     state,
-    hitsUntilNextLife: hitsUntilNextLife(state.chain),
-    totalBonusEarned: getTotalBonusEarned(state.chain),
+    totalChains: summary.totalChains,
+    highestChain: summary.highestChain,
+    totalLives: summary.totalLives,
+    averageChain: summary.averageChain,
+    totalBonusEarned: getTotalBonusEarned(state),
     activateMechanic,
     deactivateMechanic,
-    onSymbolHit,
+    onCandyLinesHit,
+    onMiss,
     reset,
   };
 }
