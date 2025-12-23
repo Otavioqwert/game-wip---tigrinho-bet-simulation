@@ -66,7 +66,8 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         type: 'item', risk: 'safe', tier: 'budget',
         icon: '🔗',
         contents: { items: {}, multipliers: {} },
-description: 'Até 8 correntes paralelas! +$20/nível. A cada 10 acertos, +1 vida (máx 2). Erro sem vida = quebra.'}   },
+        description: 'Até 8 correntes paralelas! +$20/nível. A cada 10 acertos, +1 vida (máx 2). Erro sem vida = quebra.'
+    },
     {
         id: 'pkg_star_junior',
         name: '⭐ Star Junior',
