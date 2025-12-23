@@ -121,7 +121,8 @@ export const useGameLogic = () => {
         bakeryState: gameState.bakery,
         setBakeryState: gameState.setBakeryState,
         showMsg,
-        applyFinalGain: finalGainCalculation
+        applyFinalGain: finalGainCalculation,
+        priceIncreaseModifier: secondarySkills.priceIncreaseModifier // NOVO
     });
 
     const febreDoce = useFebreDoce({
