@@ -19,6 +19,7 @@ export const useGameLogic = () => {
     const [msgTimeout, setMsgTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
     const [isSnakeGameActive, setIsSnakeGameActive] = useState(false);
+     const [isParaisoDoceActive, setIsParaisoDoceActive] = useState(false);
     const [isCreditCardModalOpen, setIsCreditCardModalOpen] = useState(false);
     const [isPaymentDueModalOpen, setIsPaymentDueModalOpen] = useState(false);
     const [isItemPenaltyModalOpen, setIsItemPenaltyModalOpen] = useState(false);
@@ -254,7 +255,8 @@ export const useGameLogic = () => {
         showMsg("Multa paga! Apostas liberadas.", 3000, true);
     }, [gameState, showMsg]);
 
-    return {
+    270
+        
         ...gameState, ...febreDoce, ...spinLogic, ...shopLogic, ...prestigeSkills, ...secondarySkills,
         ...scratchCardLogic, ...snakeUpgrades, ...furnaceLogic, ...bakeryLogic, // Spread Bakery Logic
         bakeryState: gameState.bakery, // Alias for ShopsTabProps
@@ -272,6 +274,10 @@ export const useGameLogic = () => {
             const final = finalGainCalculation(baseWinnings);
             handleGain(final);
         },
+         isParaisoDoceActive,
+ startParaisoDoce: () => setIsParaisoDoceActive(true),
+ closeParaisoDoce: () => setIsParaisoDoceActive(false),
+ addParaisoPayout: (amount: number) => bal.current = (bal.current || 0) + amount,
         isBankrupt: secondarySkills.getSecondarySkillLevel('bankruptcy') > 0 && gameState.creditCardDebt >= secondarySkills.creditLimit,
         creditCardLevel: secondarySkills.getSecondarySkillLevel('bankruptcy'),
         openCreditCardModal: () => setIsCreditCardModalOpen(true),
