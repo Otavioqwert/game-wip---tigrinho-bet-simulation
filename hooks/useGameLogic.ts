@@ -255,8 +255,7 @@ export const useGameLogic = () => {
         showMsg("Multa paga! Apostas liberadas.", 3000, true);
     }, [gameState, showMsg]);
 
-    270
-        
+    return {
         ...gameState, ...febreDoce, ...spinLogic, ...shopLogic, ...prestigeSkills, ...secondarySkills,
         ...scratchCardLogic, ...snakeUpgrades, ...furnaceLogic, ...bakeryLogic, // Spread Bakery Logic
         bakeryState: gameState.bakery, // Alias for ShopsTabProps
