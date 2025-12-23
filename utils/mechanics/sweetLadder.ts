@@ -17,7 +17,10 @@ export const SWEET_LADDER_CONFIG = {
   BONUS_PER_LEVEL: 10,     // $10 por nível de corrente
   HITS_PER_LIFE: 10,       // 10 acertos = +1 vida
   MAX_LIVES: 2,            // Máximo de 2 vidas por corrente
-  MAX_CHAINS: 8,           // Máximo de correntes paralelas
+  BASE_SLOTS: 1,           // Começa com apenas 1 slot de corrente
+  SLOTS_PER_MILESTONE: 1,  // Ganha +1 slot a cada milestone
+  SLOT_MILESTONE: 5,       // A cada 5 níveis de chain ganha +1 slot
+  MAX_SLOTS: 8,            // Máximo absoluto de slots
   CHAIN_DECAY: 1.0,        // Quebra total ao errar (100% decay = chain vai para 0)
   MIN_CHAIN: 0,            // Corrente zera completamente ao errar sem vida
 } as const;
@@ -42,6 +45,18 @@ export function createInitialState(): SweetLadderState {
 }
 
 /**
+ * Calcula quantos slots de corrente estão disponíveis baseado no nível máximo
+ * Fórmula: 1 slot base + 1 slot a cada 5 níveis de chain
+ * Ex: chain 0-4 = 1 slot, chain 5-9 = 2 slots, chain 10-14 = 3 slots, etc
+ */
+function calculateAvailableSlots(highestChainLevel: number): number {
+  const { BASE_SLOTS, SLOTS_PER_MILESTONE, SLOT_MILESTONE, MAX_SLOTS } = SWEET_LADDER_CONFIG;
+  const milestones = Math.floor(highestChainLevel / SLOT_MILESTONE);
+  const totalSlots = BASE_SLOTS + (milestones * SLOTS_PER_MILESTONE);
+  return Math.min(totalSlots, MAX_SLOTS);
+}
+
+/**
  * Processa acerto de N linhas de doce
  * @param candyLinesHit - Número de linhas de doce acertadas (1-8)
  * @returns Novo estado + bônus total ganho + vidas ganhas
@@ -54,14 +69,21 @@ export function processMultipleHits(
   totalBonus: number;
   livesGained: number;
   chainsCreated: number;
+  slotsUnlocked: number;
 } {
   if (!state.isActive || candyLinesHit <= 0) {
-    return { newState: state, totalBonus: 0, livesGained: 0, chainsCreated: 0 };
+    return { newState: state, totalBonus: 0, livesGained: 0, chainsCreated: 0, slotsUnlocked: 0 };
   }
 
   let totalBonus = 0;
   let livesGained = 0;
   const newChains: ChainData[] = [];
+
+  // Calcula slots disponíveis ANTES de avançar
+  const highestChainBefore = state.chains.length > 0 
+    ? Math.max(...state.chains.map(c => c.chain)) 
+    : 0;
+  const slotsBefore = calculateAvailableSlots(highestChainBefore);
 
   // 1. AVANÇA todas as correntes existentes
   for (const chainData of state.chains) {
@@ -86,10 +108,17 @@ export function processMultipleHits(
     });
   }
 
-  // 2. CRIA novas correntes (até o limite)
+  // Calcula slots disponíveis DEPOIS de avançar
+  const highestChainAfter = newChains.length > 0 
+    ? Math.max(...newChains.map(c => c.chain)) 
+    : 0;
+  const slotsAfter = calculateAvailableSlots(highestChainAfter);
+  const slotsUnlocked = Math.max(0, slotsAfter - slotsBefore);
+
+  // 2. CRIA novas correntes (até o limite de slots)
   const chainsToCreate = Math.min(
     candyLinesHit,
-    SWEET_LADDER_CONFIG.MAX_CHAINS - newChains.length
+    slotsAfter - newChains.length
   );
 
   for (let i = 0; i < chainsToCreate; i++) {
@@ -112,6 +141,7 @@ export function processMultipleHits(
     totalBonus,
     livesGained,
     chainsCreated: chainsToCreate,
+    slotsUnlocked,
   };
 }
 
@@ -187,6 +217,8 @@ export function getChainsSummary(state: SweetLadderState): {
   highestChain: number;
   totalLives: number;
   averageChain: number;
+  availableSlots: number;
+  nextSlotAt: number;
 } {
   if (state.chains.length === 0) {
     return {
@@ -194,18 +226,28 @@ export function getChainsSummary(state: SweetLadderState): {
       highestChain: 0,
       totalLives: 0,
       averageChain: 0,
+      availableSlots: SWEET_LADDER_CONFIG.BASE_SLOTS,
+      nextSlotAt: SWEET_LADDER_CONFIG.SLOT_MILESTONE,
     };
   }
 
   const highestChain = Math.max(...state.chains.map(c => c.chain));
   const totalLives = state.chains.reduce((sum, c) => sum + c.lives, 0);
   const averageChain = state.chains.reduce((sum, c) => sum + c.chain, 0) / state.chains.length;
+  const availableSlots = calculateAvailableSlots(highestChain);
+  
+  // Calcula quando vem o próximo slot
+  const { SLOT_MILESTONE, MAX_SLOTS } = SWEET_LADDER_CONFIG;
+  const nextMilestone = Math.floor(highestChain / SLOT_MILESTONE) + 1;
+  const nextSlotAt = availableSlots >= MAX_SLOTS ? -1 : nextMilestone * SLOT_MILESTONE;
 
   return {
     totalChains: state.chains.length,
     highestChain,
     totalLives,
     averageChain,
+    availableSlots,
+    nextSlotAt,
   };
 }
 
