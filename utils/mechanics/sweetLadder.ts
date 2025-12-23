@@ -2,16 +2,22 @@
 // 🔗 SWEET LADDER (DOCE CORRENTE) MECHANICS
 // ==========================================
 
+export interface ChainData {
+  chain: number;      // Nível da corrente
+  lives: number;      // Vidas dessa corrente
+  hits: number;       // Acertos consecutivos (para ganhar vida)
+}
+
 export interface SweetLadderState {
-  chain: number;        // Nível atual da corrente
-  lives: number;        // Vidas disponíveis
+  chains: ChainData[];  // Array de correntes paralelas
   isActive: boolean;    // Se a mecânica está ativa
 }
 
 export const SWEET_LADDER_CONFIG = {
   BONUS_PER_LEVEL: 10,     // $10 por nível de corrente
-  HITS_PER_LIFE: 10,       // 10 acertos = +1 vida (nerf de 7 para 10)
-  MAX_LIVES: 2,            // Máximo de 2 vidas
+  HITS_PER_LIFE: 10,       // 10 acertos = +1 vida
+  MAX_LIVES: 2,            // Máximo de 2 vidas por corrente
+  MAX_CHAINS: 8,           // Máximo de correntes paralelas
   CHAIN_DECAY: 1.0,        // Quebra total ao errar (100% decay = chain vai para 0)
   MIN_CHAIN: 0,            // Corrente zera completamente ao errar sem vida
 } as const;
@@ -30,81 +36,129 @@ export function isCandySymbol(symbol: string): boolean {
  */
 export function createInitialState(): SweetLadderState {
   return {
-    chain: 0,
-    lives: 0,
+    chains: [],
     isActive: false,
   };
 }
 
 /**
- * Processa acerto de doce
- * @returns Novo estado + bônus ganho
+ * Processa acerto de N linhas de doce
+ * @param candyLinesHit - Número de linhas de doce acertadas (1-8)
+ * @returns Novo estado + bônus total ganho + vidas ganhas
  */
-export function processHit(state: SweetLadderState): {
+export function processMultipleHits(
+  state: SweetLadderState,
+  candyLinesHit: number
+): {
   newState: SweetLadderState;
-  bonus: number;
-  gainedLife: boolean;
+  totalBonus: number;
+  livesGained: number;
+  chainsCreated: number;
 } {
-  if (!state.isActive) {
-    return { newState: state, bonus: 0, gainedLife: false };
+  if (!state.isActive || candyLinesHit <= 0) {
+    return { newState: state, totalBonus: 0, livesGained: 0, chainsCreated: 0 };
   }
 
-  const newChain = state.chain + 1;
-  const bonus = newChain * SWEET_LADDER_CONFIG.BONUS_PER_LEVEL;
+  let totalBonus = 0;
+  let livesGained = 0;
+  const newChains: ChainData[] = [];
 
-  // Verifica se ganhou vida
-  const shouldGainLife =
-    newChain % SWEET_LADDER_CONFIG.HITS_PER_LIFE === 0 &&
-    state.lives < SWEET_LADDER_CONFIG.MAX_LIVES;
+  // 1. AVANÇA todas as correntes existentes
+  for (const chainData of state.chains) {
+    const newChainLevel = chainData.chain + 1;
+    const newHits = chainData.hits + 1;
+    
+    // Calcula bônus dessa corrente
+    const bonus = newChainLevel * SWEET_LADDER_CONFIG.BONUS_PER_LEVEL;
+    totalBonus += bonus;
 
-  const newLives = shouldGainLife ? state.lives + 1 : state.lives;
+    // Verifica se ganhou vida
+    let newLives = chainData.lives;
+    if (newHits % SWEET_LADDER_CONFIG.HITS_PER_LIFE === 0 && newLives < SWEET_LADDER_CONFIG.MAX_LIVES) {
+      newLives++;
+      livesGained++;
+    }
+
+    newChains.push({
+      chain: newChainLevel,
+      lives: newLives,
+      hits: newHits,
+    });
+  }
+
+  // 2. CRIA novas correntes (até o limite)
+  const chainsToCreate = Math.min(
+    candyLinesHit,
+    SWEET_LADDER_CONFIG.MAX_CHAINS - newChains.length
+  );
+
+  for (let i = 0; i < chainsToCreate; i++) {
+    // Nova corrente começa em nível 1 (já conta o primeiro acerto)
+    const bonus = 1 * SWEET_LADDER_CONFIG.BONUS_PER_LEVEL;
+    totalBonus += bonus;
+
+    newChains.push({
+      chain: 1,
+      lives: 0,
+      hits: 1,
+    });
+  }
 
   return {
     newState: {
       ...state,
-      chain: newChain,
-      lives: newLives,
+      chains: newChains,
     },
-    bonus,
-    gainedLife: shouldGainLife,
+    totalBonus,
+    livesGained,
+    chainsCreated: chainsToCreate,
   };
 }
 
 /**
- * Processa erro (acertou símbolo que não é doce)
- * @returns Novo estado
+ * Processa erro (não acertou linha de doce)
+ * @returns Novo estado + correntes quebradas + vidas usadas
  */
 export function processMiss(state: SweetLadderState): {
   newState: SweetLadderState;
-  usedLife: boolean;
+  chainsBroken: number;
+  livesUsed: number;
 } {
   if (!state.isActive) {
-    return { newState: state, usedLife: false };
+    return { newState: state, chainsBroken: 0, livesUsed: 0 };
   }
 
-  // Se corrente é 0, não faz nada (ainda não começou)
-  if (state.chain === 0) {
-    return { newState: state, usedLife: false };
+  let chainsBroken = 0;
+  let livesUsed = 0;
+  const survivingChains: ChainData[] = [];
+
+  // Processa cada corrente
+  for (const chainData of state.chains) {
+    if (chainData.chain === 0) {
+      // Corrente ainda não começou, ignora
+      continue;
+    }
+
+    if (chainData.lives > 0) {
+      // Tem vida: consome e mantém corrente
+      survivingChains.push({
+        ...chainData,
+        lives: chainData.lives - 1,
+      });
+      livesUsed++;
+    } else {
+      // Sem vida: corrente QUEBRA
+      chainsBroken++;
+    }
   }
 
-  // Tem vida? Consome e mantém corrente
-  if (state.lives > 0) {
-    return {
-      newState: {
-        ...state,
-        lives: state.lives - 1,
-      },
-      usedLife: true,
-    };
-  }
-
-  // Sem vida? Corrente QUEBRA COMPLETAMENTE (zera)
   return {
     newState: {
       ...state,
-      chain: 0, // Quebra total
+      chains: survivingChains,
     },
-    usedLife: false,
+    chainsBroken,
+    livesUsed,
   };
 }
 
@@ -126,17 +180,43 @@ export function deactivateSweetLadder(state: SweetLadderState): SweetLadderState
 }
 
 /**
- * Calcula próxima vida em quantos acertos
+ * Retorna informações agregadas sobre todas as correntes
  */
-export function hitsUntilNextLife(chain: number): number {
-  const { HITS_PER_LIFE } = SWEET_LADDER_CONFIG;
-  return HITS_PER_LIFE - (chain % HITS_PER_LIFE);
+export function getChainsSummary(state: SweetLadderState): {
+  totalChains: number;
+  highestChain: number;
+  totalLives: number;
+  averageChain: number;
+} {
+  if (state.chains.length === 0) {
+    return {
+      totalChains: 0,
+      highestChain: 0,
+      totalLives: 0,
+      averageChain: 0,
+    };
+  }
+
+  const highestChain = Math.max(...state.chains.map(c => c.chain));
+  const totalLives = state.chains.reduce((sum, c) => sum + c.lives, 0);
+  const averageChain = state.chains.reduce((sum, c) => sum + c.chain, 0) / state.chains.length;
+
+  return {
+    totalChains: state.chains.length,
+    highestChain,
+    totalLives,
+    averageChain,
+  };
 }
 
 /**
- * Calcula bônus total acumulado até agora
+ * Calcula bônus total acumulado de todas as correntes
  */
-export function getTotalBonusEarned(chain: number): number {
-  // Soma aritmética: 1 + 2 + 3 + ... + n = n * (n + 1) / 2
-  return (chain * (chain + 1) / 2) * SWEET_LADDER_CONFIG.BONUS_PER_LEVEL;
+export function getTotalBonusEarned(state: SweetLadderState): number {
+  let total = 0;
+  for (const chainData of state.chains) {
+    // Soma aritmética: 1 + 2 + 3 + ... + n = n * (n + 1) / 2
+    total += (chainData.chain * (chainData.chain + 1) / 2) * SWEET_LADDER_CONFIG.BONUS_PER_LEVEL;
+  }
+  return total;
 }
