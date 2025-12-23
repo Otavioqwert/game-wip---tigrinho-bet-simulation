@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGameState } from '../hooks/useGameState';
 import { spinParaisoDoce, initializeParaisoDoce } from '../utils/mechanics/paraisoDoce';
 import type { ParaisoDoceState } from '../utils/mechanics/paraisoDoce';
+import styles from './ParaisoDoceGame.module.css';
 
 interface ParaisoDoceGameProps {
   onClose: () => void;
@@ -32,89 +33,78 @@ export function ParaisoDoceGame({ onClose, onPayout }: ParaisoDoceGameProps) {
     setTimeout(() => setIsSpinning(false), 1000);
   };
 
-  return (
-    <div className="paraiso-doce-container" style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999
-    }}>
-      <h1 style={{color: '#fff', marginBottom: '20px', textShadow: '2px 2px 4px rgba(0,0,0,0.5)'}}>Paraiso Doce 2.0</h1>
-      
-      <div className="grid" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 80px)',
-        gap: '10px',
-        marginBottom: '30px'
-      }}>
+  return (return (
+    <div className={styles.container}>
+      <h1 className={styles.title}>🍰 Paraiso Doce 2.0 🍰</h1>
+
+      <div className={styles.gridContainer}>
         {paraisoState?.gridSymbols.map((row, r) => (
-          row.map((symbol, c) => (
-            <div key={`${r}-${c}`} style={{
-              width: '80px',
-              height: '80px',
-              background: symbol === 0 ? '#333' : symbol === 1 ? '#FFD700' : symbol === 2 ? '#FF69B4' : '#00CED1',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '32px',
-              fontWeight: 'bold',
-              color: '#fff',
-              transform: isSpinning ? 'scale(0.95)' : 'scale(1)',
-              transition: 'transform 0.3s'
-            }}>
-              {symbol}
-            </div>
-          ))
+          row.map((symbol, c) => {
+            let cellClass = styles.gridCell;
+            if (symbol === 1) cellClass += ` ${styles.cyan}`;
+            else if (symbol === 2) cellClass += ` ${styles.yellow}`;
+            else if (symbol === 3) cellClass += ` ${styles.magenta}`;
+            else cellClass += ` ${styles.empty}`;
+
+            return (
+              <div key={`${r}-${c}`} className={cellClass}>
+                {symbol === 0 ? '?' : symbol === 1 ? '🍧' : symbol === 2 ? '🍦' : '🍭'}
+              </div>
+            );
+          })
         ))}
       </div>
-      
-      <div style={{
-        display: 'flex',
-        gap: '10px',
-        marginBottom: '20px',
-        alignItems: 'center'
-      }}>
-        <div style={{color: '#fff', fontSize: '18px'}}>
+
+      <div className={styles.statsContainer}>
+        <div className={styles.stat}>
           RTP: {paraisoState?.rtpMultiplier.toFixed(2)}x
         </div>
-        <div style={{color: '#fff', fontSize: '18px'}}>
-          Last Payout: {lastPayout.toFixed(2)}
+        <div className={styles.stat}>
+          Last Payout: ${lastPayout.toFixed(2)}
         </div>
       </div>
-      
-      <button onClick={handleSpin} disabled={isSpinning} style={{
-        padding: '15px 40px',
-        fontSize: '18px',
-        background: isSpinning ? '#666' : '#FFD700',
-        color: '#000',
-        border: 'none',
-        borderRadius: '8px',
-        cursor: isSpinning ? 'not-allowed' : 'pointer',
-        fontWeight: 'bold',
-        marginBottom: '20px',
-        transition: 'all 0.3s'
-      }}>
-        {isSpinning ? 'Spinning...' : 'SPIN'}
+
+      {/* Progress bars for each color */}
+      <div className={styles.barsContainer}>
+        <div className={styles.barProgress}>
+          <div className={styles.barLabel}>🍧 Cyan</div>
+          <div className={styles.barVisual}>
+            <div 
+              className={`${styles.barFill} ${styles.cyan} ${paraisoState?.bars.cyan === 10 ? styles.complete : ''}`}
+              style={{ height: `${(paraisoState?.bars.cyan || 0) * 10}%` }}
+            />
+          </div>
+        </div>
+        <div className={styles.barProgress}>
+          <div className={styles.barLabel}>🍦 Yellow</div>
+          <div className={styles.barVisual}>
+            <div 
+              className={`${styles.barFill} ${styles.yellow} ${paraisoState?.bars.yellow === 10 ? styles.complete : ''}`}
+              style={{ height: `${(paraisoState?.bars.yellow || 0) * 10}%` }}
+            />
+          </div>
+        </div>
+        <div className={styles.barProgress}>
+          <div className={styles.barLabel}>🍭 Magenta</div>
+          <div className={styles.barVisual}>
+            <div 
+              className={`${styles.barFill} ${styles.magenta} ${paraisoState?.bars.magenta === 10 ? styles.complete : ''}`}
+              style={{ height: `${(paraisoState?.bars.magenta || 0) * 10}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <button 
+        onClick={handleSpin} 
+        disabled={isSpinning} 
+        className={styles.spinButton}
+      >
+        {isSpinning ? '⚡ Spinning...' : '🎰 SPIN'}
       </button>
-      
-      <button onClick={onClose} style={{
-        padding: '10px 30px',
-        fontSize: '16px',
-        background: '#666',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '8px',
-        cursor: 'pointer'
-      }}>
-        Close
+
+      <button onClick={onClose} className={styles.closeButton}>
+        ✕ Close
       </button>
     </div>
   );
