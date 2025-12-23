@@ -270,7 +270,7 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                     const cookieMult = febreDocesAtivo ? 1 : activeCookies.reduce((acc, c) => acc * c.multiplier, 1);
                     const boostedOther = result.totalOtherWin * cookieMult;
                     
-                    // 🔗 SWEET LADDER PROCESSING
+                    // 🔗 SWEET LADDER PROCESSING (FIXED: Process ONCE per spin)
                     let ladderBonus = 0;
                     if (febreDocesAtivo && sweetLadder.state.isActive) {
                         if (result.sweetLinesCount > 0) {
@@ -279,15 +279,13 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                                 const ladderResult = sweetLadder.onSymbolHit('🍭'); // Qualquer doce
                                 ladderBonus += ladderResult.bonus;
                                 
-                                // Notificações
+                                // Notificações de vida
                                 if (ladderResult.gainedLife) {
                                     showMsg(`💚 +1 Vida! (Total: ${sweetLadder.state.lives})`, 2000, true);
                                 }
                             }
-                            // Mostra progresso da corrente
-                            showMsg(`🔗 Corrente: ${sweetLadder.state.chain} (+$${ladderBonus})`, 1500);
                         } else if (result.hitCount > 0) {
-                            // Acertou linha mas NÃO foi doce
+                            // Acertou linha mas NÃO foi doce - PROCESSA APENAS UMA VEZ
                             const missResult = sweetLadder.onSymbolHit('🐯'); // Não-doce
                             
                             if (missResult.usedLife) {
@@ -295,6 +293,11 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                             } else if (sweetLadder.state.chain > 0) {
                                 showMsg(`💥 Corrente caiu para ${sweetLadder.state.chain}!`, 2000, true);
                             }
+                        }
+                        
+                        // SEMPRE mostra estado da corrente (mesmo se 0)
+                        if (sweetLadder.state.chain > 0 || result.sweetLinesCount > 0) {
+                            showMsg(`🔗 Corrente: ${sweetLadder.state.chain} | Vidas: ${sweetLadder.state.lives}`, 1500);
                         }
                     }
                     
