@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useGameState } from '../hooks/useGameState';
 import { spinParaisoDoce, initializeParaisoDoce } from '../utils/mechanics/paraisoDoce';
 import type { ParaisoDoceState } from '../utils/mechanics/paraisoDoce';
 import styles from './ParaisoDoceGame.module.css';
@@ -7,29 +6,39 @@ import styles from './ParaisoDoceGame.module.css';
 interface ParaisoDoceGameProps {
   onClose: () => void;
   onPayout: (amount: number) => void;
+  initialState?: ParaisoDoceState;
+  onStateChange?: (state: ParaisoDoceState) => void;
 }
 
-export function ParaisoDoceGame({ onClose, onPayout }: ParaisoDoceGameProps) {
-  const { gameState } = useGameState();
-  const [paraisoState, setParaisoState] = useState<ParaisoDoceState | null>(null);
+export function ParaisoDoceGame({ onClose, onPayout, initialState, onStateChange }: ParaisoDoceGameProps) {
+  const [paraisoState, setParaisoState] = useState<ParaisoDoceState>(
+    initialState || initializeParaisoDoce()
+  );
   const [isSpinning, setIsSpinning] = useState(false);
   const [lastPayout, setLastPayout] = useState(0);
 
+  // Update parent state when local state changes
   useEffect(() => {
-    const savedParaiso = gameState.paraisoDoceState || initializeParaisoDoce();
-    setParaisoState(savedParaiso);
-  }, [gameState]);
+    if (onStateChange) {
+      onStateChange(paraisoState);
+    }
+  }, [paraisoState, onStateChange]);
 
   const handleSpin = () => {
     if (!paraisoState || isSpinning) return;
     setIsSpinning(true);
+    
+    // Create a deep copy to avoid mutation
     const newState = JSON.parse(JSON.stringify(paraisoState));
     const result = spinParaisoDoce(newState);
+    
     setLastPayout(result.payout);
     setParaisoState(newState);
+    
     if (result.payout > 0) {
       onPayout(result.payout);
     }
+    
     setTimeout(() => setIsSpinning(false), 1000);
   };
 
