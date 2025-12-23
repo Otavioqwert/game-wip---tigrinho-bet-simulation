@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MID, SUGAR_CONVERSION, SYM } from '../constants';
 import { getRandomSymbolFromInventory, calculateMidMultiplierValue, createWeightSnapshot, spinFromSnapshot } from '../utils/spinCalculations';
@@ -266,8 +265,11 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                     const { applyFinalGain, febreDocesAtivo, betValFebre, betVal, febreDocesGiros, handleGain, setFebreDocesGiros, showMsg, setWinMsg, endFever, setUnluckyPot, momentoLevel, setMomentoLevel, momentoProgress, setMomentoProgress, setInv, setSugar, activeCookies, setActiveCookies, sweetLadderActive, sweetLadderD, setSweetLadderD } = propsRef.current;
                     setStoppingColumns([false, false, false]);
                     const result = getSpinResult(animationState.current.finalGrid, animationState.current.availableKeys);
-                    const cookieMult = activeCookies.reduce((acc, c) => acc * c.multiplier, 1);
+                    
+                    // FIX: Cookies NÃO aplicam durante Febre Doce
+                    const cookieMult = febreDocesAtivo ? 1 : activeCookies.reduce((acc, c) => acc * c.multiplier, 1);
                     const boostedOther = result.totalOtherWin * cookieMult;
+                    
                     let ladderBonus = 0;
                     if (febreDocesAtivo && sweetLadderActive) {
                         if (result.sweetLinesCount > 0) {
@@ -284,7 +286,8 @@ export const useSpinLogic = (props: SpinLogicProps) => {
                     const rawTotalWinnings = result.totalSweetWin + boostedOther + ladderBonus;
                     const finalWinnings = applyFinalGain(rawTotalWinnings);
                     
-                    if (activeCookies.length > 0 && result.totalOtherWin > 0) {
+                    // FIX: Apenas decrementa cookies FORA da febre
+                    if (!febreDocesAtivo && activeCookies.length > 0 && result.totalOtherWin > 0) {
                         setActiveCookies(prev => prev.map(c => ({ ...c, remainingSpins: c.remainingSpins - 1 })).filter(c => c.remainingSpins > 0));
                     }
                     if (finalWinnings > 0) handleGain(finalWinnings);
