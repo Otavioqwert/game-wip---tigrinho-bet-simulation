@@ -27,10 +27,6 @@ const App: React.FC = () => {
     const [mainActiveTab, setMainActiveTab] = useState(0);
     const [topLevelTab, setTopLevelTab] = useState('caça-niquel');
     const { style, scale, zoomIn, zoomOut, panHandlers, isPanModeActive, togglePanMode } = usePanAndZoom();
-    
-    // DEMO STATE FOR PARAISO DOCE WIDGET
-    const [demoActive, setDemoActive] = useState(false);
-    const [demoBars, setDemoBars] = useState({ cyan: 3, yellow: 7, magenta: 5 });
 
     // Swipe navigation logic
     const touchStart = useRef(0);
@@ -56,18 +52,6 @@ const App: React.FC = () => {
         }
     };
 
-    const toggleDemo = () => {
-        setDemoActive(!demoActive);
-        if (!demoActive) {
-            // Random bars quando ativar
-            setDemoBars({
-                cyan: Math.floor(Math.random() * 11),
-                yellow: Math.floor(Math.random() * 11),
-                magenta: Math.floor(Math.random() * 11)
-            });
-        }
-    };
-
     const tabBtnClasses = (isActive: boolean) => `flex-1 p-2 rounded-t-lg font-bold cursor-pointer transition-colors ${isActive ? 'bg-yellow-500 text-stone-900' : 'bg-yellow-500/20 text-white hover:bg-yellow-500/30'}`;
 
     const isPrestigeView = topLevelTab === 'prestigio';
@@ -83,7 +67,17 @@ const App: React.FC = () => {
     const topLevelBtnInactiveClasses = 'opacity-70 hover:opacity-100';
 
     // Determine if Paraiso Doce widget should be visible
-    const shouldShowParaisoWidget = demoActive || (game.febreDocesAtivo && game.hasParaisoPack);
+    const shouldShowParaisoWidget = game.febreDocesAtivo && game.hasParaisoPack;
+
+    // Calculate cooldown time remaining
+    const getCooldownMinutes = () => {
+        if (!game.cooldownEnd) return 0;
+        const remaining = game.cooldownEnd - Date.now();
+        return Math.ceil(remaining / 60000);
+    };
+
+    const isCooldownActive = game.cooldownEnd && Date.now() < game.cooldownEnd;
+    const cooldownMinutes = getCooldownMinutes();
 
     return (
         <div className={`h-screen flex flex-col items-center font-sans text-white bg-gradient-to-br ${BG_CLASS} transition-all duration-500 py-2 sm:py-8 px-1 sm:px-4 overflow-hidden`}>
@@ -134,19 +128,24 @@ const App: React.FC = () => {
                 />
             )}
 
-            {/* Paraiso Doce Sidebar Widget - Shows when demo OR (fever active AND package purchased) */}
+            {/* Paraiso Doce Sidebar Widget - Shows when fever active AND package purchased */}
             <ParaisoDoceSidebar
-                bars={demoActive ? demoBars : (game.paraisoDoceState?.bars || { cyan: 0, yellow: 0, magenta: 0 })}
+                bars={game.paraisoDoceState?.bars || { cyan: 0, yellow: 0, magenta: 0 }}
                 isActive={shouldShowParaisoWidget}
             />
 
-            {/* DEMO BUTTON - BOTÃO DE TESTE */}
-            <button
-                onClick={toggleDemo}
-                className="fixed right-4 bottom-4 z-[200] px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-lg shadow-lg hover:scale-105 transition-transform"
-            >
-                {demoActive ? '🚫 Desligar Widget' : '🍭 Testar Widget'}
-            </button>
+            {/* FEVER RESET BUTTON - $100k to skip 30min cooldown */}
+            {isCooldownActive && (
+                <button
+                    onClick={game.resetFeverCooldown}
+                    className="fixed right-4 bottom-4 z-[200] px-4 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold rounded-lg shadow-lg hover:scale-105 transition-transform flex flex-col items-center gap-1"
+                    title="Resetar cooldown da Febre Doce por $100k"
+                >
+                    <span className="text-lg">🔥 Resetar Febre</span>
+                    <span className="text-xs opacity-80">$100,000</span>
+                    <span className="text-xs opacity-60">{cooldownMinutes}min restantes</span>
+                </button>
+            )}
 
             <CreditCardManager
                 creditCardLevel={game.creditCardLevel}
