@@ -253,6 +253,25 @@ export const useGameLogic = () => {
         showMsg("Multa paga! Apostas liberadas.", 3000, true);
     }, [gameState, showMsg]);
 
+    // NEW: Fever Cooldown Reset (costs $100k)
+    const resetFeverCooldown = useCallback(() => {
+        const RESET_COST = 100000;
+        if (gameState.bal < RESET_COST) {
+            showMsg(`Precisa de $${RESET_COST.toLocaleString()} para resetar a febre!`, 2500, true);
+            return;
+        }
+        
+        if (!febreDoce.cooldownEnd || Date.now() >= febreDoce.cooldownEnd) {
+            showMsg("A febre já está disponível!", 2000, true);
+            return;
+        }
+        
+        gameState.setBal(b => b - RESET_COST);
+        localStorage.removeItem('tigrinho_fever_cooldown');
+        febreDoce.setCooldownEnd(null);
+        showMsg(`💸 $${RESET_COST.toLocaleString()} gastos! Febre resetada!`, 3000, true);
+    }, [gameState.bal, febreDoce.cooldownEnd, showMsg]);
+
     return {
         ...gameState, ...febreDoce, ...spinLogic, ...shopLogic, ...prestigeSkills, ...secondarySkills,
         ...scratchCardLogic, ...snakeUpgrades, ...furnaceLogic, ...bakeryLogic,
@@ -307,6 +326,8 @@ export const useGameLogic = () => {
         isItemPenaltyModalOpen,
         closeItemPenaltyModal: () => setIsItemPenaltyModalOpen(false),
         handlePayItemPenalty,
-        criarEmbaixadorDoce: () => {}
+        criarEmbaixadorDoce: () => {},
+        // NEW: Expose fever reset function
+        resetFeverCooldown
     };
 };
