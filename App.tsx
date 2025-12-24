@@ -108,12 +108,13 @@ const App: React.FC = () => {
             )}
 
              {/* Paraiso Doce Game */}
- {game.isParaisoDoceActive && (
-   <ParaisoDoceGame
-     onClose={game.closeParaisoDoce}
-     onPayout={game.addParaisoPayout}
-   />
- )}
+            {game.isParaisoDoceActive && (
+                <ParaisoDoceGame
+                    onClose={game.closeParaisoDoce}
+                    onPayout={game.addParaisoPayout}
+                    isFeverMode={game.febreDocesAtivo}
+                />
+            )}
 
 
             <CreditCardManager
