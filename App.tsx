@@ -28,13 +28,17 @@ const App: React.FC = () => {
     const [topLevelTab, setTopLevelTab] = useState('caça-niquel');
     const { style, scale, zoomIn, zoomOut, panHandlers, isPanModeActive, togglePanMode } = usePanAndZoom();
     
+    // DEMO STATE FOR PARAISO DOCE WIDGET
+    const [demoActive, setDemoActive] = useState(false);
+    const [demoBars, setDemoBars] = useState({ cyan: 3, yellow: 7, magenta: 5 });
+
     // Swipe navigation logic
     const touchStart = useRef(0);
     const touchEnd = useRef(0);
     const swipeThreshold = 50;
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        if (scale > 1) return; // Disable swipe when zoomed in (allow pan instead)
+        if (scale > 1) return;
         touchStart.current = e.targetTouches[0].clientX;
         touchEnd.current = e.targetTouches[0].clientX;
     };
@@ -52,6 +56,17 @@ const App: React.FC = () => {
         }
     };
 
+    const toggleDemo = () => {
+        setDemoActive(!demoActive);
+        if (!demoActive) {
+            // Random bars quando ativar
+            setDemoBars({
+                cyan: Math.floor(Math.random() * 11),
+                yellow: Math.floor(Math.random() * 11),
+                magenta: Math.floor(Math.random() * 11)
+            });
+        }
+    };
 
     const tabBtnClasses = (isActive: boolean) => `flex-1 p-2 rounded-t-lg font-bold cursor-pointer transition-colors ${isActive ? 'bg-yellow-500 text-stone-900' : 'bg-yellow-500/20 text-white hover:bg-yellow-500/30'}`;
 
@@ -117,14 +132,19 @@ const App: React.FC = () => {
                 />
             )}
 
-            {/* Paraiso Doce Sidebar Widget */}
-            {game.paraisoState && (
-                <ParaisoDoceSidebar
-                    bars={game.paraisoState.bars}
-                    isActive={game.isParaisoDoceActive}
-                />
-            )}
+            {/* Paraiso Doce Sidebar Widget - DEMO MODE */}
+            <ParaisoDoceSidebar
+                bars={demoActive ? demoBars : (game.paraisoState?.bars || { cyan: 0, yellow: 0, magenta: 0 })}
+                isActive={demoActive || game.isParaisoDoceActive}
+            />
 
+            {/* DEMO BUTTON - BOTÃO DE TESTE */}
+            <button
+                onClick={toggleDemo}
+                className="fixed right-4 bottom-4 z-[200] px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-lg shadow-lg hover:scale-105 transition-transform"
+            >
+                {demoActive ? '🚫 Desligar Widget' : '🍭 Testar Widget'}
+            </button>
 
             <CreditCardManager
                 creditCardLevel={game.creditCardLevel}
