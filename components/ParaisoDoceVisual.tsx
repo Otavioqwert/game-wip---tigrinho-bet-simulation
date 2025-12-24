@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import styles from './ParaisoDoceGame.module.css';
+import styles from './ParaisoDoceVisual.module.css';
 
 interface ParaisoDoceVisualProps {
   gridSymbols: number[][];
