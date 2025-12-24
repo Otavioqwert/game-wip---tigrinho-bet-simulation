@@ -132,9 +132,9 @@ const App: React.FC = () => {
                 />
             )}
 
-            {/* Paraiso Doce Sidebar Widget - DEMO MODE */}
+            {/* Paraiso Doce Sidebar Widget - FIXED: using paraisoDoceState */}
             <ParaisoDoceSidebar
-                bars={demoActive ? demoBars : (game.paraisoState?.bars || { cyan: 0, yellow: 0, magenta: 0 })}
+                bars={demoActive ? demoBars : (game.paraisoDoceState?.bars || { cyan: 0, yellow: 0, magenta: 0 })}
                 isActive={demoActive || game.isParaisoDoceActive}
             />
 
