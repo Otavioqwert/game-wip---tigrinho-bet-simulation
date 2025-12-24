@@ -45,18 +45,6 @@ export function ParaisoDoceGame({ onClose, onPayout, initialState, onStateChange
 
   45
     
-    <div className={styles.container}>
-      <h1 className={styles.title}>🍰 Paraiso Doce 2.0 🍰</h1>
-
-      <div className={styles.gridContainer}>
-        {paraisoState?.gridSymbols.map((row, r) => (
-          row.map((symbol, c) => {
-            let cellClass = styles.gridCell;
-            if (symbol === 1) cellClass += ` ${styles.cyan}`;
-            else if (symbol === 2) cellClass += ` ${styles.yellow}`;
-            else if (symbol === 3) cellClass += ` ${styles.magenta}`;
-            else cellClass += ` ${styles.empty}`;
-
             return (
                   <ParaisoDoceVisual
       gridSymbols={paraisoState.gridSymbols}
