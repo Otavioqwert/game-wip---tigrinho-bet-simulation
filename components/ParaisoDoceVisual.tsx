@@ -8,6 +8,7 @@ interface ParaisoDoceVisualProps {
   bars: { cyan: number; yellow: number; magenta: number };
   rtpMultiplier: number;
   onSpin: () => void;
+  isFeverMode?: boolean;
 }
 
 const symbolEmojis = {
@@ -21,7 +22,8 @@ export function ParaisoDoceVisual({
   gridSymbols,
   bars,
   rtpMultiplier,
-  onSpin
+  onSpin,
+  isFeverMode = false
 }: ParaisoDoceVisualProps) {
   const [winners, setWinners] = useState<Set<number>>(new Set());
 
@@ -52,8 +54,10 @@ export function ParaisoDoceVisual({
   };
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>🍭 Paraíso Doce - Febre Doce 🍭</h1>
+    <div className={`${styles.container} ${isFeverMode ? styles.feverMode : ''}`}>
+      <h1 className={styles.title}>
+        {isFeverMode ? '🔥 MODO FEBRE - Paraíso Doce 🔥' : '🍭 Paraíso Doce - Febre Doce 🍭'}
+      </h1>
 
       {/* Grid 3x3 */}
       <div className={styles.grid}>
@@ -124,7 +128,7 @@ export function ParaisoDoceVisual({
 
       {/* Botão de Spin */}
       <button className={styles.spinButton} onClick={handleSpin}>
-        🎰 GIRAR
+        {isFeverMode ? '🔥 GIRAR FEBRE 🔥' : '🎰 GIRAR'}
       </button>
     </div>
   );
