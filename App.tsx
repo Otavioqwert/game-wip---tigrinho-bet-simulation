@@ -82,6 +82,8 @@ const App: React.FC = () => {
     const topLevelBtnActiveClasses = 'scale-105 shadow-inner';
     const topLevelBtnInactiveClasses = 'opacity-70 hover:opacity-100';
 
+    // Determine if Paraiso Doce widget should be visible
+    const shouldShowParaisoWidget = demoActive || (game.febreDocesAtivo && game.hasParaisoPack);
 
     return (
         <div className={`h-screen flex flex-col items-center font-sans text-white bg-gradient-to-br ${BG_CLASS} transition-all duration-500 py-2 sm:py-8 px-1 sm:px-4 overflow-hidden`}>
@@ -132,10 +134,10 @@ const App: React.FC = () => {
                 />
             )}
 
-            {/* Paraiso Doce Sidebar Widget - FIXED: using paraisoDoceState */}
+            {/* Paraiso Doce Sidebar Widget - Shows when demo OR (fever active AND package purchased) */}
             <ParaisoDoceSidebar
                 bars={demoActive ? demoBars : (game.paraisoDoceState?.bars || { cyan: 0, yellow: 0, magenta: 0 })}
-                isActive={demoActive || game.isParaisoDoceActive}
+                isActive={shouldShowParaisoWidget}
             />
 
             {/* DEMO BUTTON - BOTÃO DE TESTE */}
