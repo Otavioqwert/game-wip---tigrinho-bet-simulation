@@ -32,6 +32,9 @@ export const useFebreDoce = (props: FebreDoceProps) => {
     const [betValFebre, setBetValFebre] = useState(10);
     const [initialTotalSpins, setInitialTotalSpins] = useState(0);
     
+    // NEW: Track if Paraiso Doce package was purchased
+    const [hasParaisoPack, setHasParaisoPack] = useState(false);
+    
     const sweetLadder = useSweetLadder();
     
     const [feverReport, setFeverReport] = useState<FeverReport | null>(null);
@@ -58,6 +61,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         }
         setFeverPhase('SETUP');
         setSelectedPackages([]);
+        setHasParaisoPack(false);
     }, [feverPhase, cooldownEnd, showMsg]);
 
     const closeFeverSetup = useCallback(() => {
@@ -69,6 +73,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
             }
             
             setSelectedPackages([]);
+            setHasParaisoPack(false);
             setFeverPhase('IDLE');
         }
     }, [feverPhase, selectedPackages, setBal, showMsg]);
@@ -175,6 +180,11 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         }
 
         setBal(b => b - pkg.cost);
+
+        // CHECK: Is this the Paraiso Doce package?
+        if (pkg.id === 'pkg_paraiso_doce') {
+            setHasParaisoPack(true);
+        }
 
         let purchased: PurchasedPackage = { ...pkg, uniqueId: `${pkg.id}_${Date.now()}` };
 
@@ -302,6 +312,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         setFeverPhase('IDLE');
         setFebreDocesGiros(0);
         setSelectedPackages([]);
+        setHasParaisoPack(false);
         
         sweetLadder.deactivateMechanic();
 
@@ -331,6 +342,9 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         sweetLadder,
         
         feverReport,
-        closeFeverReport
+        closeFeverReport,
+        
+        // NEW: Export hasParaisoPack so App.tsx can show widget
+        hasParaisoPack
     };
 };
