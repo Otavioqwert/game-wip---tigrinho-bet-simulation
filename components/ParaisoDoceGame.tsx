@@ -9,9 +9,10 @@ interface ParaisoDoceGameProps {
   onPayout: (amount: number) => void;
   initialState?: ParaisoDoceState;
   onStateChange?: (state: ParaisoDoceState) => void;
+  isFeverMode?: boolean;
 }
 
-export function ParaisoDoceGame({ onClose, onPayout, initialState, onStateChange }: ParaisoDoceGameProps) {
+export function ParaisoDoceGame({ onClose, onPayout, initialState, onStateChange, isFeverMode = false }: ParaisoDoceGameProps) {
   const [paraisoState, setParaisoState] = useState<ParaisoDoceState>(
     initialState || initializeParaisoDoce()
   );
@@ -49,6 +50,7 @@ export function ParaisoDoceGame({ onClose, onPayout, initialState, onStateChange
       bars={paraisoState.bars}
       rtpMultiplier={paraisoState.rtpMultiplier}
       onSpin={handleSpin}
+      isFeverMode={isFeverMode}
     />
   );
 }
