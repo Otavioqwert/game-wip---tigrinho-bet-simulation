@@ -43,13 +43,12 @@ export function ParaisoDoceGame({ onClose, onPayout, initialState, onStateChange
     setTimeout(() => setIsSpinning(false), 1000);
   };
 
-  45
-    
-            return (
-                  <ParaisoDoceVisual
+  return (
+    <ParaisoDoceVisual
       gridSymbols={paraisoState.gridSymbols}
       bars={paraisoState.bars}
       rtpMultiplier={paraisoState.rtpMultiplier}
       onSpin={handleSpin}
-        );}
-                  }
+    />
+  );
+}
