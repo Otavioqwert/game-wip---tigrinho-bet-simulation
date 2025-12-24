@@ -66,8 +66,8 @@ const App: React.FC = () => {
     const topLevelBtnActiveClasses = 'scale-105 shadow-inner';
     const topLevelBtnInactiveClasses = 'opacity-70 hover:opacity-100';
 
-    // Determine if Paraiso Doce widget should be visible
-    const shouldShowParaisoWidget = game.febreDocesAtivo && game.hasParaisoPack;
+    // Determine if Paraiso Doce widget should be visible (ONLY in Paraiso mode)
+    const shouldShowParaisoWidget = game.febreDocesAtivo && game.isParaisoMode;
 
     // Calculate cooldown time remaining
     const getCooldownMinutes = () => {
@@ -106,6 +106,7 @@ const App: React.FC = () => {
                     selectedPackages={game.selectedPackages}
                     buyPackage={game.buyPackage}
                     startFever={game.startFever}
+                    startParaisoFever={game.startParaisoFever}
                     onClose={game.closeFeverSetup}
                     momentoLevel={game.momentoLevel}
                 />
@@ -128,7 +129,7 @@ const App: React.FC = () => {
                 />
             )}
 
-            {/* Paraiso Doce Sidebar Widget - Shows when fever active AND package purchased */}
+            {/* Paraiso Doce Sidebar Widget - Shows ONLY in Paraiso mode */}
             <ParaisoDoceSidebar
                 bars={game.paraisoDoceState?.bars || { cyan: 0, yellow: 0, magenta: 0 }}
                 isActive={shouldShowParaisoWidget}
