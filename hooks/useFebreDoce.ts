@@ -338,6 +338,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         setFebreDocesGiros,
         betValFebre,
         cooldownEnd,
+        setCooldownEnd, // EXPORT for reset function
         
         sweetLadder,
         
