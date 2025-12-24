@@ -14,6 +14,63 @@
   z-index: 9999;
   overflow: hidden;
   font-family: 'Arial', sans-serif;
+  transition: background 0.5s ease;
+}
+
+/* FEVER MODE STYLING */
+.feverMode {
+  background: linear-gradient(135deg, #ffadf6 0%, #e03aff 50%, #ff00b4 100%) !important;
+  animation: feverPulse 2s ease-in-out infinite;
+}
+
+@keyframes feverPulse {
+  0%, 100% { 
+    filter: brightness(1);
+    box-shadow: inset 0 0 100px rgba(255, 0, 180, 0.3);
+  }
+  50% { 
+    filter: brightness(1.1);
+    box-shadow: inset 0 0 150px rgba(255, 0, 180, 0.5);
+  }
+}
+
+.feverMode .title {
+  text-shadow: 
+    0 0 20px rgba(255, 0, 180, 1),
+    0 0 40px rgba(255, 20, 147, 0.8),
+    0 0 60px rgba(255, 105, 180, 0.6),
+    3px 3px 6px rgba(0, 0, 0, 0.8);
+  animation: feverTitleGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes feverTitleGlow {
+  0%, 100% { 
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% { 
+    transform: scale(1.05);
+    filter: brightness(1.2);
+  }
+}
+
+.feverMode .spinButton {
+  background: linear-gradient(135deg, #ff0080, #ff69b4, #ff1493);
+  box-shadow: 
+    0 0 25px rgba(255, 0, 180, 0.8),
+    0 12px 25px rgba(0, 0, 0, 0.5);
+  animation: feverButtonPulse 1s ease-in-out infinite;
+}
+
+@keyframes feverButtonPulse {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-2px) scale(1.03); }
+}
+
+.feverMode .spinButton:hover:not(:disabled) {
+  box-shadow: 
+    0 0 40px rgba(255, 0, 180, 1),
+    0 16px 30px rgba(0, 0, 0, 0.6);
 }
 
 .title {
