@@ -8,7 +8,72 @@
   border: 2px solid #ff69b4;
   border-radius: 15px;
   box-shadow: 0 0 30px rgba(255, 105, 180, 0.3);
+  transition: background 0.5s ease, box-shadow 0.5s ease;
 }
+
+/* ========== FEVER MODE STYLING ========== */
+.feverMode {
+  background: linear-gradient(135deg, #ffadf6 0%, #e03aff 50%, #ff00b4 100%) !important;
+  box-shadow: 0 0 50px rgba(255, 0, 180, 0.8) !important;
+  border: 3px solid #ff00b4 !important;
+  animation: feverPulse 2s ease-in-out infinite;
+}
+
+@keyframes feverPulse {
+  0%, 100% { 
+    filter: brightness(1);
+    box-shadow: 0 0 40px rgba(255, 0, 180, 0.6);
+  }
+  50% { 
+    filter: brightness(1.15);
+    box-shadow: 0 0 60px rgba(255, 0, 180, 0.9);
+  }
+}
+
+.feverMode .title {
+  text-shadow: 
+    0 0 20px rgba(255, 0, 180, 1),
+    0 0 40px rgba(255, 20, 147, 0.8),
+    0 0 60px rgba(255, 105, 180, 0.6) !important;
+  animation: feverTitleGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes feverTitleGlow {
+  0%, 100% { 
+    transform: scale(1);
+  }
+  50% { 
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 10px rgba(255, 0, 180, 1));
+  }
+}
+
+.feverMode .spinButton {
+  background: linear-gradient(135deg, #ff0080, #ff69b4, #ff1493) !important;
+  box-shadow: 
+    0 0 25px rgba(255, 0, 180, 0.8),
+    0 8px 20px rgba(0, 0, 0, 0.5) !important;
+  animation: feverButtonPulse 1s ease-in-out infinite;
+}
+
+@keyframes feverButtonPulse {
+  0%, 100% { 
+    transform: translateY(0) scale(1); 
+  }
+  50% { 
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 
+      0 0 35px rgba(255, 0, 180, 1),
+      0 10px 25px rgba(0, 0, 0, 0.6);
+  }
+}
+
+.feverMode .spinButton:hover {
+  box-shadow: 
+    0 0 40px rgba(255, 0, 180, 1),
+    0 12px 30px rgba(0, 0, 0, 0.7) !important;
+}
+/* ========== END FEVER MODE ========== */
 
 .title {
   text-align: center;
@@ -16,6 +81,7 @@
   color: #ff69b4;
   text-shadow: 0 0 10px rgba(255, 105, 180, 0.5);
   font-size: 24px;
+  transition: all 0.3s ease;
 }
 
 /* GRID 3x3 */
