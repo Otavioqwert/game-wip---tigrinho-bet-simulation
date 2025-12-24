@@ -300,6 +300,8 @@ export const useGameLogic = () => {
         },
         paraisoDoceState: gameState.paraisoDoceState,
         setParaisoDoceState: gameState.setParaisoDoceState,
+        // NEW: Export Paraiso mode state
+        isParaisoMode: febreDoce.isParaisoMode,
         // Credit Card
         isBankrupt: secondarySkills.getSecondarySkillLevel('bankruptcy') > 0 && gameState.creditCardDebt >= secondarySkills.creditLimit,
         creditCardLevel: secondarySkills.getSecondarySkillLevel('bankruptcy'),
