@@ -136,6 +136,7 @@ export const useGameLogic = () => {
         showMsg,
         feverSnapshot: gameState.feverSnapshot,
         setFeverSnapshot: gameState.setFeverSnapshot,
+        paraisoDetector, // PASSA O DETECTOR
     });
 
     const spinLogic = useSpinLogic({
@@ -152,7 +153,7 @@ export const useGameLogic = () => {
         multUpgradeBonus: secondarySkills.multUpgradeBonus,
         handleSpend, handleGain,
         sweetLadder: febreDoce.sweetLadder,
-        paraisoDetector, // NOVO: Passa o detector
+        paraisoDetector,
     });
 
     const shopLogic = useShopLogic({
@@ -269,7 +270,6 @@ export const useGameLogic = () => {
             const final = finalGainCalculation(baseWinnings);
             handleGain(final);
         },
-        // NOVO: Exporta o detector
         paraisoDetector,
         isBankrupt: secondarySkills.getSecondarySkillLevel('bankruptcy') > 0 && gameState.creditCardDebt >= secondarySkills.creditLimit,
         creditCardLevel: secondarySkills.getSecondarySkillLevel('bankruptcy'),
