@@ -4,6 +4,7 @@ import { ALL_FEVER_PACKAGES } from '../constants/feverPackages';
 import { SYM, INITIAL_INVENTORY, INITIAL_MULTIPLIERS, MID, SUGAR_CONVERSION } from '../constants';
 import { useSweetLadder } from './useSweetLadder';
 import { createFeverSnapshot, restoreFromSnapshot, EMPTY_FEVER_SNAPSHOT, type FeverSnapshot } from '../utils/feverStateIsolation';
+import type { useParaisoDoceDetector } from './useParaisoDoceDetector';
 
 interface FebreDoceProps {
     roiSaldo: RoiSaldo;
@@ -17,12 +18,13 @@ interface FebreDoceProps {
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     feverSnapshot: FeverSnapshot;
     setFeverSnapshot: (snapshot: FeverSnapshot) => void;
+    paraisoDetector: ReturnType<typeof useParaisoDoceDetector>; // NOVO
 }
 
 export type FeverPhase = 'IDLE' | 'SETUP' | 'ACTIVE';
 
 export const useFebreDoce = (props: FebreDoceProps) => {
-    const { roiSaldo, setRoiSaldo, inv, setInv, mult, setMult, bal, setBal, showMsg, feverSnapshot, setFeverSnapshot } = props;
+    const { roiSaldo, setRoiSaldo, inv, setInv, mult, setMult, bal, setBal, showMsg, feverSnapshot, setFeverSnapshot, paraisoDetector } = props;
 
     const [feverPhase, setFeverPhase] = useState<FeverPhase>('IDLE');
     const [cooldownEnd, setCooldownEnd] = useState<number | null>(null);
@@ -178,6 +180,12 @@ export const useFebreDoce = (props: FebreDoceProps) => {
 
         let purchased: PurchasedPackage = { ...pkg, uniqueId: `${pkg.id}_${Date.now()}` };
 
+        // 🍬 ATIVA DETECTOR se comprar Paraíso Doce
+        if (pkg.id === 'safe_mid_2') {
+            paraisoDetector.activate();
+            showMsg("🍬 Paraíso Doce ativado! Sistema de detecção ligado!", 3000, true);
+        }
+
         if (pkg.contents === 'TOTALLY_RANDOM_CHEST') {
              const generated = generateRandomChestContents();
              purchased.contents = generated;
@@ -206,7 +214,7 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         setSelectedPackages(prev => [...prev, purchased]);
         showMsg(`${pkg.name} adquirido!`, 1500, true);
 
-    }, [bal, selectedPackages, setBal, showMsg]);
+    }, [bal, selectedPackages, setBal, showMsg, paraisoDetector]);
 
 
     const startFever = useCallback(() => {
@@ -233,7 +241,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         
         if (hasLadder) {
             ladderActive = true;
-            // ADICIONA +5 DE CADA DOCE ao inventário da febre
             feverInv['🍭'] += 5;
             feverInv['🍦'] += 5;
             feverInv['🍧'] += 5;
@@ -303,13 +310,16 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         setFebreDocesGiros(0);
         setSelectedPackages([]);
         
+        // 🍬 DESATIVA DETECTOR
+        paraisoDetector.deactivate();
+        
         sweetLadder.deactivateMechanic();
 
         const end = Date.now() + (30 * 60 * 1000);
         setCooldownEnd(end);
         localStorage.setItem('tigrinho_fever_cooldown', end.toString());
 
-    }, [setInv, setMult, showMsg, bal, startBalance, initialTotalSpins, selectedPackages, sweetLadder, feverSnapshot, setFeverSnapshot]);
+    }, [setInv, setMult, showMsg, bal, startBalance, initialTotalSpins, selectedPackages, sweetLadder, feverSnapshot, setFeverSnapshot, paraisoDetector]);
 
     const closeFeverReport = useCallback(() => {
         setFeverReport(null);
