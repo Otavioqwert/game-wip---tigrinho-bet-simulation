@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import { usePanAndZoom } from './hooks/usePanAndZoom';
@@ -12,8 +13,6 @@ import CreditCardManager, { PaymentDueModal, ItemPenaltyModal } from './componen
 import FeverSetupModal from './components/shops/FeverSetupModal';
 import FeverReportModal from './components/shops/FeverReportModal';
 import TokenFlipOverlay from './components/shops/TokenFlipOverlay';
-import { ParaisoDoceGame } from './components/ParaisoDoceGame';
-import { ParaisoDoceSidebar } from './components/ParaisoDoceSidebar';
 
 // MEMOIZED COMPONENTS
 const MemoSlotMachine = React.memo(SlotMachine);
@@ -27,14 +26,14 @@ const App: React.FC = () => {
     const [mainActiveTab, setMainActiveTab] = useState(0);
     const [topLevelTab, setTopLevelTab] = useState('caça-niquel');
     const { style, scale, zoomIn, zoomOut, panHandlers, isPanModeActive, togglePanMode } = usePanAndZoom();
-
+    
     // Swipe navigation logic
     const touchStart = useRef(0);
     const touchEnd = useRef(0);
     const swipeThreshold = 50;
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        if (scale > 1) return;
+        if (scale > 1) return; // Disable swipe when zoomed in (allow pan instead)
         touchStart.current = e.targetTouches[0].clientX;
         touchEnd.current = e.targetTouches[0].clientX;
     };
@@ -52,6 +51,7 @@ const App: React.FC = () => {
         }
     };
 
+
     const tabBtnClasses = (isActive: boolean) => `flex-1 p-2 rounded-t-lg font-bold cursor-pointer transition-colors ${isActive ? 'bg-yellow-500 text-stone-900' : 'bg-yellow-500/20 text-white hover:bg-yellow-500/30'}`;
 
     const isPrestigeView = topLevelTab === 'prestigio';
@@ -66,18 +66,6 @@ const App: React.FC = () => {
     const topLevelBtnActiveClasses = 'scale-105 shadow-inner';
     const topLevelBtnInactiveClasses = 'opacity-70 hover:opacity-100';
 
-    // Determine if Paraiso Doce widget should be visible (ONLY in Paraiso mode)
-    const shouldShowParaisoWidget = game.febreDocesAtivo && game.isParaisoMode;
-
-    // Calculate cooldown time remaining
-    const getCooldownMinutes = () => {
-        if (!game.cooldownEnd) return 0;
-        const remaining = game.cooldownEnd - Date.now();
-        return Math.ceil(remaining / 60000);
-    };
-
-    const isCooldownActive = game.cooldownEnd && Date.now() < game.cooldownEnd;
-    const cooldownMinutes = getCooldownMinutes();
 
     return (
         <div className={`h-screen flex flex-col items-center font-sans text-white bg-gradient-to-br ${BG_CLASS} transition-all duration-500 py-2 sm:py-8 px-1 sm:px-4 overflow-hidden`}>
@@ -106,7 +94,6 @@ const App: React.FC = () => {
                     selectedPackages={game.selectedPackages}
                     buyPackage={game.buyPackage}
                     startFever={game.startFever}
-                    startParaisoFever={game.startParaisoFever}
                     onClose={game.closeFeverSetup}
                     momentoLevel={game.momentoLevel}
                 />
@@ -118,34 +105,6 @@ const App: React.FC = () => {
                     report={game.feverReport}
                     onClose={game.closeFeverReport}
                 />
-            )}
-
-             {/* Paraiso Doce Game */}
-            {game.isParaisoDoceActive && (
-                <ParaisoDoceGame
-                    onClose={game.closeParaisoDoce}
-                    onPayout={game.addParaisoPayout}
-                    isFeverMode={game.febreDocesAtivo}
-                />
-            )}
-
-            {/* Paraiso Doce Sidebar Widget - Shows ONLY in Paraiso mode */}
-            <ParaisoDoceSidebar
-                bars={game.paraisoDoceState?.bars || { cyan: 0, yellow: 0, magenta: 0 }}
-                isActive={shouldShowParaisoWidget}
-            />
-
-            {/* FEVER RESET BUTTON - $100k to skip 30min cooldown */}
-            {isCooldownActive && (
-                <button
-                    onClick={game.resetFeverCooldown}
-                    className="fixed right-4 bottom-4 z-[200] px-4 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold rounded-lg shadow-lg hover:scale-105 transition-transform flex flex-col items-center gap-1"
-                    title="Resetar cooldown da Febre Doce por $100k"
-                >
-                    <span className="text-lg">🔥 Resetar Febre</span>
-                    <span className="text-xs opacity-80">$100,000</span>
-                    <span className="text-xs opacity-60">{cooldownMinutes}min restantes</span>
-                </button>
             )}
 
             <CreditCardManager
@@ -193,7 +152,7 @@ const App: React.FC = () => {
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
-                      <path d="M10 3.5a1.5 1.5 0 011.456 1.842l-1.01 4.418a.5.5 0 00.91.4l1.554-1.504a1.5 1.5 0 012.122 2.121l-4.243 4.242a1.5 1.5 0 01-2.121 0l-4.242-4.242a1.5 1.5 0 112.12-2.121l1.555 1.554a.5.5 0 00.91-.4L8.544 5.342A1.5 1.5 0 0110 3.5z" clipRule="evenodd" />
+                      <path d="M10 3.5a1.5 1.5 0 011.456 1.842l-1.01 4.418a.5.5 0 00.91.4l1.554-1.554a1.5 1.5 0 012.122 2.121l-4.243 4.242a1.5 1.5 0 01-2.121 0l-4.242-4.242a1.5 1.5 0 112.12-2.121l1.555 1.554a.5.5 0 00.91-.4L8.544 5.342A1.5 1.5 0 0110 3.5z" clipRule="evenodd" />
                     </svg>
                 </button>
             </div>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { FeverPackage, PurchasedPackage, FeverTier, FeverType, FeverRollOption, FeverContentResult } from '../../types';
 import { ALL_FEVER_PACKAGES } from '../../constants/feverPackages';
@@ -7,22 +8,17 @@ interface FeverSetupModalProps {
     selectedPackages: PurchasedPackage[];
     buyPackage: (pkg: FeverPackage) => void;
     startFever: () => void;
-    startParaisoFever: () => void; // NEW: Special Paraiso starter
     onClose: () => void;
     momentoLevel: number;
 }
 
-const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages, buyPackage, startFever, startParaisoFever, onClose, momentoLevel }) => {
+const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages, buyPackage, startFever, onClose, momentoLevel }) => {
     const [activeTier, setActiveTier] = useState<FeverTier>('budget');
     const [activeType, setActiveType] = useState<FeverType | 'all'>('all');
     const [inspectedPackage, setInspectedPackage] = useState<FeverPackage | null>(null);
 
-    // Paraiso Doce costs 3 package slots = $30k
-    const PARAISO_COST = 30000;
-    const canAffordParaiso = bal >= PARAISO_COST;
-
     const filteredPackages = ALL_FEVER_PACKAGES.filter(p => 
-        p.tier === activeTier && (activeType === 'all' || p.type === activeType) && p.id !== 'pkg_paraiso_doce' // REMOVE from normal packages
+        p.tier === activeTier && (activeType === 'all' || p.type === activeType)
     );
 
     const getTierColor = (tier: FeverTier) => {
@@ -51,55 +47,10 @@ const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages
                 </div>
             </div>
 
-            {/* PARAISO DOCE SPECIAL BUTTON - PROMINENT PLACEMENT */}
-            <div className="w-full max-w-6xl p-4 shrink-0">
-                <div className="relative bg-gradient-to-br from-cyan-900 via-pink-900 to-yellow-900 border-4 border-rainbow rounded-xl p-6 shadow-2xl">
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 via-pink-500 to-yellow-500 text-black px-6 py-1 rounded-full font-black text-sm">
-                        ✨ MODO ESPECIAL ✨
-                    </div>
-                    
-                    <div className="flex items-center gap-6">
-                        <div className="text-6xl">🍭</div>
-                        <div className="flex-grow">
-                            <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-pink-300 to-yellow-300 mb-2">
-                                PARAÍSO DOCE
-                            </h2>
-                            <p className="text-white text-sm mb-1">Inicia uma febre especial com inventário próprio e minijogo exclusivo!</p>
-                            <p className="text-cyan-300 font-bold text-xs">• 25 Giros Grátis com Aposta $10</p>
-                            <p className="text-pink-300 font-bold text-xs">• Inventário Separado (10x 🍭 🍦 🍧, 5x 🍀 💵)</p>
-                            <p className="text-yellow-300 font-bold text-xs">• Multiplicadores Próprios (20x em cada símbolo)</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-4xl font-black text-yellow-300 mb-2">${PARAISO_COST.toLocaleString()}</p>
-                            <button
-                                onClick={startParaisoFever}
-                                disabled={!canAffordParaiso}
-                                className={`px-8 py-4 rounded-xl font-black text-xl shadow-lg transition-all ${
-                                    canAffordParaiso
-                                        ? 'bg-gradient-to-r from-cyan-500 via-pink-500 to-yellow-500 hover:scale-105 text-black animate-pulse'
-                                        : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                }`}
-                            >
-                                🍭 INICIAR AGORA
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Divider */}
-            <div className="w-full max-w-6xl px-4 shrink-0">
-                <div className="flex items-center gap-4">
-                    <div className="flex-grow h-px bg-gray-700"></div>
-                    <span className="text-gray-500 font-bold text-sm">OU MONTE SUA PRÓPRIA FEBRE (Máx 3 Pacotes)</span>
-                    <div className="flex-grow h-px bg-gray-700"></div>
-                </div>
-            </div>
-
             {/* Selection Bar */}
             <div className="w-full bg-gray-900 p-2 border-b border-gray-700 flex justify-center gap-4 shrink-0">
                 {selectedPackages.length === 0 ? (
-                    <span className="text-gray-500 italic py-2">Nenhum pacote selecionado</span>
+                    <span className="text-gray-500 italic py-2">Nenhum pacote selecionado (Máx 3)</span>
                 ) : (
                     selectedPackages.map((p, i) => (
                         <div key={i} className="bg-gray-800 border border-gray-600 rounded px-3 py-1 flex items-center gap-2">

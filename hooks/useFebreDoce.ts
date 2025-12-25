@@ -32,9 +32,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
     const [betValFebre, setBetValFebre] = useState(10);
     const [initialTotalSpins, setInitialTotalSpins] = useState(0);
     
-    // NEW: Track if Paraiso Doce mode is active
-    const [isParaisoMode, setIsParaisoMode] = useState(false);
-    
     const sweetLadder = useSweetLadder();
     
     const [feverReport, setFeverReport] = useState<FeverReport | null>(null);
@@ -61,7 +58,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         }
         setFeverPhase('SETUP');
         setSelectedPackages([]);
-        setIsParaisoMode(false);
     }, [feverPhase, cooldownEnd, showMsg]);
 
     const closeFeverSetup = useCallback(() => {
@@ -73,7 +69,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
             }
             
             setSelectedPackages([]);
-            setIsParaisoMode(false);
             setFeverPhase('IDLE');
         }
     }, [feverPhase, selectedPackages, setBal, showMsg]);
@@ -213,54 +208,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
 
     }, [bal, selectedPackages, setBal, showMsg]);
 
-    // NEW: Paraiso Doce Auto-Start (costs $30k, counts as 3 packages)
-    const startParaisoFever = useCallback(() => {
-        const PARAISO_COST = 30000;
-        
-        if (bal < PARAISO_COST) {
-            showMsg("Saldo insuficiente para o Paraíso Doce!", 2500, true);
-            return;
-        }
-
-        // Deduct cost
-        setBal(b => b - PARAISO_COST);
-        setStartBalance(bal - PARAISO_COST);
-
-        // Create Paraiso-specific inventory (SEPARATE FROM NORMAL GAME)
-        const paraisoInv = { ...INITIAL_INVENTORY };
-        (Object.keys(paraisoInv) as SymbolKey[]).forEach(k => paraisoInv[k] = 0);
-        
-        // Paraiso inventory: 10x sweets, 5x clover/cash
-        paraisoInv['🍭'] = 10;
-        paraisoInv['🍦'] = 10;
-        paraisoInv['🍧'] = 10;
-        paraisoInv['🍀'] = 5;
-        paraisoInv['💵'] = 5;
-
-        // Paraiso multipliers: 20x on each symbol
-        const paraisoMult = { ...INITIAL_MULTIPLIERS };
-        (Object.keys(paraisoMult) as SymbolKey[]).forEach(k => paraisoMult[k] = 20);
-
-        // Save snapshot
-        const snapshot = createFeverSnapshot(inv, mult, paraisoInv, paraisoMult);
-        setFeverSnapshot(snapshot);
-
-        // Apply Paraiso inventory
-        setInv(paraisoInv);
-        setMult(paraisoMult);
-        
-        // 25 spins, $10 bet
-        setFebreDocesGiros(25);
-        setInitialTotalSpins(25);
-        setBetValFebre(10);
-        
-        setFeverPhase('ACTIVE');
-        setIsParaisoMode(true);
-        setSelectedPackages([]); // No packages needed
-
-        showMsg("🍭 PARAÍSO DOCE INICIADO! Inventário separado com multiplicações especiais!", 4000, true);
-
-    }, [bal, inv, mult, setBal, setInv, setMult, showMsg, setFeverSnapshot]);
 
     const startFever = useCallback(() => {
         if (selectedPackages.length === 0) {}
@@ -355,7 +302,6 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         setFeverPhase('IDLE');
         setFebreDocesGiros(0);
         setSelectedPackages([]);
-        setIsParaisoMode(false);
         
         sweetLadder.deactivateMechanic();
 
@@ -375,21 +321,16 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         closeFeverSetup,
         buyPackage,
         startFever,
-        startParaisoFever, // NEW: Export Paraiso starter
         endFever,
         selectedPackages,
         febreDocesGiros,
         setFebreDocesGiros,
         betValFebre,
         cooldownEnd,
-        setCooldownEnd, // EXPORT for reset function
         
         sweetLadder,
         
         feverReport,
-        closeFeverReport,
-        
-        // NEW: Export isParaisoMode so widget shows correctly
-        isParaisoMode
+        closeFeverReport
     };
 };

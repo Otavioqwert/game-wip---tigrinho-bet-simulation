@@ -80,13 +80,13 @@ export const ITEM_PACKAGES: FeverPackage[] = [
 
     // --- TIER 2: MID ---
     {
-        id: 'safe_mid_2',
-        name: '🍬 Paraiso Doce',
+        id: 'safe_mid_1',
+        name: '🍬 Paraíso Doce',
         cost: 3000,
         type: 'item', risk: 'safe', tier: 'mid',
         icon: '🍬',
         contents: { items: { '🍭': 40, '🍦': 30, '🍧': 20 }, multipliers: { '🍭': 40, '🍦': 35, '🍧': 30 } }, // BUFF: +50% itens, +75% mults
-        description: 'REWORK 2.0: 3x3 Divine Grid - RTP 95-300% + Progressive Bars (ROI +35%)✨' // REWORK: New Grid Mechanic + Dynamic Multipliers
+                description: 'REWORK 2.0: 3x3 Divine Grid - RTP 95-300% + Progressive Bars (ROI +35%)✨' // REWORK: New Grid Mechanic + Dynamic Multipliers
     },
     {
         id: 'risk_mid_3',
@@ -98,6 +98,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         description: 'Garante +3 Tigres e +50 Níveis de Mult (12.5x base extra).'
     },
     {
+
          // ATUALIZAÇÃO: Cost ajustado para $7.5k + Mecânica de +25% por nível APENAS em 🐯🍀💵💎 (sem afetar doces 🍭🍦🍧)
         id: 'risk_mid_1',
         name: '🎰 Baú do Apostador',

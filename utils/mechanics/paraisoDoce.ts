@@ -3,11 +3,7 @@
 
 export interface ParaisoDoceState {
   gridSymbols: number[][];
-  bars: {
-    cyan: number;
-    yellow: number;
-    magenta: number;
-  };
+  barLevels: number[];
   rtpMultiplier: number;
   particleSpawn: Array<{x: number; y: number; type: string}>;
   lastSpinTime: number;
@@ -27,9 +23,9 @@ export interface ParaisoDoceConfig {
 
 const DEFAULT_CONFIG: ParaisoDoceConfig = {
   baseRTP: 0.95,
-  barIncrementPerSymbol: 1, // +1 per symbol match
-  maxBarLevel: 10, // Max 10 per bar
-  symbolWeights: [50, 30, 15, 5], // 0=empty, 1=cyan, 2=yellow, 3=magenta
+  barIncrementPerSymbol: 0.05,
+  maxBarLevel: 3.0,
+  symbolWeights: [50, 30, 15, 5],
   payoutMultipliers: {
     line3: 2.5,
     corners4: 5.0,
@@ -40,11 +36,7 @@ const DEFAULT_CONFIG: ParaisoDoceConfig = {
 export function initializeParaisoDoce(): ParaisoDoceState {
   return {
     gridSymbols: Array(3).fill(null).map(() => Array(3).fill(0)),
-    bars: {
-      cyan: 0,
-      yellow: 0,
-      magenta: 0
-    },
+    barLevels: [0, 0, 0],
     rtpMultiplier: DEFAULT_CONFIG.baseRTP,
     particleSpawn: [],
     lastSpinTime: 0,
@@ -116,46 +108,15 @@ export function spinParaisoDoce(state: ParaisoDoceState): { payout: number; rtpM
   const patterns = detectWinPatterns(state.gridSymbols);
   let payout = 0;
   
-  // Update bars based on symbols (1=cyan, 2=yellow, 3=magenta)
-  const cyanCount = countSymbolMatches(state.gridSymbols, 1);
-  const yellowCount = countSymbolMatches(state.gridSymbols, 2);
-  const magentaCount = countSymbolMatches(state.gridSymbols, 3);
-  
-  if (cyanCount > 0) {
-    state.bars.cyan = Math.min(
-      state.bars.cyan + cyanCount * DEFAULT_CONFIG.barIncrementPerSymbol,
-      DEFAULT_CONFIG.maxBarLevel
-    );
-  }
-  
-  if (yellowCount > 0) {
-    state.bars.yellow = Math.min(
-      state.bars.yellow + yellowCount * DEFAULT_CONFIG.barIncrementPerSymbol,
-      DEFAULT_CONFIG.maxBarLevel
-    );
-  }
-  
-  if (magentaCount > 0) {
-    state.bars.magenta = Math.min(
-      state.bars.magenta + magentaCount * DEFAULT_CONFIG.barIncrementPerSymbol,
-      DEFAULT_CONFIG.maxBarLevel
-    );
-  }
-  
-  // Check for bar completions and calculate payouts
-  if (state.bars.cyan >= DEFAULT_CONFIG.maxBarLevel) {
-    payout += DEFAULT_CONFIG.payoutMultipliers.line3;
-    state.bars.cyan = 0; // Reset after payout
-  }
-  
-  if (state.bars.yellow >= DEFAULT_CONFIG.maxBarLevel) {
-    payout += DEFAULT_CONFIG.payoutMultipliers.corners4;
-    state.bars.yellow = 0; // Reset after payout
-  }
-  
-  if (state.bars.magenta >= DEFAULT_CONFIG.maxBarLevel) {
-    payout += DEFAULT_CONFIG.payoutMultipliers.full9;
-    state.bars.magenta = 0; // Reset after payout
+  // Update bars based on symbols
+  for (let symbol = 0; symbol <= 3; symbol++) {
+    const count = countSymbolMatches(state.gridSymbols, symbol);
+    if (count > 0) {
+      state.barLevels[Math.floor(symbol / 2)] = Math.min(
+        state.barLevels[Math.floor(symbol / 2)] + count * DEFAULT_CONFIG.barIncrementPerSymbol,
+        DEFAULT_CONFIG.maxBarLevel
+      );
+    }
   }
   
   // Calculate payout based on patterns
@@ -168,7 +129,7 @@ export function spinParaisoDoce(state: ParaisoDoceState): { payout: number; rtpM
   });
   
   // Jackpot: all 9 same symbol
-  for (let symbol = 1; symbol <= 3; symbol++) {
+  for (let symbol = 0; symbol <= 3; symbol++) {
     if (countSymbolMatches(state.gridSymbols, symbol) === 9) {
       payout = DEFAULT_CONFIG.payoutMultipliers.full9;
       break;
@@ -176,10 +137,10 @@ export function spinParaisoDoce(state: ParaisoDoceState): { payout: number; rtpM
   }
   
   // Update RTP multiplier based on bars
-  const avgBar = (state.bars.cyan + state.bars.yellow + state.bars.magenta) / 3;
+  const avgBar = (state.barLevels[0] + state.barLevels[1] + state.barLevels[2]) / 3;
   state.rtpMultiplier = Math.min(
-    DEFAULT_CONFIG.baseRTP + (avgBar / DEFAULT_CONFIG.maxBarLevel) * 2.0,
-    3.0
+    DEFAULT_CONFIG.baseRTP + avgBar,
+    DEFAULT_CONFIG.maxBarLevel
   );
   
   state.lastSpinTime = Date.now();
