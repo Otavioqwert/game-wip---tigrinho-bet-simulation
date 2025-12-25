@@ -18,7 +18,7 @@ interface FebreDoceProps {
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     feverSnapshot: FeverSnapshot;
     setFeverSnapshot: (snapshot: FeverSnapshot) => void;
-    paraisoDetector: ReturnType<typeof useParaisoDoceDetector>; // NOVO
+    paraisoDetector: ReturnType<typeof useParaisoDoceDetector>;
 }
 
 export type FeverPhase = 'IDLE' | 'SETUP' | 'ACTIVE';
@@ -180,8 +180,8 @@ export const useFebreDoce = (props: FebreDoceProps) => {
 
         let purchased: PurchasedPackage = { ...pkg, uniqueId: `${pkg.id}_${Date.now()}` };
 
-        // 🍬 ATIVA DETECTOR se comprar Paraíso Doce
-        if (pkg.id === 'safe_mid_2') {
+        // 🍬 ATIVA DETECTOR se comprar Paraíso Doce (ID CORRETO: safe_mid_1)
+        if (pkg.id === 'safe_mid_1') {
             paraisoDetector.activate();
             showMsg("🍬 Paraíso Doce ativado! Sistema de detecção ligado!", 3000, true);
         }
