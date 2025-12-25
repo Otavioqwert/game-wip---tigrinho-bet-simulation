@@ -3,6 +3,7 @@ import { MID, SUGAR_CONVERSION, SYM } from '../constants';
 import { getRandomSymbolFromInventory, calculateMidMultiplierValue, createWeightSnapshot, spinFromSnapshot } from '../utils/spinCalculations';
 import type { SymbolKey, MidSymbolKey, Inventory, Multipliers, PanificadoraLevels, SkillId, RoiSaldo, ActiveCookie, StarBonusState, StarBonusResult, CoinFlipState } from '../types';
 import type { UseSweetLadderResult } from './useSweetLadder';
+import type { useParaisoDoceDetector } from './useParaisoDoceDetector';
 import { isCandySymbol } from '../utils/mechanics/sweetLadder';
 
 interface SpinLogicProps {
@@ -38,6 +39,7 @@ interface SpinLogicProps {
     setActiveCookies: React.Dispatch<React.SetStateAction<ActiveCookie[]>>;
     setSugar: React.Dispatch<React.SetStateAction<number>>;
     sweetLadder: UseSweetLadderResult;
+    paraisoDetector: ReturnType<typeof useParaisoDoceDetector>; // NOVO
 }
 
 export const useSpinLogic = (props: SpinLogicProps) => {
@@ -260,9 +262,18 @@ export const useSpinLogic = (props: SpinLogicProps) => {
             setGrid(nextGrid);
             if (allStopped) {
                 setTimeout(() => {
-                    const { applyFinalGain, febreDocesAtivo, betValFebre, betVal, febreDocesGiros, handleGain, setFebreDocesGiros, showMsg, setWinMsg, endFever, setUnluckyPot, momentoLevel, setMomentoLevel, momentoProgress, setMomentoProgress, setInv, setSugar, activeCookies, setActiveCookies, sweetLadder } = propsRef.current;
+                    const { applyFinalGain, febreDocesAtivo, betValFebre, betVal, febreDocesGiros, handleGain, setFebreDocesGiros, showMsg, setWinMsg, endFever, setUnluckyPot, momentoLevel, setMomentoLevel, momentoProgress, setMomentoProgress, setInv, setSugar, activeCookies, setActiveCookies, sweetLadder, paraisoDetector } = propsRef.current;
                     setStoppingColumns([false, false, false]);
                     const result = getSpinResult(animationState.current.finalGrid, animationState.current.availableKeys);
+                    
+                    // 🍬 PARAÍSO DOCE DETECTION
+                    if (febreDocesAtivo && paraisoDetector.isActive) {
+                        const candyHits = paraisoDetector.detectCandyHits(animationState.current.finalGrid);
+                        if (candyHits.length > 0) {
+                            const hitMsg = candyHits.map(h => `${h.count}x ${h.symbol}`).join(' + ');
+                            showMsg(`🍬 Paraíso Doce: ${hitMsg}`, 2500, true);
+                        }
+                    }
                     
                     const cookieMult = febreDocesAtivo ? 1 : activeCookies.reduce((acc, c) => acc * c.multiplier, 1);
                     const boostedOther = result.totalOtherWin * cookieMult;
