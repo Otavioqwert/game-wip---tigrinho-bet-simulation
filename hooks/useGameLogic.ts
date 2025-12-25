@@ -9,7 +9,8 @@ import { useScratchCardLogic } from './useScratchCardLogic';
 import { usePassiveIncome } from './usePassiveIncome';
 import { useSnakeUpgrades } from './useSnakeUpgrades';
 import { useFurnaceLogic } from './useFurnaceLogic';
-import { useBakeryLogic } from './useBakeryLogic'; // IMPORTED
+import { useBakeryLogic } from './useBakeryLogic';
+import { useParaisoDoceDetector } from './useParaisoDoceDetector';
 import { PRESTIGE_BASE_REQUIREMENT, PRESTIGE_GROWTH_FACTOR, CASH_TO_PA_RATIO } from '../constants/prestige';
 import type { SkillId, SecondarySkillId, RenegotiationTier, SymbolKey } from '../types';
 
@@ -36,6 +37,9 @@ export const useGameLogic = () => {
 
     const gameState = useGameState({ showMsg });
     
+    // Paraiso Doce Detector
+    const paraisoDetector = useParaisoDoceDetector();
+    
     const secondarySkills = useSecondaryPrestigeSkills({
         prestigePoints: gameState.prestigePoints,
         setPrestigePoints: gameState.setPrestigePoints,
@@ -59,13 +63,9 @@ export const useGameLogic = () => {
         showMsg,
     });
 
-    // FUNÇÃO CENTRAL DE CÁLCULO DE GANHOS (Aplica Grande Ganho linear e Hidra exponencial)
     const finalGainCalculation = useCallback((baseAmount: number) => {
         if (baseAmount <= 0) return 0;
-        // 1. Aplica o Multiplicador Linear (Grande Ganho)
         const afterLinear = baseAmount * prestigeSkills.grandeGanhoMultiplier;
-        // 2. Aplica o Exponente da Hidra (Potência)
-        // Somente para valores > 1 para não "nerfar" centavos na potência
         const final = afterLinear > 1 
             ? Math.pow(afterLinear, secondarySkills.hydraExponent)
             : afterLinear;
@@ -111,7 +111,6 @@ export const useGameLogic = () => {
         showMsg
     });
 
-    // INTEGRATED BAKERY LOGIC
     const bakeryLogic = useBakeryLogic({
         sugar: gameState.sugar,
         setSugar: gameState.setSugar,
@@ -122,7 +121,7 @@ export const useGameLogic = () => {
         setBakeryState: gameState.setBakeryState,
         showMsg,
         applyFinalGain: finalGainCalculation,
-        priceIncreaseModifier: secondarySkills.priceIncreaseModifier // NOVO
+        priceIncreaseModifier: secondarySkills.priceIncreaseModifier
     });
 
     const febreDoce = useFebreDoce({
@@ -146,15 +145,14 @@ export const useGameLogic = () => {
         febreDocesGiros: febreDoce.febreDocesGiros,
         setFebreDocesGiros: febreDoce.setFebreDocesGiros,
         betValFebre: febreDoce.betValFebre,
-        // Passamos a função de cálculo em vez de um multiplicador estático
         applyFinalGain: finalGainCalculation,
         showMsg, setWinMsg,
         cashbackMultiplier: secondarySkills.cashbackMultiplier,
         creditLimit: secondarySkills.creditLimit,
         multUpgradeBonus: secondarySkills.multUpgradeBonus,
         handleSpend, handleGain,
-        // FIX: Passar o hook completo ao invés de props separadas
-        sweetLadder: febreDoce.sweetLadder
+        sweetLadder: febreDoce.sweetLadder,
+        paraisoDetector, // NOVO: Passa o detector
     });
 
     const shopLogic = useShopLogic({
@@ -256,11 +254,10 @@ export const useGameLogic = () => {
 
     return {
         ...gameState, ...febreDoce, ...spinLogic, ...shopLogic, ...prestigeSkills, ...secondarySkills,
-        ...scratchCardLogic, ...snakeUpgrades, ...furnaceLogic, ...bakeryLogic, // Spread Bakery Logic
-        bakeryState: gameState.bakery, // Alias for ShopsTabProps
+        ...scratchCardLogic, ...snakeUpgrades, ...furnaceLogic, ...bakeryLogic,
+        bakeryState: gameState.bakery,
         winMsg, extraMsg, setWinMsg, showMsg, prestigeRequirement, handlePrestige,
         isPoolInvalid: spinLogic.pool.length <= 1,
-        // Usamos agora a função de cálculo em vez de um multiplier estático
         applyFinalGain: finalGainCalculation,
         febreDocesAtivo: febreDoce.feverPhase === 'ACTIVE',
         isSnakeGameUnlocked: secondarySkills.getSecondarySkillLevel('snakeGame') > 0,
@@ -272,6 +269,8 @@ export const useGameLogic = () => {
             const final = finalGainCalculation(baseWinnings);
             handleGain(final);
         },
+        // NOVO: Exporta o detector
+        paraisoDetector,
         isBankrupt: secondarySkills.getSecondarySkillLevel('bankruptcy') > 0 && gameState.creditCardDebt >= secondarySkills.creditLimit,
         creditCardLevel: secondarySkills.getSecondarySkillLevel('bankruptcy'),
         openCreditCardModal: () => setIsCreditCardModalOpen(true),
