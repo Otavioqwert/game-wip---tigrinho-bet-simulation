@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import type { RoiSaldo } from '../../types';
 
@@ -18,6 +17,7 @@ interface ControlsProps {
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     isBankrupt: boolean;
     isBettingLocked: boolean;
+    cancelQuickSpins?: () => void; // 🆕 Nova prop para cancelar giros
 }
 
 const SlotMachineControls: React.FC<ControlsProps> = (props) => {
@@ -35,11 +35,15 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
         showMsg,
         isBankrupt,
         isBettingLocked,
+        cancelQuickSpins,
     } = props;
     
     // Use a ref to access the latest value inside the interval closure without dependencies issues
     const febreDocesAtivoRef = useRef(febreDocesAtivo);
     useEffect(() => { febreDocesAtivoRef.current = febreDocesAtivo; }, [febreDocesAtivo]);
+
+    const febreDocesGirosRef = useRef(febreDocesGiros);
+    useEffect(() => { febreDocesGirosRef.current = febreDocesGiros; }, [febreDocesGiros]);
 
     const quickSpinIntervalRef = useRef<number | null>(null);
     const [isQuickSpinPressed, setIsQuickSpinPressed] = useState(false);
@@ -49,8 +53,11 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
     const balRef = useRef(bal);
     useEffect(() => { balRef.current = bal; }, [bal]);
 
+    const quickSpinQueueRef = useRef(quickSpinQueue);
+    useEffect(() => { quickSpinQueueRef.current = quickSpinQueue; }, [quickSpinQueue]);
 
-    const stopQuickSpin = useCallback((reason?: 'insufficient_funds' | 'no_free_spins') => {
+
+    const stopQuickSpin = useCallback((reason?: 'insufficient_funds' | 'no_free_spins' | 'limit_reached') => {
         setIsQuickSpinPressed(false);
         if (quickSpinIntervalRef.current) {
             clearInterval(quickSpinIntervalRef.current);
@@ -60,6 +67,8 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
             showMsg("Saldo/Crédito esgotado!", 1500, true);
         } else if (reason === 'no_free_spins') {
             showMsg("Giros grátis acabaram!", 1500, true);
+        } else if (reason === 'limit_reached') {
+            showMsg("🔒 Limite de giros atingido!", 1500, true);
         }
     }, [showMsg]);
 
@@ -78,6 +87,18 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
         setIsQuickSpinPressed(true);
 
         quickSpinIntervalRef.current = window.setInterval(() => {
+            // 🔍 Verifica se ultrapassou o limite de giros da febre
+            if (febreDocesAtivoRef.current) {
+                const girosRestantes = febreDocesGirosRef.current;
+                const girosNaFila = quickSpinQueueRef.current;
+                
+                // Se já tem giros enfileirados >= giros restantes, para
+                if (girosNaFila >= girosRestantes) {
+                    stopQuickSpin('limit_reached');
+                    return;
+                }
+            }
+            
             if (!handleQuickSpin()) {
                 const isFever = febreDocesAtivoRef.current;
                 stopQuickSpin(isFever ? 'no_free_spins' : 'insufficient_funds');
@@ -124,6 +145,15 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
         }
     }, [setBetVal, isBankrupt]);
 
+    // 🗑️ Handler para cancelar giros rápidos
+    const handleCancelQuickSpins = useCallback(() => {
+        stopQuickSpin();
+        if (cancelQuickSpins) {
+            cancelQuickSpins();
+            showMsg("❌ Giros rápidos cancelados!", 1500);
+        }
+    }, [stopQuickSpin, cancelQuickSpins, showMsg]);
+
     useEffect(() => {
         return () => {
             stopQuickSpin();
@@ -154,6 +184,16 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
                 >
                     {getMainButtonText()}
                 </button>
+
+                {/* 🗑️ Botão Cancelar Giros Rápidos (aparece quando tem giros na fila) */}
+                {quickSpinQueue > 0 && (
+                    <button
+                        onClick={handleCancelQuickSpins}
+                        className="py-2 px-4 font-bold text-white bg-gradient-to-br from-red-500 to-red-700 rounded-xl shadow-lg shadow-red-500/25 transition-transform hover:-translate-y-0.5 active:translate-y-0 border-2 border-red-300 animate-pulse"
+                    >
+                        ❌ Cancelar Giros Rápidos ({quickSpinQueue})
+                    </button>
+                )}
 
                 {/* Percentage Bets Row */}
                 {!febreDocesAtivo && (
