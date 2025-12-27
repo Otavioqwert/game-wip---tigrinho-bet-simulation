@@ -1,4 +1,3 @@
-
 import type { SnakeUpgrade, SnakeUpgradeId, SnakeUpgradeType } from '../types';
 
 export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
@@ -76,7 +75,7 @@ export const SNAKE_UPGRADES: Record<SnakeUpgradeId, SnakeUpgrade> = {
     crescimento: 1.0, // Not used
     maxLevel: 2,
     description: (level) => `Ganhe ${level} vida(s) extra por jogo.`,
-    costs: [2500, 18500],
+    costs: [25000, 125000], // 🆕 ATUALIZADO: 2.5k⇒25k | 18.5k⇒125k
   },
   paralamas: {
     id: 'paralamas',
