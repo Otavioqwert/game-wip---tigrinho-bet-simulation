@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 type CandySymbol = '🍭' | '🍦' | '🍧';
 
@@ -19,64 +19,42 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
 }) => {
   const candies: CandySymbol[] = ['🍭', '🍦', '🍧'];
   
-  // 🔒 Flag para evitar processamento múltiplo
-  const isProcessing = useRef(false);
-  const lastProcessedAnimation = useRef<CandySymbol | 'rainbow' | null>(null);
+  // 🔒 Estado local para controlar quando mostrar animação
+  const [localAnimation, setLocalAnimation] = useState<CandySymbol | 'rainbow' | null>(null);
+  const processingRef = useRef(false);
   
-  // 💰 Handle individual candy completion (freeze 3s + REWARD)
+  // Sincroniza animação externa com local
   useEffect(() => {
-    if (activeAnimation && activeAnimation !== 'rainbow') {
-      // Evita reprocessar a mesma animação
-      if (isProcessing.current || lastProcessedAnimation.current === activeAnimation) {
-        return;
-      }
+    if (activeAnimation && !processingRef.current) {
+      setLocalAnimation(activeAnimation);
+      processingRef.current = true;
       
-      isProcessing.current = true;
-      lastProcessedAnimation.current = activeAnimation;
-      
+      // Após 3s: processa recompensa e limpa animação
       const timer = setTimeout(() => {
-        const reward = onCandyComplete(activeAnimation);
-        onReward(reward, `${activeAnimation} Barra completa! +$${reward}!`);
-        isProcessing.current = false;
-        lastProcessedAnimation.current = null;
+        if (activeAnimation === 'rainbow') {
+          const reward = onRainbowComplete();
+          onReward(reward, `🌈 RAINBOW JACKPOT! +$${reward.toLocaleString()}!`);
+        } else {
+          const reward = onCandyComplete(activeAnimation);
+          onReward(reward, `${activeAnimation} Barra completa! +$${reward}!`);
+        }
+        
+        // Limpa animação local
+        setLocalAnimation(null);
+        processingRef.current = false;
       }, 3000);
       
-      return () => {
-        clearTimeout(timer);
-        isProcessing.current = false;
-      };
-    } else if (!activeAnimation) {
-      // Reseta quando não há animação ativa
-      lastProcessedAnimation.current = null;
+      return () => clearTimeout(timer);
     }
-  }, [activeAnimation, onCandyComplete, onReward]);
-  
-  // 🌈 Handle rainbow completion (freeze 3s + MEGA REWARD)
-  useEffect(() => {
-    if (activeAnimation === 'rainbow') {
-      // Evita reprocessar a mesma animação
-      if (isProcessing.current || lastProcessedAnimation.current === 'rainbow') {
-        return;
-      }
-      
-      isProcessing.current = true;
-      lastProcessedAnimation.current = 'rainbow';
-      
-      const timer = setTimeout(() => {
-        const reward = onRainbowComplete();
-        onReward(reward, `🌈 RAINBOW JACKPOT! +$${reward.toLocaleString()}!`);
-        isProcessing.current = false;
-        lastProcessedAnimation.current = null;
-      }, 3000);
-      
-      return () => {
-        clearTimeout(timer);
-        isProcessing.current = false;
-      };
+    
+    // Se activeAnimation foi limpo externamente, limpa local também
+    if (!activeAnimation && localAnimation) {
+      setLocalAnimation(null);
+      processingRef.current = false;
     }
-  }, [activeAnimation, onRainbowComplete, onReward]);
+  }, [activeAnimation]);
 
-  const isRainbowActive = activeAnimation === 'rainbow';
+  const isRainbowActive = localAnimation === 'rainbow';
   const rainbowReady = candies.every(c => progress[c] === 3);
 
   // Recompensas para exibição visual
@@ -90,7 +68,7 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
   // Função para renderizar os cubos de progresso
   const renderProgress = (symbol: CandySymbol) => {
     const count = progress[symbol];
-    const isAnimating = activeAnimation === symbol;
+    const isAnimating = localAnimation === symbol;
     const colorMap = {
       '🍭': { emoji: '🟦', color: '#3b82f6' },
       '🍦': { emoji: '🟨', color: '#eab308' },
@@ -132,7 +110,7 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
         zIndex: 100,
         boxShadow: '0 4px 20px rgba(251, 191, 36, 0.5)',
         transition: 'all 0.3s ease',
-        transform: activeAnimation ? 'scale(1.05)' : 'scale(1)',
+        transform: localAnimation ? 'scale(1.05)' : 'scale(1)',
       }}
     >
       {/* Título */}
@@ -154,7 +132,7 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
         {candies.map(candy => {
           const count = progress[candy];
           const isComplete = count === 3;
-          const isAnimating = activeAnimation === candy;
+          const isAnimating = localAnimation === candy;
           
           return (
             <div key={candy} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -241,7 +219,7 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
       </div>
 
       {/* Indicador de animação ativa */}
-      {activeAnimation && (
+      {localAnimation && (
         <div
           style={{
             marginTop: '10px',
@@ -252,7 +230,7 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
             animation: 'pulse 1s ease-in-out infinite',
           }}
         >
-          {activeAnimation === 'rainbow' ? '🌈 ARCO-ÍRIS ATIVADO!' : `${activeAnimation} COMPLETO!`}
+          {localAnimation === 'rainbow' ? '🌈 ARCO-ÍRIS ATIVADO!' : `${localAnimation} COMPLETO!`}
         </div>
       )}
 
