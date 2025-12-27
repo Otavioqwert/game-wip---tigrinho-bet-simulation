@@ -17,6 +17,15 @@ export interface ParaisoDetectorState {
   activeAnimation: CandySymbol | 'rainbow' | null;
 }
 
+// 💰 RECOMPENSAS POR RESET
+const CANDY_REWARDS: Record<CandySymbol, number> = {
+  '🍭': 150,
+  '🍦': 300,
+  '🍧': 2500,
+};
+
+const RAINBOW_REWARD = 49999;
+
 export const useParaisoDoceDetector = () => {
   const [state, setState] = useState<ParaisoDetectorState>({
     isActive: false,
@@ -120,23 +129,26 @@ export const useParaisoDoceDetector = () => {
     return hits;
   }, []);
 
-  // Reset individual candy
-  const resetCandy = useCallback((candy: CandySymbol) => {
+  // 💰 Reset individual candy COM RECOMPENSA
+  const resetCandy = useCallback((candy: CandySymbol): number => {
+    const reward = CANDY_REWARDS[candy];
     setState(prev => ({
       ...prev,
       progress: { ...prev.progress, [candy]: 0 },
       activeAnimation: null,
     }));
+    return reward;
   }, []);
 
-  // Reset all (for rainbow)
-  const resetRainbowProgress = useCallback(() => {
+  // 💰 Reset all (for rainbow) COM RECOMPENSA
+  const resetRainbowProgress = useCallback((): number => {
     setState(prev => ({
       ...prev,
       progress: { '🍭': 0, '🍦': 0, '🍧': 0 },
       rainbowTriggered: false,
       activeAnimation: null,
     }));
+    return RAINBOW_REWARD;
   }, []);
 
   return {
@@ -153,5 +165,10 @@ export const useParaisoDoceDetector = () => {
     detectCandyHits,
     resetCandy,
     resetRainbowProgress,
+    // 💰 Expõe as recompensas para referência externa
+    REWARDS: {
+      CANDY: CANDY_REWARDS,
+      RAINBOW: RAINBOW_REWARD,
+    },
   };
 };
