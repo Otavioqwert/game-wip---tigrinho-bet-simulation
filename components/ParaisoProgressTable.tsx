@@ -149,16 +149,16 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
           <span style={{ fontSize: '18px' }}>🌈</span>
           <span>-</span>
           <div style={{ display: 'flex', gap: '4px' }}>
-            {/* Barra própria: 1 slot que completa quando os 3 doces estão em 3/3 */}
+            {/* Barra harmônica: ⏹️⬛⬛ (vazio) ou ⬜⬛⬛ (cheio) */}
             <span 
               style={{ 
                 fontSize: '16px',
                 animation: isRainbowActive ? 'pulse 1s ease-in-out infinite' : 'none',
               }}
             >
-              {rainbowReady ? '⬜' : '⬛'}
+              {rainbowReady ? '⬜' : '⏹️'}
             </span>
-            {/* 2 slots nulos para harmonia visual */}
+            <span style={{ fontSize: '16px', opacity: 0.3 }}>⬛</span>
             <span style={{ fontSize: '16px', opacity: 0.3 }}>⬛</span>
           </div>
           <span
