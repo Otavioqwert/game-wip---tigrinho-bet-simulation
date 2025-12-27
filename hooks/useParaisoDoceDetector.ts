@@ -14,7 +14,6 @@ export interface ParaisoDetectorState {
   totalHits: Record<CandySymbol, number>;
   progress: Record<CandySymbol, number>;
   rainbowTriggered: boolean;
-  // NEW: Track which candy/rainbow is animating
   activeAnimation: CandySymbol | 'rainbow' | null;
 }
 
@@ -87,21 +86,25 @@ export const useParaisoDoceDetector = () => {
       
       hits.forEach(h => {
         newTotals[h.symbol] += h.count;
-        const oldProg = newProgress[h.symbol];
-        newProgress[h.symbol] = Math.min(3, oldProg + h.count);
-        
-        // Individual candy completion (NOVO)
-        if (newProgress[h.symbol] === 3 && oldProg < 3 && !prev.activeAnimation) {
-          triggerAnimation = h.symbol;
-        }
+        newProgress[h.symbol] = Math.min(3, prev.progress[h.symbol] + h.count);
       });
 
-      // Rainbow completion (prioridade sobre individual)
+      // PRIORITY 1: Rainbow completion (todos os 3 completos AO MESMO TEMPO)
       const allComplete = candies.every(c => newProgress[c] === 3);
       const wasComplete = candies.every(c => prev.progress[c] === 3);
       
-      if (allComplete && !wasComplete) {
+      if (allComplete && !wasComplete && !prev.activeAnimation) {
         triggerAnimation = 'rainbow';
+      }
+      // PRIORITY 2: Individual candy completion (só se não tiver rainbow)
+      else if (!allComplete && !prev.activeAnimation) {
+        for (const h of hits) {
+          const oldProg = prev.progress[h.symbol];
+          if (newProgress[h.symbol] === 3 && oldProg < 3) {
+            triggerAnimation = h.symbol;
+            break; // Apenas o primeiro que completar
+          }
+        }
       }
 
       return { 
