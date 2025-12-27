@@ -18,6 +18,7 @@ interface ControlsProps {
     isBankrupt: boolean;
     isBettingLocked: boolean;
     cancelQuickSpins?: () => void; // 🆕 Nova prop para cancelar giros
+    cashbackMultiplier: number; // 🆕 Prop para calcular custo real do giro
 }
 
 const SlotMachineControls: React.FC<ControlsProps> = (props) => {
@@ -36,6 +37,7 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
         isBankrupt,
         isBettingLocked,
         cancelQuickSpins,
+        cashbackMultiplier,
     } = props;
     
     // Use a ref to access the latest value inside the interval closure without dependencies issues
@@ -45,13 +47,20 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
     const febreDocesGirosRef = useRef(febreDocesGiros);
     useEffect(() => { febreDocesGirosRef.current = febreDocesGiros; }, [febreDocesGiros]);
 
+    const balRef = useRef(bal);
+    useEffect(() => { balRef.current = bal; }, [bal]);
+
+    const betValRef = useRef(betVal);
+    useEffect(() => { betValRef.current = betVal; }, [betVal]);
+
+    const cashbackMultiplierRef = useRef(cashbackMultiplier);
+    useEffect(() => { cashbackMultiplierRef.current = cashbackMultiplier; }, [cashbackMultiplier]);
+
     const quickSpinIntervalRef = useRef<number | null>(null);
     const [isQuickSpinPressed, setIsQuickSpinPressed] = useState(false);
 
     const betAdjustIntervalRef = useRef<number | null>(null);
     const betAdjustTimeoutRef = useRef<number | null>(null);
-    const balRef = useRef(bal);
-    useEffect(() => { balRef.current = bal; }, [bal]);
 
     const quickSpinQueueRef = useRef(quickSpinQueue);
     useEffect(() => { quickSpinQueueRef.current = quickSpinQueue; }, [quickSpinQueue]);
@@ -94,6 +103,18 @@ const SlotMachineControls: React.FC<ControlsProps> = (props) => {
                 
                 // Se já tem giros enfileirados >= giros restantes, para
                 if (girosNaFila >= girosRestantes) {
+                    stopQuickSpin('limit_reached');
+                    return;
+                }
+            } else {
+                // 💰 MODO NORMAL: Verifica se o saldo permite mais giros
+                const custoRealPorGiro = betValRef.current * (1 - cashbackMultiplierRef.current);
+                const girosNaFila = quickSpinQueueRef.current;
+                const saldoDisponivel = balRef.current;
+                const girosQueSaldoPermite = Math.floor(saldoDisponivel / custoRealPorGiro);
+                
+                // Se já tem giros enfileirados >= giros que o saldo permite, para
+                if (girosNaFila >= girosQueSaldoPermite) {
                     stopQuickSpin('limit_reached');
                     return;
                 }
