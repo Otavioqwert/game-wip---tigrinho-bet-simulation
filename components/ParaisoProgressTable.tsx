@@ -1,53 +1,72 @@
 import React, { useEffect } from 'react';
 
+type CandySymbol = '🍭' | '🍦' | '🍧';
+
 interface ParaisoProgressTableProps {
-  progress: Record<'🍭' | '🍦' | '🍧', number>;
-  isRainbowAnimating: boolean;
+  progress: Record<CandySymbol, number>;
+  activeAnimation: CandySymbol | 'rainbow' | null;
+  onCandyComplete: (candy: CandySymbol) => void;
   onRainbowComplete: () => void;
 }
 
 export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
   progress,
-  isRainbowAnimating,
+  activeAnimation,
+  onCandyComplete,
   onRainbowComplete,
 }) => {
-  // Quando o arco-íris completa, congela por 3 segundos
+  const candies: CandySymbol[] = ['🍭', '🍦', '🍧'];
+  
+  // Handle individual candy completion (freeze 3s)
   useEffect(() => {
-    if (isRainbowAnimating) {
+    if (activeAnimation && activeAnimation !== 'rainbow') {
+      const timer = setTimeout(() => {
+        onCandyComplete(activeAnimation);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeAnimation, onCandyComplete]);
+  
+  // Handle rainbow completion (freeze 3s)
+  useEffect(() => {
+    if (activeAnimation === 'rainbow') {
       const timer = setTimeout(() => {
         onRainbowComplete();
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [isRainbowAnimating, onRainbowComplete]);
+  }, [activeAnimation, onRainbowComplete]);
+
+  const isRainbowActive = activeAnimation === 'rainbow';
+  const allComplete = candies.every(c => progress[c] === 3);
 
   // Função para renderizar os cubos de progresso
-  const renderProgress = (symbol: '🍭' | '🍦' | '🍧', color: string) => {
+  const renderProgress = (symbol: CandySymbol) => {
     const count = progress[symbol];
+    const isAnimating = activeAnimation === symbol;
+    const colorMap = {
+      '🍭': { emoji: '🟦', color: '#3b82f6' },
+      '🍦': { emoji: '🟨', color: '#eab308' },
+      '🍧': { emoji: '🟥', color: '#ef4444' },
+    };
+    const { emoji } = colorMap[symbol];
     const squares = [];
     
     for (let i = 0; i < 3; i++) {
-      if (i < count) {
-        // Preenchido
-        squares.push(
-          <span key={i} style={{ color, fontSize: '16px' }}>
-            {color === '#3b82f6' ? '🟦' : color === '#eab308' ? '🟨' : '🟥'}
-          </span>
-        );
-      } else {
-        // Vazio
-        squares.push(
-          <span key={i} style={{ fontSize: '16px' }}>
-            ⏹️
-          </span>
-        );
-      }
+      squares.push(
+        <span
+          key={i}
+          style={{
+            fontSize: '16px',
+            animation: isAnimating ? 'pulse 1s ease-in-out infinite' : 'none',
+          }}
+        >
+          {i < count ? emoji : '⏹️'}
+        </span>
+      );
     }
     return squares;
   };
-
-  // Verifica se o arco-íris está completo
-  const rainbowComplete = progress['🍭'] >= 3 && progress['🍦'] >= 3 && progress['🍧'] >= 3;
 
   return (
     <div
@@ -66,7 +85,7 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
         zIndex: 100,
         boxShadow: '0 4px 20px rgba(251, 191, 36, 0.5)',
         transition: 'all 0.3s ease',
-        transform: isRainbowAnimating ? 'scale(1.05)' : 'scale(1)',
+        transform: activeAnimation ? 'scale(1.05)' : 'scale(1)',
       }}
     >
       {/* Título */}
@@ -85,41 +104,35 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
 
       {/* Linhas de progresso */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {/* 🍭 Pirulito */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '18px' }}>🍭</span>
-          <span>-</span>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            {renderProgress('🍭', '#3b82f6')}
-          </div>
-          <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-            [{progress['🍭']}/3]
-          </span>
-        </div>
-
-        {/* 🍦 Sorvete */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '18px' }}>🍦</span>
-          <span>-</span>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            {renderProgress('🍦', '#eab308')}
-          </div>
-          <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-            [{progress['🍦']}/3]
-          </span>
-        </div>
-
-        {/* 🍧 Raspadinha */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '18px' }}>🍧</span>
-          <span>-</span>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            {renderProgress('🍧', '#ef4444')}
-          </div>
-          <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-            [{progress['🍧']}/3]
-          </span>
-        </div>
+        {candies.map(candy => {
+          const count = progress[candy];
+          const isComplete = count === 3;
+          const isAnimating = activeAnimation === candy;
+          
+          return (
+            <div key={candy} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>{candy}</span>
+              <span>-</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {renderProgress(candy)}
+              </div>
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: isComplete ? '#10b981' : '#9ca3af',
+                  fontWeight: isComplete ? 'bold' : 'normal',
+                }}
+              >
+                [{count}/3]
+              </span>
+              {isAnimating && (
+                <span style={{ fontSize: '10px', color: '#fbbf24', marginLeft: '4px' }}>
+                  ✨
+                </span>
+              )}
+            </div>
+          );
+        })}
 
         {/* Linha do Arco-íris */}
         <div
@@ -135,7 +148,7 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
           <span style={{ fontSize: '18px' }}>🌈</span>
           <span>-</span>
           <div style={{ display: 'flex', gap: '4px' }}>
-            {rainbowComplete ? (
+            {allComplete ? (
               <span style={{ fontSize: '16px' }}>⬜</span>
             ) : (
               <>
@@ -144,14 +157,36 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
               </>
             )}
           </div>
-          <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-            [{rainbowComplete ? '1' : '0'}/1]
+          <span
+            style={{
+              fontSize: '12px',
+              color: allComplete ? '#10b981' : '#9ca3af',
+              fontWeight: allComplete ? 'bold' : 'normal',
+            }}
+          >
+            [{allComplete ? '1' : '0'}/1]
           </span>
         </div>
       </div>
 
+      {/* Indicador de animação ativa */}
+      {activeAnimation && (
+        <div
+          style={{
+            marginTop: '10px',
+            textAlign: 'center',
+            fontSize: '11px',
+            color: '#fbbf24',
+            fontWeight: 'bold',
+            animation: 'pulse 1s ease-in-out infinite',
+          }}
+        >
+          {activeAnimation === 'rainbow' ? '🌈 ARCO-ÍRIS ATIVADO!' : `${activeAnimation} COMPLETO!`}
+        </div>
+      )}
+
       {/* Animação de arco-íris completo */}
-      {isRainbowAnimating && (
+      {isRainbowActive && (
         <div
           style={{
             position: 'absolute',
@@ -171,6 +206,10 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
         @keyframes rainbow-pulse {
           0%, 100% { opacity: 0.3; }
           50% { opacity: 0.7; }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.1); }
         }
       `}</style>
     </div>
