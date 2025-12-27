@@ -5,7 +5,9 @@ export * from './constants/economy';
 export const APP_VERSION = "v1.2.0 (PWA Enabled)";
 
 export const MID_SELL: Record<string, number> = {'🍭':0.01,'🍦':0.02,'🍧':0.03};
-export const MID_BASE: Record<string, number> = {'🍭':0.2,'🍦':0.3,'🍧':0.4};
+
+// ATUALIZAÇÃO: 🍧 buffado para 12.5x ($10 → $125)
+export const MID_BASE: Record<string, number> = {'🍭':0.2,'🍦':0.3,'🍧':12.5};
 export const MID_STEP: Record<string, number> = {'🍭':1.05,'🍦':1.05,'🍧':1.05};
 export const PANI_INCREMENT: Record<string, number> = {'🍭':0.02,'🍦':0.03,'🍧':0.04};
 export const MIDMAX = 10;
