@@ -386,6 +386,11 @@ export const useSpinLogic = (props: SpinLogicProps) => {
         return false;
     }, []);
 
+    // 🗑️ Nova função para cancelar giros rápidos
+    const cancelQuickSpins = useCallback(() => {
+        setQuickSpinQueue(0);
+    }, []);
+
     useEffect(() => {
         const { paraisoDetector } = propsRef.current;
         
@@ -399,5 +404,23 @@ export const useSpinLogic = (props: SpinLogicProps) => {
         }
     }, [quickSpinQueue, isSpinning, starBonusState.isActive, coinFlipState.isActive, startAnimationCycle]);
 
-    return { isSpinning, grid, spinningColumns, stoppingColumns, pool: availableKeys, midMultiplierValue, handleSpin, quickSpinQueue, handleQuickSpin, starBonusState, closeStarBonus, coinFlipState, handleCoinGuess, closeCoinFlip, triggerStarBonus, startCoinFlip };
+    return { 
+        isSpinning, 
+        grid, 
+        spinningColumns, 
+        stoppingColumns, 
+        pool: availableKeys, 
+        midMultiplierValue, 
+        handleSpin, 
+        quickSpinQueue, 
+        handleQuickSpin, 
+        cancelQuickSpins, // 🆕 Exporta nova função
+        starBonusState, 
+        closeStarBonus, 
+        coinFlipState, 
+        handleCoinGuess, 
+        closeCoinFlip, 
+        triggerStarBonus, 
+        startCoinFlip 
+    };
 };
