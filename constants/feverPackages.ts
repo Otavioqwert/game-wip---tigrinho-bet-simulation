@@ -12,8 +12,8 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 500,
         type: 'item', risk: 'safe', tier: 'budget',
         icon: '🍭',
-        contents: { items: { '🍭': 12, '🍦': 5, '🍧': 2 }, multipliers: { '🍭': 12, '🍦': 8 } }, // BUFF: +46% itens, +150% mults
-        description: 'Entrada barata no tema (ROI +18%)' // BUFF: -2% → +18%
+        contents: { items: { '🍭': 12, '🍦': 5, '🍧': 2 }, multipliers: { '🍭': 12, '🍦': 8 } },
+        description: 'Entrada barata no tema (ROI +18%)'
     },
     {
         id: 'safe_budget_2',
@@ -85,21 +85,23 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 3000,
         type: 'item', risk: 'safe', tier: 'mid',
         icon: '🍬',
-        contents: { items: { '🍭': 40, '🍦': 30, '🍧': 20 }, multipliers: { '🍭': 40, '🍦': 35, '🍧': 30 } }, // BUFF: +50% itens, +75% mults
-                description: 'REWORK 2.0: 3x3 Divine Grid - RTP 95-300% + Progressive Bars (ROI +35%)✨' // REWORK: New Grid Mechanic + Dynamic Multipliers
+        // REBALANCE: +10🍭 com mult 3x, +5🍦 com mult 7.5x
+        contents: { 
+            items: { '🍭': 10, '🍦': 5 }, 
+            multipliers: { '🍭': 135, '🍦': 285 } // 🍭: 3x precisa ~135 níveis | 🍦: 7.5x precisa ~285 níveis
+        },
+        description: 'REWORK 2.0: 3x3 Divine Grid - RTP 95-300% + Progressive Bars (ROI +35%)✨'
     },
     {
         id: 'risk_mid_3',
         name: '⚡ Tigre Turbinado',
         cost: 10000,
-        type: 'item', risk: 'safe', tier: 'mid', // Alterado para Safe
+        type: 'item', risk: 'safe', tier: 'mid',
         icon: '⚡',
-        contents: { items: { '🐯': 3 }, multipliers: { '🐯': 50 } }, // Fixo +3 Tigres e Mult
+        contents: { items: { '🐯': 3 }, multipliers: { '🐯': 50 } },
         description: 'Garante +3 Tigres e +50 Níveis de Mult (12.5x base extra).'
     },
     {
-
-         // ATUALIZAÇÃO: Cost ajustado para $7.5k + Mecânica de +25% por nível APENAS em 🐯🍀💵💎 (sem afetar doces 🍭🍦🍧)
         id: 'risk_mid_1',
         name: '🎰 Baú do Apostador',
         cost: 7500,
@@ -116,7 +118,6 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 35000, 
         type: 'item', risk: 'risk', tier: 'premium',
         icon: '🐯',
-        // ATUALIZAÇÃO: Fusão Estratégica (6 Tigres + 30 Doces)
         contents: { 
             items: { '🐯': 6, '🍭': 10, '🍦': 10, '🍧': 10 }, 
             multipliers: { '🐯': 500 } 
@@ -145,9 +146,8 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         id: 'risk_premium_2',
         name: '🌠 Chuva de Meteoros',
         cost: 28000,
-        type: 'item', risk: 'safe', tier: 'premium', // Alterado para Safe
+        type: 'item', risk: 'safe', tier: 'premium',
         icon: '🌠',
-        // ATUALIZAÇÃO: +1 Estrela e +5 de cada Doce
         contents: { 
             items: { '☄️': 3, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, 
             multipliers: { '☄️': 150 } 
@@ -160,9 +160,8 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         id: 'risk_luxury_2',
         name: '💫 Explosão Estelar',
         cost: 70000,
-        type: 'item', risk: 'safe', tier: 'luxury', // Alterado para Safe
+        type: 'item', risk: 'safe', tier: 'luxury',
         icon: '💫',
-        // ATUALIZAÇÃO: +1 Estrela e +5 de cada Doce
         contents: { 
             items: { '☄️': 10, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, 
             multipliers: { '☄️': 300 } 
@@ -172,7 +171,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'risk_luxury_3',
         name: '🌠 Aposta Suprema',
-        cost: 155000, // Novo Custo
+        cost: 155000,
         type: 'item', risk: 'risk', tier: 'luxury',
         icon: '🌌',
         contents: 'MEGA_JACKPOT',
@@ -238,11 +237,11 @@ export const BET_PACKAGES: FeverPackage[] = [
     {
         id: 'pkg_apostador',
         name: '😎 O Apostador',
-        cost: 15000, // NERF: $10k → $15k
+        cost: 15000,
         type: 'bet', tier: 'mid',
-        spins: 0, // Logic handled in activation
+        spins: 0,
         icon: '🕶️',
-        description: 'Aposta sobe para $100, mas giros totais caem para 1/4.' // NERF: /3 → /4
+        description: 'Aposta sobe para $100, mas giros totais caem para 1/4.'
     },
 
     // PREMIUM / LUXURY
@@ -262,7 +261,7 @@ export const BET_PACKAGES: FeverPackage[] = [
     {
         id: 'bet_jackpot',
         name: '💎 Jackpot Spins',
-        cost: 200000, // Custo mantido 200k
+        cost: 200000,
         type: 'bet', risk: 'risk', tier: 'luxury',
         icon: '💎',
         spins: 'MEGA_VARIABLE',
