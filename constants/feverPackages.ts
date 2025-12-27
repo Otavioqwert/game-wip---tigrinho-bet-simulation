@@ -67,12 +67,12 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 3000,
         type: 'item', risk: 'safe', tier: 'mid',
         icon: '🍬',
-        // CORRETO: Níveis calculados usando 0.2/0.3/0.4 base com step 1.05
         // 🍭: 0.2 × 1.05^57 ≈ 3.0x ($10 → $30)
         // 🍦: 0.3 × 1.05^66 ≈ 7.5x ($10 → $75)
+        // 🍧: 0.4 × 1.05^69 ≈ 12.5x ($10 → $125) - APENAS neste pacote!
         contents: { 
             items: { '🍭': 10, '🍦': 5 }, 
-            multipliers: { '🍭': 57, '🍦': 66 }
+            multipliers: { '🍭': 57, '🍦': 66, '🍧': 69 }
         },
         description: 'REWORK 2.0: 3x3 Divine Grid - RTP 95-300% + Progressive Bars (ROI +35%)✨'
     },
@@ -129,9 +129,9 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 28000,
         type: 'item', risk: 'safe', tier: 'premium',
         icon: '🌠',
-        // +69 níveis para 🍧: 0.4 × 1.05^69 ≈ 12.5x ($10 → $125)
-        contents: { items: { '☄️': 3, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, multipliers: { '☄️': 150, '🍧': 69 } },
-        description: '3 Meteoros, 1 Estrela, Doces (5🍧 com 12.5x!) e +150% de Poder Real (Níveis)!'
+        // REVERTIDO: Não tem mais +69 níveis de 🍧
+        contents: { items: { '☄️': 3, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, multipliers: { '☄️': 150 } },
+        description: '3 Meteoros, 1 Estrela, Doces e +150% de Poder Real (Níveis)!'
     },
 
     // --- TIER 4: LUXURY ---
@@ -141,9 +141,9 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 70000,
         type: 'item', risk: 'safe', tier: 'luxury',
         icon: '💫',
-        // +69 níveis para 🍧: 0.4 × 1.05^69 ≈ 12.5x ($10 → $125)
-        contents: { items: { '☄️': 10, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, multipliers: { '☄️': 300, '🍧': 69 } },
-        description: '10 Meteoros, 1 Estrela, Doces (5🍧 com 12.5x!) e +300% de Poder Real (Níveis)!'
+        // REVERTIDO: Não tem mais +69 níveis de 🍧
+        contents: { items: { '☄️': 10, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, multipliers: { '☄️': 300 } },
+        description: '10 Meteoros, 1 Estrela, Doces e +300% de Poder Real (Níveis)!'
     },
     {
         id: 'risk_luxury_3',
