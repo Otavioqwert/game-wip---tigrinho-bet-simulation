@@ -89,15 +89,15 @@ export const useParaisoDoceDetector = () => {
         newProgress[h.symbol] = Math.min(3, prev.progress[h.symbol] + h.count);
       });
 
-      // PRIORITY 1: Rainbow completion (todos os 3 completos AO MESMO TEMPO)
-      const allComplete = candies.every(c => newProgress[c] === 3);
-      const wasComplete = candies.every(c => prev.progress[c] === 3);
+      // 🌈 NOVO TRIGGER RAINBOW: 3 doces DIFERENTES no MESMO giro
+      const uniqueCandiesHit = hits.length;
+      const hasAllThreeCandies = uniqueCandiesHit === 3;
       
-      if (allComplete && !wasComplete && !prev.activeAnimation) {
+      if (hasAllThreeCandies && !prev.activeAnimation) {
         triggerAnimation = 'rainbow';
       }
-      // PRIORITY 2: Individual candy completion (só se não tiver rainbow)
-      else if (!allComplete && !prev.activeAnimation) {
+      // Animação individual (só se não tiver rainbow)
+      else if (!hasAllThreeCandies && !prev.activeAnimation) {
         for (const h of hits) {
           const oldProg = prev.progress[h.symbol];
           if (newProgress[h.symbol] === 3 && oldProg < 3) {
@@ -112,7 +112,7 @@ export const useParaisoDoceDetector = () => {
         lastHits: hits, 
         totalHits: newTotals,
         progress: newProgress,
-        rainbowTriggered: allComplete,
+        rainbowTriggered: hasAllThreeCandies || prev.rainbowTriggered,
         activeAnimation: triggerAnimation,
       };
     });
