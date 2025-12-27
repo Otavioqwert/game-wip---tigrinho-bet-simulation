@@ -13,6 +13,7 @@ import CreditCardManager, { PaymentDueModal, ItemPenaltyModal } from './componen
 import FeverSetupModal from './components/shops/FeverSetupModal';
 import FeverReportModal from './components/shops/FeverReportModal';
 import TokenFlipOverlay from './components/shops/TokenFlipOverlay';
+import { ParaisoProgressTable } from './components/ParaisoProgressTable';
 
 // MEMOIZED COMPONENTS
 const MemoSlotMachine = React.memo(SlotMachine);
@@ -78,6 +79,15 @@ const App: React.FC = () => {
                 totalScoreMultiplier={game.grandeGanhoMultiplier * game.scoreMultiplier}
                 resetSnakeUpgrades={game.resetSnakeUpgrades}
             />}
+            
+            {/* Paraiso Doce Progress Table */}
+            {game.paraisoDetector.isActive && (
+                <ParaisoProgressTable
+                    progress={game.paraisoDetector.progress}
+                    isRainbowAnimating={game.paraisoDetector.isRainbowAnimating}
+                    onRainbowComplete={game.paraisoDetector.resetRainbowProgress}
+                />
+            )}
             
             {/* Token Flip Animation Overlay */}
             {game.tokenFlipState.isActive && (
