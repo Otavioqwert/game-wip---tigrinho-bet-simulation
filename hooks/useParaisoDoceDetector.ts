@@ -129,6 +129,25 @@ export const useParaisoDoceDetector = () => {
     return hits;
   }, []);
 
+  // 🔍 Verifica se há barras completas aguardando processamento
+  const checkPendingCompletions = useCallback(() => {
+    const candies: CandySymbol[] = ['🍭', '🍦', '🍧'];
+    
+    setState(prev => {
+      // Se já tem animação ativa, não faz nada
+      if (prev.activeAnimation) return prev;
+      
+      // Procura por barras 3/3 que ainda não dispararam animação
+      for (const candy of candies) {
+        if (prev.progress[candy] === 3) {
+          return { ...prev, activeAnimation: candy };
+        }
+      }
+      
+      return prev;
+    });
+  }, []);
+
   // 💰 Reset individual candy COM RECOMPENSA
   const resetCandy = useCallback((candy: CandySymbol): number => {
     const reward = CANDY_REWARDS[candy];
@@ -137,8 +156,12 @@ export const useParaisoDoceDetector = () => {
       progress: { ...prev.progress, [candy]: 0 },
       activeAnimation: null,
     }));
+    
+    // 🔍 Agenda verificação de outras barras completas
+    setTimeout(checkPendingCompletions, 100);
+    
     return reward;
-  }, []);
+  }, [checkPendingCompletions]);
 
   // 💰 Reset all (for rainbow) COM RECOMPENSA
   const resetRainbowProgress = useCallback((): number => {
@@ -165,6 +188,7 @@ export const useParaisoDoceDetector = () => {
     detectCandyHits,
     resetCandy,
     resetRainbowProgress,
+    checkPendingCompletions, // 🆕 Exporta para uso externo
     // 💰 Expõe as recompensas para referência externa
     REWARDS: {
       CANDY: CANDY_REWARDS,
