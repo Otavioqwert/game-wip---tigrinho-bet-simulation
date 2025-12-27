@@ -38,7 +38,8 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
   }, [activeAnimation, onRainbowComplete]);
 
   const isRainbowActive = activeAnimation === 'rainbow';
-  const allComplete = candies.every(c => progress[c] === 3);
+  // Rainbow só completa quando os 3 doces estão em 3/3 simultaneamente
+  const rainbowReady = candies.every(c => progress[c] === 3);
 
   // Função para renderizar os cubos de progresso
   const renderProgress = (symbol: CandySymbol) => {
@@ -102,7 +103,7 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
         Paraíso Doce
       </div>
 
-      {/* Linhas de progresso */}
+      {/* Linhas de progresso dos doces */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {candies.map(candy => {
           const count = progress[candy];
@@ -134,7 +135,7 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
           );
         })}
 
-        {/* Linha do Arco-íris */}
+        {/* Linha do Arco-íris - BARRA PRÓPRIA */}
         <div
           style={{
             display: 'flex',
@@ -148,23 +149,26 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
           <span style={{ fontSize: '18px' }}>🌈</span>
           <span>-</span>
           <div style={{ display: 'flex', gap: '4px' }}>
-            {allComplete ? (
-              <span style={{ fontSize: '16px' }}>⬜</span>
-            ) : (
-              <>
-                <span style={{ fontSize: '16px' }}>⬛</span>
-                <span style={{ fontSize: '16px' }}>⬛</span>
-              </>
-            )}
+            {/* Barra própria: 1 slot que completa quando os 3 doces estão em 3/3 */}
+            <span 
+              style={{ 
+                fontSize: '16px',
+                animation: isRainbowActive ? 'pulse 1s ease-in-out infinite' : 'none',
+              }}
+            >
+              {rainbowReady ? '⬜' : '⬛'}
+            </span>
+            {/* 2 slots nulos para harmonia visual */}
+            <span style={{ fontSize: '16px', opacity: 0.3 }}>⬛</span>
           </div>
           <span
             style={{
               fontSize: '12px',
-              color: allComplete ? '#10b981' : '#9ca3af',
-              fontWeight: allComplete ? 'bold' : 'normal',
+              color: rainbowReady ? '#10b981' : '#9ca3af',
+              fontWeight: rainbowReady ? 'bold' : 'normal',
             }}
           >
-            [{allComplete ? '1' : '0'}/1]
+            [{rainbowReady ? '1' : '0'}/1]
           </span>
         </div>
       </div>
