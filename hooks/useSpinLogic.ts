@@ -39,7 +39,7 @@ interface SpinLogicProps {
     setActiveCookies: React.Dispatch<React.SetStateAction<ActiveCookie[]>>;
     setSugar: React.Dispatch<React.SetStateAction<number>>;
     sweetLadder: UseSweetLadderResult;
-    paraisoDetector: ReturnType<typeof useParaisoDoceDetector>; // NOVO
+    paraisoDetector: ReturnType<typeof useParaisoDoceDetector>;
 }
 
 export const useSpinLogic = (props: SpinLogicProps) => {
@@ -360,7 +360,13 @@ export const useSpinLogic = (props: SpinLogicProps) => {
     }, [isSpinning, getSpinResult, startAnimationCycle]);
 
     const handleSpin = useCallback(() => {
-        const { febreDocesAtivo, handleSpend, betVal, setWinMsg, cashbackMultiplier } = propsRef.current;
+        const { febreDocesAtivo, handleSpend, betVal, setWinMsg, cashbackMultiplier, paraisoDetector } = propsRef.current;
+        
+        // 🌈 FREEZE DURANTE RAINBOW ANIMATION
+        if (paraisoDetector.isRainbowAnimating) {
+            return;
+        }
+        
         if (isSpinning || availableKeys.length === 0 || quickSpinQueue > 0 || starBonusState.isActive || coinFlipState.isActive) return;
         setWinMsg('');
         if (!febreDocesAtivo && !handleSpend(betVal * (1 - cashbackMultiplier))) return;
@@ -368,13 +374,26 @@ export const useSpinLogic = (props: SpinLogicProps) => {
     }, [isSpinning, availableKeys, quickSpinQueue, startAnimationCycle, starBonusState.isActive, coinFlipState.isActive]);
     
     const handleQuickSpin = useCallback(() => {
-        const { febreDocesAtivo, febreDocesGiros, betVal, handleSpend, cashbackMultiplier } = propsRef.current;
+        const { febreDocesAtivo, febreDocesGiros, betVal, handleSpend, cashbackMultiplier, paraisoDetector } = propsRef.current;
+        
+        // 🌈 FREEZE DURANTE RAINBOW ANIMATION
+        if (paraisoDetector.isRainbowAnimating) {
+            return false;
+        }
+        
         if (febreDocesAtivo) { if (febreDocesGiros > 0) { setQuickSpinQueue(p => p + 1); return true; } return false; }
         if (handleSpend(betVal * (1 - cashbackMultiplier))) { setQuickSpinQueue(p => p + 1); return true; }
         return false;
     }, []);
 
     useEffect(() => {
+        const { paraisoDetector } = propsRef.current;
+        
+        // 🌈 FREEZE DURANTE RAINBOW ANIMATION
+        if (paraisoDetector.isRainbowAnimating) {
+            return;
+        }
+        
         if (quickSpinQueue > 0 && !isSpinning && !starBonusState.isActive && !coinFlipState.isActive) {
             setQuickSpinQueue(p => p - 1); startAnimationCycle(true);
         }
