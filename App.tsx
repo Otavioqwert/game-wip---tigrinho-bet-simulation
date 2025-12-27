@@ -80,13 +80,14 @@ const App: React.FC = () => {
                 resetSnakeUpgrades={game.resetSnakeUpgrades}
             />}
             
-            {/* Paraiso Doce Progress Table */}
+            {/* 🍭 Paraiso Doce Progress Table COM HELPER */}
             {game.paraisoDetector.isActive && (
                 <ParaisoProgressTable
                     progress={game.paraisoDetector.progress}
                     activeAnimation={game.paraisoDetector.activeAnimation}
                     onCandyComplete={game.paraisoDetector.resetCandy}
                     onRainbowComplete={game.paraisoDetector.resetRainbowProgress}
+                    onReward={game.handleParaisoReward}
                 />
             )}
             
