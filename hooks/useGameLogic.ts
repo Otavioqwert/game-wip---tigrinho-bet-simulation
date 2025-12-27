@@ -94,6 +94,12 @@ export const useGameLogic = () => {
         gameState.setBal(b => b + amount);
     }, [gameState]);
 
+    // 🍭 HELPER: Processa recompensas do Paraíso Doce
+    const handleParaisoReward = useCallback((amount: number, message: string) => {
+        handleGain(amount);
+        showMsg(message, 3000, true);
+    }, [handleGain, showMsg]);
+
     const furnaceLogic = useFurnaceLogic({
         sugar: gameState.sugar,
         setSugar: gameState.setSugar,
@@ -271,6 +277,7 @@ export const useGameLogic = () => {
             handleGain(final);
         },
         paraisoDetector,
+        handleParaisoReward, // 🍭 EXPORTA O HELPER
         isBankrupt: secondarySkills.getSecondarySkillLevel('bankruptcy') > 0 && gameState.creditCardDebt >= secondarySkills.creditLimit,
         creditCardLevel: secondarySkills.getSecondarySkillLevel('bankruptcy'),
         openCreditCardModal: () => setIsCreditCardModalOpen(true),
