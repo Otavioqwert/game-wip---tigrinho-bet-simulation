@@ -5,8 +5,9 @@ type CandySymbol = '🍭' | '🍦' | '🍧';
 interface ParaisoProgressTableProps {
   progress: Record<CandySymbol, number>;
   activeAnimation: CandySymbol | 'rainbow' | null;
-  onCandyComplete: (candy: CandySymbol) => void;
-  onRainbowComplete: () => void;
+  onCandyComplete: (candy: CandySymbol) => number; // Agora retorna a recompensa
+  onRainbowComplete: () => number; // Agora retorna a recompensa
+  onReward: (amount: number, message: string) => void; // Novo callback para aplicar recompensa
 }
 
 export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
@@ -14,32 +15,43 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
   activeAnimation,
   onCandyComplete,
   onRainbowComplete,
+  onReward,
 }) => {
   const candies: CandySymbol[] = ['🍭', '🍦', '🍧'];
   
-  // Handle individual candy completion (freeze 3s)
+  // 💰 Handle individual candy completion (freeze 3s + REWARD)
   useEffect(() => {
     if (activeAnimation && activeAnimation !== 'rainbow') {
       const timer = setTimeout(() => {
-        onCandyComplete(activeAnimation);
+        const reward = onCandyComplete(activeAnimation);
+        onReward(reward, `${activeAnimation} Barra completa! +$${reward}!`);
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [activeAnimation, onCandyComplete]);
+  }, [activeAnimation, onCandyComplete, onReward]);
   
-  // Handle rainbow completion (freeze 3s)
+  // 🌈 Handle rainbow completion (freeze 3s + MEGA REWARD)
   useEffect(() => {
     if (activeAnimation === 'rainbow') {
       const timer = setTimeout(() => {
-        onRainbowComplete();
+        const reward = onRainbowComplete();
+        onReward(reward, `🌈 RAINBOW JACKPOT! +$${reward.toLocaleString()}!`);
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [activeAnimation, onRainbowComplete]);
+  }, [activeAnimation, onRainbowComplete, onReward]);
 
   const isRainbowActive = activeAnimation === 'rainbow';
   // Rainbow só completa quando os 3 doces estão em 3/3 simultaneamente
   const rainbowReady = candies.every(c => progress[c] === 3);
+
+  // Recompensas para exibição visual
+  const REWARDS = {
+    '🍭': 150,
+    '🍦': 300,
+    '🍧': 2500,
+    '🌈': 49999,
+  };
 
   // Função para renderizar os cubos de progresso
   const renderProgress = (symbol: CandySymbol) => {
@@ -131,6 +143,17 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
                   ✨
                 </span>
               )}
+              {/* 💰 Exibe recompensa */}
+              <span
+                style={{
+                  fontSize: '10px',
+                  color: '#22c55e',
+                  marginLeft: 'auto',
+                  fontWeight: 'bold',
+                }}
+              >
+                ${REWARDS[candy]}
+              </span>
             </div>
           );
         })}
@@ -169,6 +192,17 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
             }}
           >
             [{rainbowReady ? '1' : '0'}/1]
+          </span>
+          {/* 💰 Exibe MEGA recompensa */}
+          <span
+            style={{
+              fontSize: '10px',
+              color: '#22c55e',
+              marginLeft: 'auto',
+              fontWeight: 'bold',
+            }}
+          >
+            ${REWARDS['🌈'].toLocaleString()}
           </span>
         </div>
       </div>
