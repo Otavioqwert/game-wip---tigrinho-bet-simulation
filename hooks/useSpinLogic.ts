@@ -362,8 +362,8 @@ export const useSpinLogic = (props: SpinLogicProps) => {
     const handleSpin = useCallback(() => {
         const { febreDocesAtivo, handleSpend, betVal, setWinMsg, cashbackMultiplier, paraisoDetector } = propsRef.current;
         
-        // 🌈 FREEZE DURANTE RAINBOW ANIMATION
-        if (paraisoDetector.isRainbowAnimating) {
+        // 🍬 FREEZE DURANTE QUALQUER ANIMAÇÃO (individual ou rainbow)
+        if (paraisoDetector.activeAnimation !== null) {
             return;
         }
         
@@ -376,8 +376,8 @@ export const useSpinLogic = (props: SpinLogicProps) => {
     const handleQuickSpin = useCallback(() => {
         const { febreDocesAtivo, febreDocesGiros, betVal, handleSpend, cashbackMultiplier, paraisoDetector } = propsRef.current;
         
-        // 🌈 FREEZE DURANTE RAINBOW ANIMATION
-        if (paraisoDetector.isRainbowAnimating) {
+        // 🍬 FREEZE DURANTE QUALQUER ANIMAÇÃO (individual ou rainbow)
+        if (paraisoDetector.activeAnimation !== null) {
             return false;
         }
         
@@ -389,8 +389,8 @@ export const useSpinLogic = (props: SpinLogicProps) => {
     useEffect(() => {
         const { paraisoDetector } = propsRef.current;
         
-        // 🌈 FREEZE DURANTE RAINBOW ANIMATION
-        if (paraisoDetector.isRainbowAnimating) {
+        // 🍬 FREEZE DURANTE QUALQUER ANIMAÇÃO (individual ou rainbow)
+        if (paraisoDetector.activeAnimation !== null) {
             return;
         }
         
