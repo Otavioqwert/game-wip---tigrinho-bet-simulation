@@ -1,20 +1,21 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { SymbolKey } from '../types';
 
-// Detecta acertos de doces no grid 3x3
+type CandySymbol = '🍭' | '🍦' | '🍧';
+
 export interface CandyHit {
-  symbol: '🍭' | '🍦' | '🍧';
+  symbol: CandySymbol;
   count: number;
 }
 
 export interface ParaisoDetectorState {
   isActive: boolean;
   lastHits: CandyHit[];
-  totalHits: Record<'🍭' | '🍦' | '🍧', number>;
-  // Novo: progresso para o arco-íris
-  progress: Record<'🍭' | '🍦' | '🍧', number>;
+  totalHits: Record<CandySymbol, number>;
+  progress: Record<CandySymbol, number>;
   rainbowTriggered: boolean;
-  isRainbowAnimating: boolean;
+  // NEW: Track which candy/rainbow is animating
+  activeAnimation: CandySymbol | 'rainbow' | null;
 }
 
 export const useParaisoDoceDetector = () => {
@@ -24,10 +25,12 @@ export const useParaisoDoceDetector = () => {
     totalHits: { '🍭': 0, '🍦': 0, '🍧': 0 },
     progress: { '🍭': 0, '🍦': 0, '🍧': 0 },
     rainbowTriggered: false,
-    isRainbowAnimating: false,
+    activeAnimation: null,
   });
+  
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-  // Ativa o detector quando compra o pacote
   const activate = useCallback(() => {
     setState({
       isActive: true,
@@ -35,110 +38,117 @@ export const useParaisoDoceDetector = () => {
       totalHits: { '🍭': 0, '🍦': 0, '🍧': 0 },
       progress: { '🍭': 0, '🍦': 0, '🍧': 0 },
       rainbowTriggered: false,
-      isRainbowAnimating: false,
+      activeAnimation: null,
     });
   }, []);
 
-  // Desativa ao fim da febre
   const deactivate = useCallback(() => {
-    setState(prev => ({ ...prev, isActive: false }));
+    setState(prev => ({ ...prev, isActive: false, activeAnimation: null }));
   }, []);
 
-  // Reseta o progresso do arco-íris após animação
+  const detectCandyHits = useCallback((grid: SymbolKey[]): CandyHit[] => {
+    if (!stateRef.current.isActive || grid.length !== 9) return [];
+
+    const lines = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8], // horizontais
+      [0, 3, 6], [1, 4, 7], [2, 5, 8], // verticais
+      [0, 4, 8], [2, 4, 6]              // diagonais
+    ];
+
+    const candies: CandySymbol[] = ['🍭', '🍦', '🍧'];
+    const counts: Record<CandySymbol, number> = { '🍭': 0, '🍦': 0, '🍧': 0 };
+
+    for (const line of lines) {
+      const syms = line.map(i => grid[i]);
+      
+      for (const candy of candies) {
+        // Linha pura de um doce
+        if (syms.every(s => s === candy)) {
+          counts[candy]++;
+        }
+        // Linha com 2 doces + 1 wild (⭐)
+        else if (syms.filter(s => s === candy).length === 2 && syms.includes('⭐')) {
+          counts[candy]++;
+        }
+      }
+    }
+
+    const hits: CandyHit[] = candies
+      .filter(c => counts[c] > 0)
+      .map(c => ({ symbol: c, count: counts[c] }));
+
+    if (hits.length === 0) return [];
+
+    // Atualiza progresso e detecta completações
+    setState(prev => {
+      const newTotals = { ...prev.totalHits };
+      const newProgress = { ...prev.progress };
+      let triggerAnimation: CandySymbol | 'rainbow' | null = prev.activeAnimation;
+      
+      hits.forEach(h => {
+        newTotals[h.symbol] += h.count;
+        const oldProg = newProgress[h.symbol];
+        newProgress[h.symbol] = Math.min(3, oldProg + h.count);
+        
+        // Individual candy completion (NOVO)
+        if (newProgress[h.symbol] === 3 && oldProg < 3 && !prev.activeAnimation) {
+          triggerAnimation = h.symbol;
+        }
+      });
+
+      // Rainbow completion (prioridade sobre individual)
+      const allComplete = candies.every(c => newProgress[c] === 3);
+      const wasComplete = candies.every(c => prev.progress[c] === 3);
+      
+      if (allComplete && !wasComplete) {
+        triggerAnimation = 'rainbow';
+      }
+
+      return { 
+        ...prev, 
+        lastHits: hits, 
+        totalHits: newTotals,
+        progress: newProgress,
+        rainbowTriggered: allComplete,
+        activeAnimation: triggerAnimation,
+      };
+    });
+
+    return hits;
+  }, []);
+
+  // Reset individual candy
+  const resetCandy = useCallback((candy: CandySymbol) => {
+    setState(prev => ({
+      ...prev,
+      progress: { ...prev.progress, [candy]: 0 },
+      activeAnimation: null,
+    }));
+  }, []);
+
+  // Reset all (for rainbow)
   const resetRainbowProgress = useCallback(() => {
     setState(prev => ({
       ...prev,
       progress: { '🍭': 0, '🍦': 0, '🍧': 0 },
       rainbowTriggered: false,
-      isRainbowAnimating: false,
+      activeAnimation: null,
     }));
   }, []);
 
-  // Detecta doces em um grid de 9 símbolos (3x3)
-  const detectCandyHits = useCallback((grid: SymbolKey[]): CandyHit[] => {
-    if (!state.isActive || grid.length !== 9) return [];
-
-    const hits: CandyHit[] = [];
-    const counts: Record<string, number> = { '🍭': 0, '🍦': 0, '🍧': 0 };
-
-    // Linhas que podem acertar
-    const lines = [
-      [0, 1, 2], // Top
-      [3, 4, 5], // Mid
-      [6, 7, 8], // Bottom
-      [0, 3, 6], // Left
-      [1, 4, 7], // Center
-      [2, 5, 8], // Right
-      [0, 4, 8], // Diagonal \\
-      [2, 4, 6], // Diagonal /
-    ];
-
-    for (const line of lines) {
-      const syms = line.map(i => grid[i]);
-      
-      // Linha com 3 iguais?
-      if (syms[0] === syms[1] && syms[1] === syms[2]) {
-        const sym = syms[0];
-        if (sym === '🍭' || sym === '🍦' || sym === '🍧') {
-          counts[sym]++;
-        }
-      }
-    }
-
-    // Converte para array de hits
-    (['\ud83c\udf6d', '\ud83c\udf66', '\ud83c\udf67'] as const).forEach(candy => {
-      if (counts[candy] > 0) {
-        hits.push({ symbol: candy, count: counts[candy] });
-      }
-    });
-
-    // Atualiza estado
-    if (hits.length > 0) {
-      setState(prev => {
-        const newTotals = { ...prev.totalHits };
-        const newProgress = { ...prev.progress };
-        
-        hits.forEach(h => {
-          newTotals[h.symbol] += h.count;
-          // Preenche o progresso até 3/3
-          newProgress[h.symbol] = Math.min(3, newProgress[h.symbol] + h.count);
-        });
-
-        // Verifica se completou arco-íris (3 doces diferentes completos)
-        const rainbowComplete = 
-          newProgress['🍭'] >= 3 && 
-          newProgress['🍦'] >= 3 && 
-          newProgress['🍧'] >= 3;
-
-        if (rainbowComplete && !prev.rainbowTriggered) {
-          // Triggera arco-íris
-          return { 
-            ...prev, 
-            lastHits: hits, 
-            totalHits: newTotals,
-            progress: newProgress,
-            rainbowTriggered: true,
-            isRainbowAnimating: true,
-          };
-        }
-
-        return { ...prev, lastHits: hits, totalHits: newTotals, progress: newProgress };
-      });
-    }
-
-    return hits;
-  }, [state.isActive]);
-
   return {
     isActive: state.isActive,
+    progress: state.progress,
+    totalHits: state.totalHits,
+    lastHits: state.lastHits,
+    activeAnimation: state.activeAnimation,
+    isRainbowAnimating: state.activeAnimation === 'rainbow',
+    isCandyAnimating: state.activeAnimation !== null && state.activeAnimation !== 'rainbow',
+    currentAnimatingCandy: state.activeAnimation !== 'rainbow' ? state.activeAnimation : null,
     activate,
     deactivate,
     detectCandyHits,
-    lastHits: state.lastHits,
-    totalHits: state.totalHits,
-    progress: state.progress,
-    rainbowTriggered: state.rainbowTriggered,
-    isRainbowAnimating: state.isRainbowAnimating,
+    resetCandy,
     resetRainbowProgress,
   };
 };
