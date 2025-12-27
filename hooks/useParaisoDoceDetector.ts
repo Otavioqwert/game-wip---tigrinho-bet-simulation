@@ -11,6 +11,10 @@ export interface ParaisoDetectorState {
   isActive: boolean;
   lastHits: CandyHit[];
   totalHits: Record<'🍭' | '🍦' | '🍧', number>;
+  // Novo: progresso para o arco-íris
+  progress: Record<'🍭' | '🍦' | '🍧', number>;
+  rainbowTriggered: boolean;
+  isRainbowAnimating: boolean;
 }
 
 export const useParaisoDoceDetector = () => {
@@ -18,6 +22,9 @@ export const useParaisoDoceDetector = () => {
     isActive: false,
     lastHits: [],
     totalHits: { '🍭': 0, '🍦': 0, '🍧': 0 },
+    progress: { '🍭': 0, '🍦': 0, '🍧': 0 },
+    rainbowTriggered: false,
+    isRainbowAnimating: false,
   });
 
   // Ativa o detector quando compra o pacote
@@ -26,12 +33,25 @@ export const useParaisoDoceDetector = () => {
       isActive: true,
       lastHits: [],
       totalHits: { '🍭': 0, '🍦': 0, '🍧': 0 },
+      progress: { '🍭': 0, '🍦': 0, '🍧': 0 },
+      rainbowTriggered: false,
+      isRainbowAnimating: false,
     });
   }, []);
 
   // Desativa ao fim da febre
   const deactivate = useCallback(() => {
     setState(prev => ({ ...prev, isActive: false }));
+  }, []);
+
+  // Reseta o progresso do arco-íris após animação
+  const resetRainbowProgress = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      progress: { '🍭': 0, '🍦': 0, '🍧': 0 },
+      rainbowTriggered: false,
+      isRainbowAnimating: false,
+    }));
   }, []);
 
   // Detecta doces em um grid de 9 símbolos (3x3)
@@ -49,7 +69,7 @@ export const useParaisoDoceDetector = () => {
       [0, 3, 6], // Left
       [1, 4, 7], // Center
       [2, 5, 8], // Right
-      [0, 4, 8], // Diagonal \
+      [0, 4, 8], // Diagonal \\
       [2, 4, 6], // Diagonal /
     ];
 
@@ -76,10 +96,33 @@ export const useParaisoDoceDetector = () => {
     if (hits.length > 0) {
       setState(prev => {
         const newTotals = { ...prev.totalHits };
+        const newProgress = { ...prev.progress };
+        
         hits.forEach(h => {
           newTotals[h.symbol] += h.count;
+          // Preenche o progresso até 3/3
+          newProgress[h.symbol] = Math.min(3, newProgress[h.symbol] + h.count);
         });
-        return { ...prev, lastHits: hits, totalHits: newTotals };
+
+        // Verifica se completou arco-íris (3 doces diferentes completos)
+        const rainbowComplete = 
+          newProgress['🍭'] >= 3 && 
+          newProgress['🍦'] >= 3 && 
+          newProgress['🍧'] >= 3;
+
+        if (rainbowComplete && !prev.rainbowTriggered) {
+          // Triggera arco-íris
+          return { 
+            ...prev, 
+            lastHits: hits, 
+            totalHits: newTotals,
+            progress: newProgress,
+            rainbowTriggered: true,
+            isRainbowAnimating: true,
+          };
+        }
+
+        return { ...prev, lastHits: hits, totalHits: newTotals, progress: newProgress };
       });
     }
 
@@ -93,5 +136,9 @@ export const useParaisoDoceDetector = () => {
     detectCandyHits,
     lastHits: state.lastHits,
     totalHits: state.totalHits,
+    progress: state.progress,
+    rainbowTriggered: state.rainbowTriggered,
+    isRainbowAnimating: state.isRainbowAnimating,
+    resetRainbowProgress,
   };
 };
