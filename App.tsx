@@ -84,7 +84,8 @@ const App: React.FC = () => {
             {game.paraisoDetector.isActive && (
                 <ParaisoProgressTable
                     progress={game.paraisoDetector.progress}
-                    isRainbowAnimating={game.paraisoDetector.isRainbowAnimating}
+                    activeAnimation={game.paraisoDetector.activeAnimation}
+                    onCandyComplete={game.paraisoDetector.resetCandy}
                     onRainbowComplete={game.paraisoDetector.resetRainbowProgress}
                 />
             )}
