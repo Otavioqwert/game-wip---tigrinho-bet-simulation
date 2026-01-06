@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import { usePanAndZoom } from './hooks/usePanAndZoom';
 import Header from './components/Header';
@@ -22,7 +22,15 @@ const MemoConfigTab = React.memo(ConfigTab);
 const MemoPrestigeTab = React.memo(PrestigeTab);
 
 const App: React.FC = () => {
-    const game = useGameLogic();
+    // 🍁 Identifica se o Pacote do Trevo está ativo
+    const gameBase = useGameLogic();
+    const isCloverPackActive = useMemo(() => 
+        gameBase.selectedPackages.some(p => p.id === 'safe_budget_2'),
+    [gameBase.selectedPackages]);
+
+    // Injeta a flag no game object
+    const game = { ...gameBase, isCloverPackActive };
+
     const [mainActiveTab, setMainActiveTab] = useState(0);
     const [topLevelTab, setTopLevelTab] = useState('caça-niquel');
     const { style, scale, zoomIn, zoomOut, panHandlers, isPanModeActive, togglePanMode } = usePanAndZoom();
@@ -77,7 +85,7 @@ const App: React.FC = () => {
                 resetSnakeUpgrades={game.resetSnakeUpgrades}
             />}
             
-            {/* 🍭 Paraiso Doce Progress Table - PASSANDO PROPS DE NÍVEL */}
+            {/* 🍭 Paraiso Doce Progress Table */}
             {game.paraisoDetector.isActive && (
                 <ParaisoProgressTable
                     progress={game.paraisoDetector.progress}
