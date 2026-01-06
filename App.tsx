@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import { usePanAndZoom } from './hooks/usePanAndZoom';
@@ -34,7 +33,7 @@ const App: React.FC = () => {
     const swipeThreshold = 50;
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        if (scale > 1) return; // Disable swipe when zoomed in (allow pan instead)
+        if (scale > 1) return; 
         touchStart.current = e.targetTouches[0].clientX;
         touchEnd.current = e.targetTouches[0].clientX;
     };
@@ -52,7 +51,6 @@ const App: React.FC = () => {
         }
     };
 
-
     const tabBtnClasses = (isActive: boolean) => `flex-1 p-2 rounded-t-lg font-bold cursor-pointer transition-colors ${isActive ? 'bg-yellow-500 text-stone-900' : 'bg-yellow-500/20 text-white hover:bg-yellow-500/30'}`;
 
     const isPrestigeView = topLevelTab === 'prestigio';
@@ -67,7 +65,6 @@ const App: React.FC = () => {
     const topLevelBtnActiveClasses = 'scale-105 shadow-inner';
     const topLevelBtnInactiveClasses = 'opacity-70 hover:opacity-100';
 
-
     return (
         <div className={`h-screen flex flex-col items-center font-sans text-white bg-gradient-to-br ${BG_CLASS} transition-all duration-500 py-2 sm:py-8 px-1 sm:px-4 overflow-hidden`}>
             {game.isSnakeGameActive && <SnakeGame
@@ -80,7 +77,7 @@ const App: React.FC = () => {
                 resetSnakeUpgrades={game.resetSnakeUpgrades}
             />}
             
-            {/* 🍭 Paraiso Doce Progress Table COM HELPER */}
+            {/* 🍭 Paraiso Doce Progress Table - PASSANDO PROPS DE NÍVEL */}
             {game.paraisoDetector.isActive && (
                 <ParaisoProgressTable
                     progress={game.paraisoDetector.progress}
@@ -88,10 +85,11 @@ const App: React.FC = () => {
                     onCandyComplete={game.paraisoDetector.resetCandy}
                     onRainbowComplete={game.paraisoDetector.resetRainbowProgress}
                     onReward={game.handleParaisoReward}
+                    level={game.paraisoDetector.level}
+                    unlockedCandy={game.paraisoDetector.unlockedCandy}
                 />
             )}
             
-            {/* Token Flip Animation Overlay */}
             {game.tokenFlipState.isActive && (
                 <TokenFlipOverlay
                     flipState={game.tokenFlipState}
@@ -99,7 +97,6 @@ const App: React.FC = () => {
                 />
             )}
             
-            {/* Fever Setup Modal */}
             {game.feverPhase === 'SETUP' && (
                 <FeverSetupModal
                     bal={game.bal}
@@ -111,7 +108,6 @@ const App: React.FC = () => {
                 />
             )}
 
-            {/* Fever Report Modal */}
             {game.feverReport && (
                 <FeverReportModal
                     report={game.feverReport}
@@ -169,7 +165,6 @@ const App: React.FC = () => {
                 </button>
             </div>
 
-            {/* Top Level Navigation */}
             <div className="w-full max-w-2xl mb-2 sm:mb-4 px-2">
                 <div className="flex gap-2 sm:gap-4">
                     <button
@@ -199,7 +194,6 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            {/* Main Content Area Wrapper for Pan and Zoom */}
             <div 
                 className={`w-full ${isPrestigeView ? 'max-w-7xl' : 'max-w-2xl'} flex-grow overflow-hidden transition-all duration-300`}
                 {...panHandlers}
@@ -219,11 +213,9 @@ const App: React.FC = () => {
                                 febreDocesAtivo={game.febreDocesAtivo}
                                 momentoLevel={game.momentoLevel}
                                 momentoProgress={game.momentoProgress}
-                                // Fever Trigger Props
                                 openFeverSetup={game.openFeverSetup}
                                 cooldownEnd={game.cooldownEnd}
                             />
-                            {/* Main Tabs Navigation */}
                             <div className="flex gap-1 mb-2">
                                 {['Caça-Níquel', 'Inventário', 'Lojas', 'Config'].map((label, i) => (
                                     <button key={i} onClick={() => setMainActiveTab(i)} className={`${tabBtnClasses(mainActiveTab === i)} text-xs sm:text-base`}>
@@ -232,7 +224,6 @@ const App: React.FC = () => {
                                 ))}
                             </div>
 
-                            {/* Main Content Area */}
                             <main 
                                 className="bg-black/30 rounded-b-lg rounded-tr-lg p-2 sm:p-4 flex-grow overflow-y-auto"
                                 onTouchStart={handleTouchStart}
