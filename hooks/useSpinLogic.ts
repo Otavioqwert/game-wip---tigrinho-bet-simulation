@@ -65,6 +65,13 @@ export interface UseSpinLogicResult {
     handleGlobalReroll: () => void;
 }
 
+// 🔍 Helper: Detecta linhas vencedoras em um grid
+interface WinningLine {
+    lineIndex: number;
+    winSymbol: SymbolKey;
+    positions: number[];
+}
+
 export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [grid, setGrid] = useState<SymbolKey[]>(Array(9).fill('🍭'));
@@ -127,6 +134,44 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         const finalMultiplier = isUpgradeable ? propsRef.current.multUpgradeBonus : 1;
         return baseVal * finalMultiplier;
     }, [getEffectiveMultLevels]);
+
+    // 🔍 FUNÇÃO CORE: Detecta linhas vencedoras em um grid
+    const detectWinningLines = useCallback((testGrid: SymbolKey[]): WinningLine[] => {
+        const lines = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+        const isCaminhoEstelarActive = getSkillLevel('caminhoEstelar') > 0;
+        const isCaminhoFichaActive = getSkillLevel('caminhoFicha') > 0;
+        const winningLines: WinningLine[] = [];
+
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const line = lines[lineIndex];
+            const syms = line.map(i => testGrid[i]);
+            const wilds = syms.filter(s => s === '⭐').length;
+            const nonWilds = syms.filter(s => s !== '⭐');
+            let winSymbol: SymbolKey | null = null;
+
+            if (syms.every(s => s === '🪙')) {
+                if (isCaminhoFichaActive) winSymbol = '🪙';
+            }
+            else if (wilds > 0 && nonWilds.length > 0) {
+                const firstNonWild = nonWilds[0];
+                if (nonWilds.every(s => s === firstNonWild)) {
+                    winSymbol = firstNonWild;
+                }
+            }
+            else if (wilds === 3 && isCaminhoEstelarActive) {
+                winSymbol = '⭐';
+            }
+            else if (wilds === 0 && syms[0] === syms[1] && syms[1] === syms[2]) {
+                winSymbol = syms[0];
+            }
+
+            if (winSymbol) {
+                winningLines.push({ lineIndex, winSymbol, positions: line });
+            }
+        }
+
+        return winningLines;
+    }, [getSkillLevel]);
 
     // ⭐ STAR BONUS FUNCTIONS
     const triggerStarBonus = useCallback((validKeys: SymbolKey[], bet: number, lines: number) => {
@@ -197,9 +242,9 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         setCoinFlipState({ isActive: false, flipsRemaining: 0, currentMultiplier: 0, currentBet: 0, history: [], lastResult: null, isAnimating: false });
     }, []);
 
-    // 🍁 LEAF ACTIONS
+    // 🍁 LEAF ACTIONS COM VALIDAÇÃO
     const handleCellReroll = useCallback((index: number) => {
-        const { inv, showMsg } = propsRef.current;
+        const { inv, showMsg, handleGain, applyFinalGain, febreDocesAtivo, betValFebre, betVal } = propsRef.current;
         if (!props.isCloverPackActive) return;
         if (isSpinning) return;
         if (leafCount < 1) {
@@ -207,15 +252,42 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
             return;
         }
 
+        // 1️⃣ CAPTURA ESTADO ANTES
+        const oldGrid = [...gridRef.current];
+        const linesBeforeReroll = detectWinningLines(oldGrid);
+
+        // 2️⃣ APLICA REROLL
         setLeafCount(prev => prev - 1);
-        const newGrid = [...gridRef.current];
+        const newGrid = [...oldGrid];
         newGrid[index] = getRandomSymbolFromInventory(inv, availableKeys);
         setGrid(newGrid);
-        showMsg("♻️ Reroll de Célula!", 1000, true);
-    }, [leafCount, isSpinning, availableKeys, props.isCloverPackActive]);
+
+        // 3️⃣ DETECTA NOVAS LINHAS
+        const linesAfterReroll = detectWinningLines(newGrid);
+
+        // 4️⃣ COMPARA E PAGA APENAS NOVAS LINHAS
+        const beforeSet = new Set(linesBeforeReroll.map(l => `${l.lineIndex}-${l.winSymbol}`));
+        const newLines = linesAfterReroll.filter(l => !beforeSet.has(`${l.lineIndex}-${l.winSymbol}`));
+
+        if (newLines.length > 0) {
+            const currentBet = febreDocesAtivo ? betValFebre : betVal;
+            let totalWin = 0;
+
+            for (const line of newLines) {
+                const lineWin = currentBet * midMultiplierValue(line.winSymbol);
+                totalWin += lineWin;
+            }
+
+            const finalWin = applyFinalGain(totalWin);
+            handleGain(finalWin);
+            showMsg(`🍁 Reroll: +${newLines.length} linha${newLines.length > 1 ? 's' : ''} ($${finalWin.toFixed(2)})`, 2500, true);
+        } else {
+            showMsg("♻️ Reroll de Célula", 1000, true);
+        }
+    }, [leafCount, isSpinning, availableKeys, props.isCloverPackActive, detectWinningLines, midMultiplierValue]);
 
     const handleGlobalReroll = useCallback(() => {
-        const { inv, showMsg } = propsRef.current;
+        const { inv, showMsg, handleGain, applyFinalGain, febreDocesAtivo, betValFebre, betVal } = propsRef.current;
         if (!props.isCloverPackActive) return;
         if (isSpinning) return;
         if (leafCount < 3) {
@@ -223,11 +295,38 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
             return;
         }
 
+        // 1️⃣ CAPTURA ESTADO ANTES
+        const oldGrid = [...gridRef.current];
+        const linesBeforeReroll = detectWinningLines(oldGrid);
+
+        // 2️⃣ APLICA REROLL GLOBAL
         setLeafCount(prev => prev - 3);
         const newGrid = Array.from({ length: 9 }, () => getRandomSymbolFromInventory(inv, availableKeys));
         setGrid(newGrid);
-        showMsg("🎰 REROLL DA ROLETA!", 2000, true);
-    }, [leafCount, isSpinning, availableKeys, props.isCloverPackActive]);
+
+        // 3️⃣ DETECTA NOVAS LINHAS
+        const linesAfterReroll = detectWinningLines(newGrid);
+
+        // 4️⃣ COMPARA E PAGA APENAS NOVAS LINHAS
+        const beforeSet = new Set(linesBeforeReroll.map(l => `${l.lineIndex}-${l.winSymbol}`));
+        const newLines = linesAfterReroll.filter(l => !beforeSet.has(`${l.lineIndex}-${l.winSymbol}`));
+
+        if (newLines.length > 0) {
+            const currentBet = febreDocesAtivo ? betValFebre : betVal;
+            let totalWin = 0;
+
+            for (const line of newLines) {
+                const lineWin = currentBet * midMultiplierValue(line.winSymbol);
+                totalWin += lineWin;
+            }
+
+            const finalWin = applyFinalGain(totalWin);
+            handleGain(finalWin);
+            showMsg(`🎰 REROLL GLOBAL: +${newLines.length} linha${newLines.length > 1 ? 's' : ''} ($${finalWin.toFixed(2)})`, 3000, true);
+        } else {
+            showMsg("🎰 REROLL DA ROLETA!", 2000, true);
+        }
+    }, [leafCount, isSpinning, availableKeys, props.isCloverPackActive, detectWinningLines, midMultiplierValue]);
 
     const getSpinResult = useCallback((finalGrid: SymbolKey[], validKeys: SymbolKey[]) => {
         const { febreDocesAtivo, betValFebre, betVal, showMsg, isCloverPackActive } = propsRef.current;
