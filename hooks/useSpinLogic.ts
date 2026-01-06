@@ -141,6 +141,7 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         let spinsToProcess = bonusLinesPerHit * lines;
         
         const snapshot = createWeightSnapshot(inv, validKeys);
+        const sessionId = Date.now().toString();
 
         for (let i = 0; i < spinsToProcess; i++) {
             const syms = [
@@ -149,15 +150,45 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
                 spinFromSnapshot(snapshot),
             ] as SymbolKey[];
 
-            const isWin = syms[0] === syms[1] && syms[1] === syms[2];
-            let win = 0;
+            // --- Lógica de Linha no Bônus (Igual ao Jogo Base) ---
+            const wilds = syms.filter(s => s === '⭐').length;
+            const nonWilds = syms.filter(s => s !== '⭐');
+            let winSymbol: SymbolKey | null = null;
 
-            // Dentro do bônus: linha vencedora e NÃO ⭐ paga 5% do valor normal
-            if (isWin && syms[0] !== '⭐') {
-                win = bet * midMultiplierValue(syms[0]) * 0.05;
+            // 🪙 Fichas: Triple pura
+            if (syms.every(s => s === '🪙')) {
+                winSymbol = '🪙';
+            }
+            // ⭐ Wild universal
+            else if (wilds > 0 && nonWilds.length > 0) {
+                const firstNonWild = nonWilds[0];
+                if (nonWilds.every(s => s === firstNonWild)) {
+                    winSymbol = firstNonWild;
+                }
+            }
+            // 3 estrelas puras: Conta como acerto (mas não paga no bônus de 5%)
+            else if (wilds === 3) {
+                winSymbol = '⭐';
+            }
+            // Sem wilds: Triple pura
+            else if (wilds === 0 && syms[0] === syms[1] && syms[1] === syms[2]) {
+                winSymbol = syms[0];
             }
 
-            results.push({ symbols: syms, win, isWin });
+            let win = 0;
+            const isWin = winSymbol !== null;
+
+            // Payout de 5% se for win e NÃO for estrela pura
+            if (isWin && winSymbol !== '⭐') {
+                win = bet * midMultiplierValue(winSymbol!) * 0.05;
+            }
+
+            results.push({
+                uid: `${sessionId}-${i}`, // ID Único para evitar conflitos de key na UI
+                symbols: syms,
+                win,
+                isWin
+            });
             rawTotalWin += win;
         }
 
