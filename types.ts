@@ -230,6 +230,7 @@ export interface FeverReport {
 
 // --- STAR BONUS TYPES ---
 export interface StarBonusResult {
+    uid: string;
     symbols: SymbolKey[];
     win: number;
     isWin: boolean;
