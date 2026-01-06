@@ -40,7 +40,6 @@ interface SpinLogicProps {
     setSugar: React.Dispatch<React.SetStateAction<number>>;
     sweetLadder: UseSweetLadderResult;
     paraisoDetector: ReturnType<typeof useParaisoDoceDetector>;
-    // Nova prop para identificar se o pacote do trevo está ativo (comprado na febre)
     isCloverPackActive?: boolean;
 }
 
@@ -61,9 +60,6 @@ export interface UseSpinLogicResult {
     coinFlipState: CoinFlipState;
     handleCoinGuess: (guess: 'heads' | 'tails') => void;
     closeCoinFlip: () => void;
-    triggerStarBonus: (validKeys: SymbolKey[], bet: number, lines: number) => void;
-    startCoinFlip: (flips: number, bet: number) => void;
-    // Leaf System Exports
     leafState: LeafState;
     handleCellReroll: (index: number) => void;
     handleGlobalReroll: () => void;
@@ -131,6 +127,75 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         const finalMultiplier = isUpgradeable ? propsRef.current.multUpgradeBonus : 1;
         return baseVal * finalMultiplier;
     }, [getEffectiveMultLevels]);
+
+    // ⭐ STAR BONUS FUNCTIONS
+    const triggerStarBonus = useCallback((validKeys: SymbolKey[], bet: number, lines: number) => {
+        const results: StarBonusResult[] = [];
+        let totalWin = 0;
+
+        for (let i = 0; i < lines; i++) {
+            const symbols = Array.from({ length: 3 }, () => 
+                getRandomSymbolFromInventory(propsRef.current.inv, validKeys)
+            );
+            const isWin = symbols[0] === symbols[1] && symbols[1] === symbols[2];
+            const win = isWin ? bet * midMultiplierValue(symbols[0]) : 0;
+            totalWin += win;
+            results.push({ uid: `${Date.now()}-${i}`, symbols, win, isWin });
+        }
+
+        setStarBonusState({ isActive: true, results, totalWin });
+        propsRef.current.handleGain(propsRef.current.applyFinalGain(totalWin));
+    }, [midMultiplierValue]);
+
+    const closeStarBonus = useCallback(() => {
+        setStarBonusState({ isActive: false, results: [], totalWin: 0 });
+    }, []);
+
+    // 🪙 COIN FLIP FUNCTIONS
+    const startCoinFlip = useCallback((flips: number, bet: number) => {
+        setCoinFlipState({
+            isActive: true,
+            flipsRemaining: flips,
+            currentMultiplier: 1,
+            currentBet: bet,
+            history: [],
+            lastResult: null,
+            isAnimating: false
+        });
+    }, []);
+
+    const handleCoinGuess = useCallback((guess: 'heads' | 'tails') => {
+        setCoinFlipState(prev => {
+            if (prev.isAnimating || prev.flipsRemaining <= 0) return prev;
+
+            const result: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';
+            const won = guess === result;
+            const newMultiplier = won ? prev.currentMultiplier * 2 : prev.currentMultiplier;
+            const newFlips = prev.flipsRemaining - 1;
+
+            if (won && newFlips > 0) {
+                return {
+                    ...prev,
+                    currentMultiplier: newMultiplier,
+                    flipsRemaining: newFlips,
+                    history: [...prev.history, result],
+                    lastResult: result,
+                    isAnimating: true
+                };
+            } else {
+                const winAmount = won ? prev.currentBet * newMultiplier : 0;
+                if (winAmount > 0) {
+                    propsRef.current.handleGain(propsRef.current.applyFinalGain(winAmount));
+                    propsRef.current.showMsg(`🪙 Ganhou $${winAmount.toFixed(2)}!`, 3000);
+                }
+                return { isActive: false, flipsRemaining: 0, currentMultiplier: 0, currentBet: 0, history: [], lastResult: null, isAnimating: false };
+            }
+        });
+    }, []);
+
+    const closeCoinFlip = useCallback(() => {
+        setCoinFlipState({ isActive: false, flipsRemaining: 0, currentMultiplier: 0, currentBet: 0, history: [], lastResult: null, isAnimating: false });
+    }, []);
 
     // 🍁 LEAF ACTIONS
     const handleCellReroll = useCallback((index: number) => {
@@ -422,8 +487,7 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
     return { 
         isSpinning, grid, spinningColumns, stoppingColumns, pool: availableKeys, midMultiplierValue, handleSpin, 
         quickSpinQueue, handleQuickSpin, cancelQuickSpins, quickSpinStatus, starBonusState, closeStarBonus, 
-        coinFlipState, handleCoinGuess, closeCoinFlip, triggerStarBonus, startCoinFlip,
-        // Leaf Exports
+        coinFlipState, handleCoinGuess, closeCoinFlip,
         leafState: { count: leafCount, isActive: props.isCloverPackActive || false },
         handleCellReroll,
         handleGlobalReroll
