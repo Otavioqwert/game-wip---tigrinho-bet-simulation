@@ -166,7 +166,7 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
                     winSymbol = firstNonWild;
                 }
             }
-            // 3 estrelas puras: Conta como acerto (mas não paga no bônus de 5%)
+            // 3 estrelas puras
             else if (wilds === 3) {
                 winSymbol = '⭐';
             }
@@ -180,7 +180,9 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
 
             // Payout de 5% se for win e NÃO for estrela pura
             if (isWin && winSymbol !== '⭐') {
-                win = bet * midMultiplierValue(winSymbol!) * 0.05;
+                // Se for moeda (🪙), usa um multiplicador fixo de 10 como base, já que SYM[🪙].v é 0 (mecanica de bônus)
+                const mult = winSymbol === '🪙' ? 10 : midMultiplierValue(winSymbol!);
+                win = bet * mult * 0.05;
             }
 
             results.push({
