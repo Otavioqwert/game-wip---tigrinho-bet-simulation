@@ -218,12 +218,34 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
             else if (wilds === 0 && syms[0] === syms[1] && syms[1] === syms[2]) winSymbol = syms[0];
 
             if (winSymbol) {
-                if (winSymbol === '⭐' && isCaminhoEstelarActive) starLinesFound++;
-                else if (winSymbol === '🪙' && isCaminhoFichaActive) tokenLinesFound++;
-                else {
-                    const lineWin = currentBet * midMultiplierValue(winSymbol);
-                    if (MID.includes(winSymbol as MidSymbolKey)) { totalSweetWin += lineWin; sweetLinesCount++; }
-                    else totalOtherWin += lineWin;
+                const lineWin = currentBet * midMultiplierValue(winSymbol);
+
+                if (winSymbol === '⭐' && isCaminhoEstelarActive) {
+                    // Estrelas: ganho base + Star Bonus
+                    starLinesFound++;
+                    if (MID.includes(winSymbol as MidSymbolKey)) {
+                        totalSweetWin += lineWin;
+                        sweetLinesCount++;
+                    } else {
+                        totalOtherWin += lineWin;
+                    }
+                } else if (winSymbol === '🪙' && isCaminhoFichaActive) {
+                    // Fichas: ganho base + Coin Flip
+                    tokenLinesFound++;
+                    if (MID.includes(winSymbol as MidSymbolKey)) {
+                        totalSweetWin += lineWin;
+                        sweetLinesCount++;
+                    } else {
+                        totalOtherWin += lineWin;
+                    }
+                } else {
+                    // Símbolos normais: apenas ganho base
+                    if (MID.includes(winSymbol as MidSymbolKey)) {
+                        totalSweetWin += lineWin;
+                        sweetLinesCount++;
+                    } else {
+                        totalOtherWin += lineWin;
+                    }
                 }
                 hitCount++;
             }
