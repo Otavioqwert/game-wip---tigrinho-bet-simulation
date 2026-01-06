@@ -42,11 +42,12 @@ const CANDY_REWARDS: Record<CandySymbol, number> = {
   '🍧': 2500,
 };
 
+// --- NOVOS REQUISITOS DE NÍVEL ---
 const CANDY_UNLOCK_LEVELS: Record<CandySymbol | 'rainbow', number> = {
   '🍭': 0,
-  '🍦': 10,
-  '🍧': 25,
-  'rainbow': 50
+  '🍦': 25,     // Antigo: 10
+  '🍧': 100,    // Antigo: 25
+  'rainbow': 300 // Antigo: 50
 };
 
 const BASE_RAINBOW_REWARD = 49999;
@@ -133,7 +134,6 @@ export const useParaisoDoceDetector = () => {
 
     if (hits.length === 0) return [];
 
-    // Lógica de bloqueio e pop-up
     hits.forEach(h => {
         if (h.isBlocked && showMsg) {
             showMsg(`Bloqueado até nível ${h.requiredLevel} 🔒`, 2000, true);
@@ -148,7 +148,6 @@ export const useParaisoDoceDetector = () => {
       let levelsGainedThisSpin = 0;
 
       hits.forEach(h => {
-        // Apenas processa se NÃO estiver bloqueado
         if (!h.isBlocked) {
             newTotals[h.symbol] += h.count;
             newProgress[h.symbol] = Math.min(3, prev.progress[h.symbol] + h.count);
@@ -164,7 +163,6 @@ export const useParaisoDoceDetector = () => {
       if (newLevel >= CANDY_UNLOCK_LEVELS['🍧']) newUnlocked['🍧'] = true;
       if (newLevel >= CANDY_UNLOCK_LEVELS['rainbow']) newUnlocked['rainbow'] = true;
 
-      // Rainbow trigger
       const unblockedHits = hits.filter(h => !h.isBlocked);
       const hasAllThreeCandies = unblockedHits.length === 3 && newUnlocked['rainbow'];
 
