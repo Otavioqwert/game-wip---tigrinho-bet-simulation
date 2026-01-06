@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MID, SUGAR_CONVERSION, SYM } from '../constants';
 import { getRandomSymbolFromInventory, calculateMidMultiplierValue, createWeightSnapshot, spinFromSnapshot } from '../utils/spinCalculations';
-import type { SymbolKey, MidSymbolKey, Inventory, Multipliers, PanificadoraLevels, SkillId, RoiSaldo, ActiveCookie, StarBonusState, StarBonusResult, CoinFlipState } from '../types';
+import type { SymbolKey, MidSymbolKey, Inventory, Multipliers, PanificadoraLevels, SkillId, RoiSaldo, ActiveCookie, StarBonusState, StarBonusResult, CoinFlipState, LeafState } from '../types';
 import type { UseSweetLadderResult } from './useSweetLadder';
 import type { useParaisoDoceDetector } from './useParaisoDoceDetector';
 import { useQuickSpinAvailability, QuickSpinStatus } from './useQuickSpinAvailability';
@@ -40,6 +40,8 @@ interface SpinLogicProps {
     setSugar: React.Dispatch<React.SetStateAction<number>>;
     sweetLadder: UseSweetLadderResult;
     paraisoDetector: ReturnType<typeof useParaisoDoceDetector>;
+    // Nova prop para identificar se o pacote do trevo está ativo (comprado na febre)
+    isCloverPackActive?: boolean;
 }
 
 export interface UseSpinLogicResult {
@@ -61,6 +63,10 @@ export interface UseSpinLogicResult {
     closeCoinFlip: () => void;
     triggerStarBonus: (validKeys: SymbolKey[], bet: number, lines: number) => void;
     startCoinFlip: (flips: number, bet: number) => void;
+    // Leaf System Exports
+    leafState: LeafState;
+    handleCellReroll: (index: number) => void;
+    handleGlobalReroll: () => void;
 }
 
 export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
@@ -70,6 +76,9 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
     const [stoppingColumns, setStoppingColumns] = useState([false, false, false]);
     const [quickSpinQueue, setQuickSpinQueue] = useState(0);
 
+    // 🍁 Leaf System State
+    const [leafCount, setLeafCount] = useState(0);
+
     const [starBonusState, setStarBonusState] = useState<StarBonusState>({
         isActive: false, results: [], totalWin: 0
     });
@@ -78,7 +87,7 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         isActive: false, flipsRemaining: 0, currentMultiplier: 0, currentBet: 0, history: [], lastResult: null, isAnimating: false
     });
 
-    const [starStreak, setStarStreak] = useState(0); // sequência de acertos ⭐
+    const [starStreak, setStarStreak] = useState(0); 
 
     const propsRef = useRef(props);
     propsRef.current = props;
@@ -123,131 +132,47 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         return baseVal * finalMultiplier;
     }, [getEffectiveMultLevels]);
 
-    const closeStarBonus = useCallback(() => {
-        const { handleGain } = propsRef.current;
-        if (starBonusState.totalWin > 0) {
-            handleGain(starBonusState.totalWin);
-        }
-        setStarBonusState({ isActive: false, results: [], totalWin: 0 });
-    }, [starBonusState.totalWin]);
-
-    const triggerStarBonus = useCallback((validKeys: SymbolKey[], bet: number, lines: number) => {
-        const { inv, applyFinalGain, showMsg } = propsRef.current;
-        let results: StarBonusResult[] = [];
-        let rawTotalWin = 0;
-        
-        const bonusLinesPerHit = 90 + starStreak * 5;
-        let spinsToProcess = bonusLinesPerHit * lines;
-        
-        const snapshot = createWeightSnapshot(inv, validKeys);
-        const sessionId = Date.now().toString();
-
-        let i = 0;
-        while (i < spinsToProcess) {
-            const syms = [
-                spinFromSnapshot(snapshot),
-                spinFromSnapshot(snapshot),
-                spinFromSnapshot(snapshot),
-            ] as SymbolKey[];
-
-            const wilds = syms.filter(s => s === '⭐').length;
-            const nonWilds = syms.filter(s => s !== '⭐');
-            let winSymbol: SymbolKey | null = null;
-
-            if (syms.every(s => s === '🪙')) {
-                winSymbol = '🪙';
-            }
-            else if (wilds > 0 && nonWilds.length > 0) {
-                const firstNonWild = nonWilds[0];
-                if (nonWilds.every(s => s === firstNonWild)) {
-                    winSymbol = firstNonWild;
-                }
-            }
-            else if (wilds === 3) {
-                winSymbol = '⭐';
-            }
-            else if (wilds === 0 && syms[0] === syms[1] && syms[1] === syms[2]) {
-                winSymbol = syms[0];
-            }
-
-            let win = 0;
-            const isWin = winSymbol !== null;
-
-            // Lógica de Ganho de Linhas via Moeda (🪙) dentro do Bônus Estelar
-            if (isWin && winSymbol === '🪙') {
-                if (Math.random() < 0.5) {
-                    const r = Math.random() * 100;
-                    let extraLines = 0;
-                    if (r < 53.33) extraLines = 2;
-                    else if (r < 80) extraLines = 4;
-                    else if (r < 93.33) extraLines = 8;
-                    else extraLines = 16;
-
-                    if (extraLines > 0) {
-                        spinsToProcess += extraLines;
-                        showMsg(`🔄️ +${extraLines} linhas`, 2000, true);
-                    }
-                }
-            } else if (isWin && winSymbol !== '⭐') {
-                win = bet * midMultiplierValue(winSymbol!) * 0.05;
-            }
-
-            results.push({
-                uid: `${sessionId}-${i}`,
-                symbols: syms,
-                win,
-                isWin
-            });
-            rawTotalWin += win;
-            i++;
+    // 🍁 LEAF ACTIONS
+    const handleCellReroll = useCallback((index: number) => {
+        const { inv, showMsg } = propsRef.current;
+        if (!props.isCloverPackActive) return;
+        if (isSpinning) return;
+        if (leafCount < 1) {
+            showMsg("🍁 Folhas insuficientes!", 1500, true);
+            return;
         }
 
-        const finalWin = applyFinalGain(rawTotalWin);
-        setStarBonusState({ isActive: true, results, totalWin: finalWin });
-    }, [midMultiplierValue, starStreak]);
+        setLeafCount(prev => prev - 1);
+        const newGrid = [...gridRef.current];
+        newGrid[index] = getRandomSymbolFromInventory(inv, availableKeys);
+        setGrid(newGrid);
+        showMsg("♻️ Reroll de Célula!", 1000, true);
+    }, [leafCount, isSpinning, availableKeys, props.isCloverPackActive]);
 
-    const startCoinFlip = useCallback((flips: number, bet: number) => {
-        setCoinFlipState({
-            isActive: true,
-            flipsRemaining: flips,
-            currentMultiplier: 0,
-            currentBet: bet,
-            history: [],
-            lastResult: null,
-            isAnimating: false
-        });
-    }, []);
-
-    const handleCoinGuess = useCallback((guess: 'heads' | 'tails') => {
-        if (coinFlipState.isAnimating) return;
-        setCoinFlipState(prev => ({ ...prev, isAnimating: true }));
-        setTimeout(() => {
-            const result: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';
-            const isCorrect = guess === result;
-            setCoinFlipState(prev => {
-                const nextMultiplier = isCorrect ? (prev.currentMultiplier === 0 ? 2 : prev.currentMultiplier * 2) : 0;
-                return { ...prev, isAnimating: false, lastResult: result, history: [...prev.history, result], currentMultiplier: nextMultiplier, flipsRemaining: isCorrect ? prev.flipsRemaining - 1 : 0 };
-            });
-        }, 2000);
-    }, [coinFlipState.isAnimating]);
-
-    const closeCoinFlip = useCallback(() => {
-        const { handleGain, applyFinalGain } = propsRef.current;
-        const rawWinnings = coinFlipState.currentBet * coinFlipState.currentMultiplier;
-        if (rawWinnings > 0) {
-            handleGain(applyFinalGain(rawWinnings));
+    const handleGlobalReroll = useCallback(() => {
+        const { inv, showMsg } = propsRef.current;
+        if (!props.isCloverPackActive) return;
+        if (isSpinning) return;
+        if (leafCount < 3) {
+            showMsg("🎰 Precisa de 3 🍁!", 1500, true);
+            return;
         }
-        setCoinFlipState(p => ({ ...p, isActive: false }));
-    }, [coinFlipState.currentBet, coinFlipState.currentMultiplier]);
+
+        setLeafCount(prev => prev - 3);
+        const newGrid = Array.from({ length: 9 }, () => getRandomSymbolFromInventory(inv, availableKeys));
+        setGrid(newGrid);
+        showMsg("🎰 REROLL DA ROLETA!", 2000, true);
+    }, [leafCount, isSpinning, availableKeys, props.isCloverPackActive]);
 
     const getSpinResult = useCallback((finalGrid: SymbolKey[], validKeys: SymbolKey[]) => {
-        const { febreDocesAtivo, betValFebre, betVal, showMsg } = propsRef.current;
+        const { febreDocesAtivo, betValFebre, betVal, showMsg, isCloverPackActive } = propsRef.current;
         const lines = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
         let totalSweetWin = 0; let totalOtherWin = 0; let hitCount = 0; let sweetLinesCount = 0;
         const isCaminhoEstelarActive = getSkillLevel('caminhoEstelar') > 0;
         const isCaminhoFichaActive = getSkillLevel('caminhoFicha') > 0;
         const currentBet = febreDocesAtivo ? betValFebre : betVal;
         let starLinesFound = 0; let tokenLinesFound = 0;
+        let cloverLinesFound = 0;
 
         let hasStarHitInThisSpin = false;
 
@@ -290,16 +215,23 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
                 if (winSymbol === '🪙' && isCaminhoFichaActive) {
                     tokenLinesFound++;
                 }
+                if (winSymbol === '🍀') {
+                    cloverLinesFound++;
+                }
 
                 hitCount++;
             }
         }
 
-        setStarStreak(prev => hasStarHitInThisSpin ? prev + 1 : 0);
+        // 🍁 Ganho de Folhas ao acertar trevo
+        if (isCloverPackActive && cloverLinesFound > 0) {
+            setLeafCount(prev => prev + cloverLinesFound);
+            showMsg(`🍁 +${cloverLinesFound} Folhas!`, 2000, true);
+        }
 
+        setStarStreak(prev => hasStarHitInThisSpin ? prev + 1 : 0);
         if (starLinesFound > 0) triggerStarBonus(validKeys, currentBet, starLinesFound);
 
-        // No jogo BASE, moedas ativam o Coin Flip
         if (tokenLinesFound > 0) {
             for (let i = 0; i < tokenLinesFound; i++) {
                 if (Math.random() < 0.5) {
@@ -490,6 +422,10 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
     return { 
         isSpinning, grid, spinningColumns, stoppingColumns, pool: availableKeys, midMultiplierValue, handleSpin, 
         quickSpinQueue, handleQuickSpin, cancelQuickSpins, quickSpinStatus, starBonusState, closeStarBonus, 
-        coinFlipState, handleCoinGuess, closeCoinFlip, triggerStarBonus, startCoinFlip 
+        coinFlipState, handleCoinGuess, closeCoinFlip, triggerStarBonus, startCoinFlip,
+        // Leaf Exports
+        leafState: { count: leafCount, isActive: props.isCloverPackActive || false },
+        handleCellReroll,
+        handleGlobalReroll
     };
 };
