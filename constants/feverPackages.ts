@@ -17,12 +17,13 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     },
     {
         id: 'safe_budget_2',
-        name: '🍀 Pacote Sortudo',
+        name: '🍀 Pacote do Trevo',
         cost: 1000,
         type: 'item', risk: 'safe', tier: 'budget',
         icon: '🍀',
-        contents: { items: { '🍀': 8 }, multipliers: { '🍀': 10 } },
-        description: 'Trevos garantidos (ROI -26%)'
+        // NERF: Removido multiplicadores, apenas 5 trevos e ativa a mecânica da 🍁
+        contents: { items: { '🍀': 5 }, multipliers: {} },
+        description: '🍀 5 Trevos + 🍁 MECÂNICA DA FOLHA: Acertos de trevo geram 🍁. Toque nas células para rerolar (1🍁) ou na 🎰 para rerolar tudo (3🍁)!'
     },
     {
         id: 'risk_budget_1',
@@ -67,9 +68,6 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 3000,
         type: 'item', risk: 'safe', tier: 'mid',
         icon: '🍬',
-        // 🍭: 0.2 × 1.05^57 ≈ 3.0x ($10 → $30)
-        // 🍦: 0.3 × 1.05^66 ≈ 7.5x ($10 → $75)
-        // 🍧: 0.4 × 1.05^69 ≈ 12.5x ($10 → $125) - APENAS neste pacote!
         contents: { 
             items: { '🍭': 10, '🍦': 5 }, 
             multipliers: { '🍭': 57, '🍦': 66, '🍧': 69 }
@@ -129,7 +127,6 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 28000,
         type: 'item', risk: 'safe', tier: 'premium',
         icon: '🌠',
-        // REVERTIDO: Não tem mais +69 níveis de 🍧
         contents: { items: { '☄️': 3, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, multipliers: { '☄️': 150 } },
         description: '3 Meteoros, 1 Estrela, Doces e +150% de Poder Real (Níveis)!'
     },
@@ -141,7 +138,6 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 70000,
         type: 'item', risk: 'safe', tier: 'luxury',
         icon: '💫',
-        // REVERTIDO: Não tem mais +69 níveis de 🍧
         contents: { items: { '☄️': 10, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, multipliers: { '☄️': 300 } },
         description: '10 Meteoros, 1 Estrela, Doces e +300% de Poder Real (Níveis)!'
     },
