@@ -27,14 +27,14 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
 
                 {/* Coin Visual */}
                 <div className="h-48 flex items-center justify-center mb-6 perspective-1000">
-                    <div className={`w-32 h-32 rounded-full relative transform-style-3d transition-transform duration-[2000ms] ${isAnimating ? 'animate-flip' : ''}`}>
+                    <div className={`w-32 h-32 rounded-full relative transform-style-3d transition-all duration-1000 ${isAnimating ? 'animate-flip' : ''}`}>
                         {/* Front (Heads) */}
-                        <div className={`absolute inset-0 bg-gradient-to-br from-slate-300 to-slate-500 rounded-full flex items-center justify-center border-4 border-slate-200 shadow-xl backface-hidden ${lastResult === 'tails' && !isAnimating ? 'hidden' : ''}`}>
-                             <span className="text-6xl grayscale">🤴</span>
+                        <div className={`absolute inset-0 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center border-4 border-yellow-200 shadow-xl backface-hidden ${lastResult === 'tails' && !isAnimating ? 'opacity-0 rotate-y-180' : 'rotate-y-0'}`}>
+                             <span className="text-6xl">🤴</span>
                         </div>
-                        {/* Back (Tails) - Simulated by swapping content if not using true 3d CSS due to Tailwind limits, or just using animation state */}
-                         <div className={`absolute inset-0 bg-gradient-to-br from-slate-300 to-slate-500 rounded-full flex items-center justify-center border-4 border-slate-200 shadow-xl backface-hidden ${lastResult !== 'tails' && !isAnimating ? 'hidden' : ''}`}>
-                             <span className="text-6xl grayscale">🦅</span>
+                        {/* Back (Tails) */}
+                        <div className={`absolute inset-0 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center border-4 border-gray-200 shadow-xl backface-hidden ${lastResult !== 'tails' && !isAnimating ? 'opacity-0 rotate-y-0' : 'rotate-y-180'}`}>
+                             <span className="text-6xl">🦅</span>
                         </div>
                     </div>
                 </div>
@@ -112,8 +112,11 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
                 .perspective-1000 { perspective: 1000px; }
                 .transform-style-3d { transform-style: preserve-3d; }
                 .backface-hidden { backface-visibility: hidden; }
+                .rotate-y-0 { transform: rotateY(0deg); }
+                .rotate-y-180 { transform: rotateY(180deg); }
                 @keyframes flipCoin {
-                    0% { transform: rotateY(0); }
+                    0% { transform: rotateY(0deg); }
+                    50% { transform: rotateY(900deg); }
                     100% { transform: rotateY(1800deg); }
                 }
                 .animate-flip {

@@ -304,25 +304,49 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
 
             const result: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';
             const won = guess === result;
-            const newMultiplier = won ? prev.currentMultiplier * 2 : prev.currentMultiplier;
+            const newMultiplier = won ? prev.currentMultiplier * 2 : 1; // Reset to 1 if lost
             const newFlips = prev.flipsRemaining - 1;
 
+            // Inicia animação
+            const animatingState = {
+                ...prev,
+                currentMultiplier: newMultiplier,
+                flipsRemaining: newFlips,
+                history: [...prev.history, result],
+                lastResult: result,
+                isAnimating: true
+            };
+
+            // Se ganhou e ainda tem flips, continua animando
             if (won && newFlips > 0) {
-                return {
-                    ...prev,
-                    currentMultiplier: newMultiplier,
-                    flipsRemaining: newFlips,
-                    history: [...prev.history, result],
-                    lastResult: result,
-                    isAnimating: true
-                };
-            } else {
+                // Para animação após 2 segundos
+                setTimeout(() => {
+                    setCoinFlipState(current => ({
+                        ...current,
+                        isAnimating: false
+                    }));
+                }, 2000);
+                return animatingState;
+            } 
+            // Se perdeu ou acabou os flips, finaliza após animação
+            else {
                 const winAmount = won ? prev.currentBet * newMultiplier : 0;
-                if (winAmount > 0) {
-                    propsRef.current.handleGain(propsRef.current.applyFinalGain(winAmount));
-                    propsRef.current.showMsg(`🪙 Ganhou $${winAmount.toFixed(2)}!`, 3000);
-                }
-                return { isActive: false, flipsRemaining: 0, currentMultiplier: 0, currentBet: 0, history: [], lastResult: null, isAnimating: false };
+                setTimeout(() => {
+                    if (winAmount > 0) {
+                        propsRef.current.handleGain(propsRef.current.applyFinalGain(winAmount));
+                        propsRef.current.showMsg(`🪙 Ganhou $${winAmount.toFixed(2)}!`, 3000);
+                    }
+                    setCoinFlipState({ 
+                        isActive: false, 
+                        flipsRemaining: 0, 
+                        currentMultiplier: 0, 
+                        currentBet: 0, 
+                        history: [], 
+                        lastResult: null, 
+                        isAnimating: false 
+                    });
+                }, 2000);
+                return animatingState;
             }
         });
     }, []);
