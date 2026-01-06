@@ -8,6 +8,14 @@ interface ParaisoProgressTableProps {
   onCandyComplete: (candy: CandySymbol) => number;
   onRainbowComplete: () => number;
   onReward: (amount: number, message: string) => void;
+  // Adicionando nível e desbloqueios para visualização
+  level: number;
+  unlockedCandy: {
+    '🍭': boolean;
+    '🍦': boolean;
+    '🍧': boolean;
+    'rainbow': boolean;
+  };
 }
 
 export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
@@ -16,20 +24,19 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
   onCandyComplete,
   onRainbowComplete,
   onReward,
+  level,
+  unlockedCandy
 }) => {
   const candies: CandySymbol[] = ['🍭', '🍦', '🍧'];
   
-  // 🔒 Estado local para controlar quando mostrar animação
   const [localAnimation, setLocalAnimation] = useState<CandySymbol | 'rainbow' | null>(null);
   const processingRef = useRef(false);
   
-  // Sincroniza animação externa com local
   useEffect(() => {
     if (activeAnimation && !processingRef.current) {
       setLocalAnimation(activeAnimation);
       processingRef.current = true;
       
-      // Após 3s: processa recompensa e limpa animação
       const timer = setTimeout(() => {
         if (activeAnimation === 'rainbow') {
           const reward = onRainbowComplete();
@@ -39,7 +46,6 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
           onReward(reward, `${activeAnimation} Barra completa! +$${reward}!`);
         }
         
-        // Limpa animação local
         setLocalAnimation(null);
         processingRef.current = false;
       }, 3000);
@@ -47,7 +53,6 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
       return () => clearTimeout(timer);
     }
     
-    // Se activeAnimation foi limpo externamente, limpa local também
     if (!activeAnimation && localAnimation) {
       setLocalAnimation(null);
       processingRef.current = false;
@@ -57,7 +62,6 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
   const isRainbowActive = localAnimation === 'rainbow';
   const rainbowReady = candies.every(c => progress[c] === 3);
 
-  // Recompensas para exibição visual
   const REWARDS = {
     '🍭': 150,
     '🍦': 300,
@@ -65,14 +69,21 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
     '🌈': 49999,
   };
 
-  // Função para renderizar os cubos de progresso
+  const UNLOCK_INFO = {
+    '🍦': 10,
+    '🍧': 25,
+    'rainbow': 50
+  };
+
   const renderProgress = (symbol: CandySymbol) => {
     const count = progress[symbol];
     const isAnimating = localAnimation === symbol;
+    const isUnlocked = unlockedCandy[symbol];
+    
     const colorMap = {
-      '🍭': { emoji: '🟦', color: '#3b82f6' },
-      '🍦': { emoji: '🟨', color: '#eab308' },
-      '🍧': { emoji: '🟥', color: '#ef4444' },
+      '🍭': { emoji: '🟦' },
+      '🍦': { emoji: '🟨' },
+      '🍧': { emoji: '🟥' },
     };
     const { emoji } = colorMap[symbol];
     const squares = [];
@@ -84,9 +95,10 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
           style={{
             fontSize: '16px',
             animation: isAnimating ? 'pulse 1s ease-in-out infinite' : 'none',
+            filter: isUnlocked ? 'none' : 'grayscale(1) brightness(0.5)'
           }}
         >
-          {i < count ? emoji : '⏹️'}
+          {i < count ? emoji : (isUnlocked ? '⏹️' : '⬜')}
         </span>
       );
     }
@@ -113,7 +125,6 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
         transform: localAnimation ? 'scale(1.05)' : 'scale(1)',
       }}
     >
-      {/* Título */}
       <div
         style={{
           textAlign: 'center',
@@ -127,16 +138,16 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
         Paraíso Doce
       </div>
 
-      {/* Linhas de progresso dos doces */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {candies.map(candy => {
           const count = progress[candy];
           const isComplete = count === 3;
           const isAnimating = localAnimation === candy;
+          const isUnlocked = unlockedCandy[candy];
           
           return (
-            <div key={candy} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '18px' }}>{candy}</span>
+            <div key={candy} style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: isUnlocked ? 1 : 0.5 }}>
+              <span style={{ fontSize: '18px', filter: isUnlocked ? 'none' : 'grayscale(1)' }}>{candy}</span>
               <span>-</span>
               <div style={{ display: 'flex', gap: '4px' }}>
                 {renderProgress(candy)}
@@ -150,16 +161,11 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
               >
                 [{count}/3]
               </span>
-              {isAnimating && (
-                <span style={{ fontSize: '10px', color: '#fbbf24', marginLeft: '4px' }}>
-                  ✨
-                </span>
-              )}
-              {/* 💰 Exibe recompensa */}
+              {!isUnlocked && <span style={{fontSize: '10px'}}>🔒</span>}
               <span
                 style={{
                   fontSize: '10px',
-                  color: '#22c55e',
+                  color: isUnlocked ? '#22c55e' : '#6b7280',
                   marginLeft: 'auto',
                   fontWeight: 'bold',
                 }}
@@ -170,7 +176,6 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
           );
         })}
 
-        {/* Linha do Arco-íris - BARRA PRÓPRIA */}
         <div
           style={{
             display: 'flex',
@@ -179,9 +184,10 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
             marginTop: '8px',
             paddingTop: '8px',
             borderTop: '1px solid #374151',
+            opacity: unlockedCandy['rainbow'] ? 1 : 0.5
           }}
         >
-          <span style={{ fontSize: '18px' }}>🌈</span>
+          <span style={{ fontSize: '18px', filter: unlockedCandy['rainbow'] ? 'none' : 'grayscale(1)' }}>🌈</span>
           <span>-</span>
           <div style={{ display: 'flex', gap: '4px' }}>
             <span 
@@ -190,10 +196,10 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
                 animation: isRainbowActive ? 'pulse 1s ease-in-out infinite' : 'none',
               }}
             >
-              {rainbowReady ? '⬜' : '⏹️'}
+              {unlockedCandy['rainbow'] ? (rainbowReady ? '⬜' : '⏹️') : '🔒'}
             </span>
-            <span style={{ fontSize: '16px', opacity: 0.3 }}>⬛</span>
-            <span style={{ fontSize: '16px', opacity: 0.3 }}>⬛</span>
+            <span style={{ fontSize: '16px', opacity: 0.1 }}>⬛</span>
+            <span style={{ fontSize: '16px', opacity: 0.1 }}>⬛</span>
           </div>
           <span
             style={{
@@ -204,11 +210,10 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
           >
             [{rainbowReady ? '1' : '0'}/1]
           </span>
-          {/* 💰 Exibe MEGA recompensa */}
           <span
             style={{
               fontSize: '10px',
-              color: '#22c55e',
+              color: unlockedCandy['rainbow'] ? '#22c55e' : '#6b7280',
               marginLeft: 'auto',
               fontWeight: 'bold',
             }}
@@ -218,7 +223,42 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
         </div>
       </div>
 
-      {/* Indicador de animação ativa */}
+      {/* 📦 CAIXINHA DE NÍVEL (NOVA) */}
+      <div
+        style={{
+          marginTop: '15px',
+          padding: '8px',
+          backgroundColor: 'rgba(251, 191, 36, 0.15)',
+          border: '1px solid #fbbf24',
+          borderRadius: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '4px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '10px', color: '#fbbf24', fontWeight: 'bold' }}>NÍVEL ATUAL</span>
+            <div style={{
+                backgroundColor: '#fbbf24',
+                color: '#1a1a1a',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontWeight: '900',
+                fontSize: '14px'
+            }}>
+                {level}
+            </div>
+        </div>
+        
+        {/* Próximo desbloqueio rápido */}
+        <div style={{ fontSize: '9px', color: '#9ca3af', textAlign: 'center', marginTop: '4px' }}>
+            {level < 10 ? '🍦 Libera no nível 10' : 
+             level < 25 ? '🍧 Libera no nível 25' : 
+             level < 50 ? '🌈 Libera no nível 50' : '✨ Tudo desbloqueado!'}
+        </div>
+      </div>
+
       {localAnimation && (
         <div
           style={{
@@ -234,7 +274,6 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
         </div>
       )}
 
-      {/* Animação de arco-íris completo */}
       {isRainbowActive && (
         <div
           style={{
