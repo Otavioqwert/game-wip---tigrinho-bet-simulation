@@ -6,6 +6,8 @@ type CandySymbol = '🍭' | '🍦' | '🍧';
 export interface CandyHit {
   symbol: CandySymbol;
   count: number;
+  isBlocked?: boolean;
+  requiredLevel?: number;
 }
 
 export interface ParaisoDetectorState {
@@ -16,9 +18,8 @@ export interface ParaisoDetectorState {
   rainbowTriggered: boolean;
   activeAnimation: CandySymbol | 'rainbow' | null;
 
-  // Sistema de níveis global da run de febre
   level: number;
-  totalCandyLevels: number; // soma ponderada: 🍭=1, 🍦=2, 🍧=3
+  totalCandyLevels: number; 
   unlockedCandy: {
     '🍭': boolean;
     '🍦': boolean;
@@ -26,9 +27,8 @@ export interface ParaisoDetectorState {
     'rainbow': boolean;
   };
 
-  // Sistema de níveis específico do arco-íris
-  rainbowLevel: number;        // nível atual de 🌈
-  rainbowHitsThisLevel: number; // quantos acertos 🌈 neste nível
+  rainbowLevel: number;        
+  rainbowHitsThisLevel: number; 
 }
 
 export interface ParaisoDetectorRewards {
@@ -36,11 +36,17 @@ export interface ParaisoDetectorRewards {
   BASE_RAINBOW: number;
 }
 
-// 💰 RECOMPENSAS POR RESET
 const CANDY_REWARDS: Record<CandySymbol, number> = {
   '🍭': 150,
   '🍦': 300,
   '🍧': 2500,
+};
+
+const CANDY_UNLOCK_LEVELS: Record<CandySymbol | 'rainbow', number> = {
+  '🍭': 0,
+  '🍦': 10,
+  '🍧': 25,
+  'rainbow': 50
 };
 
 const BASE_RAINBOW_REWARD = 49999;
@@ -92,13 +98,13 @@ export const useParaisoDoceDetector = () => {
     }));
   }, []);
 
-  const detectCandyHits = useCallback((grid: SymbolKey[]): CandyHit[] => {
+  const detectCandyHits = useCallback((grid: SymbolKey[], showMsg?: (msg: string, d?: number, e?: boolean) => void): CandyHit[] => {
     if (!stateRef.current.isActive || grid.length !== 9) return [];
 
     const lines = [
-      [0, 1, 2], [3, 4, 5], [6, 7, 8], // horizontais
-      [0, 3, 6], [1, 4, 7], [2, 5, 8], // verticais
-      [0, 4, 8], [2, 4, 6]              // diagonais
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
     ];
 
     const candies: CandySymbol[] = ['🍭', '🍦', '🍧'];
@@ -106,14 +112,8 @@ export const useParaisoDoceDetector = () => {
 
     for (const line of lines) {
       const syms = line.map(i => grid[i]);
-      
       for (const candy of candies) {
-        // Linha pura de um doce
-        if (syms.every(s => s === candy)) {
-          counts[candy]++;
-        }
-        // Linha com 2 doces + 1 wild (⭐)
-        else if (syms.filter(s => s === candy).length === 2 && syms.includes('⭐')) {
+        if (syms.every(s => s === candy) || (syms.filter(s => s === candy).length === 2 && syms.includes('⭐'))) {
           counts[candy]++;
         }
       }
@@ -121,58 +121,64 @@ export const useParaisoDoceDetector = () => {
 
     const hits: CandyHit[] = candies
       .filter(c => counts[c] > 0)
-      .map(c => ({ symbol: c, count: counts[c] }));
+      .map(c => {
+        const isBlocked = !stateRef.current.unlockedCandy[c];
+        return { 
+          symbol: c, 
+          count: counts[c], 
+          isBlocked, 
+          requiredLevel: CANDY_UNLOCK_LEVELS[c] 
+        };
+      });
 
     if (hits.length === 0) return [];
 
-    // Atualiza progresso, níveis e detecta completações
+    // Lógica de bloqueio e pop-up
+    hits.forEach(h => {
+        if (h.isBlocked && showMsg) {
+            showMsg(`Bloqueado até nível ${h.requiredLevel} 🔒`, 2000, true);
+        }
+    });
+
     setState(prev => {
       const newTotals = { ...prev.totalHits };
       const newProgress = { ...prev.progress };
       let triggerAnimation: CandySymbol | 'rainbow' | null = prev.activeAnimation;
-
-      // pesos de nível por doce
       const levelWeights: Record<CandySymbol, number> = { '🍭': 1, '🍦': 2, '🍧': 3 };
       let levelsGainedThisSpin = 0;
 
       hits.forEach(h => {
-        newTotals[h.symbol] += h.count;
-        newProgress[h.symbol] = Math.min(3, prev.progress[h.symbol] + h.count);
-        levelsGainedThisSpin += h.count * levelWeights[h.symbol];
+        // Apenas processa se NÃO estiver bloqueado
+        if (!h.isBlocked) {
+            newTotals[h.symbol] += h.count;
+            newProgress[h.symbol] = Math.min(3, prev.progress[h.symbol] + h.count);
+            levelsGainedThisSpin += h.count * levelWeights[h.symbol];
+        }
       });
 
       const newTotalCandyLevels = prev.totalCandyLevels + levelsGainedThisSpin;
-      const newLevel = newTotalCandyLevels; // 1 nível por ponto acumulado
+      const newLevel = newTotalCandyLevels;
 
-      // desbloqueios por nível
       const newUnlocked = { ...prev.unlockedCandy };
-      if (newLevel >= 10) newUnlocked['🍦'] = true;
-      if (newLevel >= 25) newUnlocked['🍧'] = true;
-      if (newLevel >= 50) newUnlocked['rainbow'] = true;
+      if (newLevel >= CANDY_UNLOCK_LEVELS['🍦']) newUnlocked['🍦'] = true;
+      if (newLevel >= CANDY_UNLOCK_LEVELS['🍧']) newUnlocked['🍧'] = true;
+      if (newLevel >= CANDY_UNLOCK_LEVELS['rainbow']) newUnlocked['rainbow'] = true;
 
-      // 🌈 TRIGGER: 3 doces diferentes no mesmo giro + rainbow desbloqueado
-      const uniqueCandiesHit = hits.length;
-      const hasAllThreeCandies = uniqueCandiesHit === 3 && newUnlocked['rainbow'];
+      // Rainbow trigger
+      const unblockedHits = hits.filter(h => !h.isBlocked);
+      const hasAllThreeCandies = unblockedHits.length === 3 && newUnlocked['rainbow'];
 
-      // contabiliza hits de arco-íris para o sistema de nível de 🌈
       let newRainbowHitsThisLevel = prev.rainbowHitsThisLevel;
-      if (hasAllThreeCandies) {
-        newRainbowHitsThisLevel += 1;
-      }
+      if (hasAllThreeCandies) newRainbowHitsThisLevel += 1;
 
       if (hasAllThreeCandies && !prev.activeAnimation) {
         triggerAnimation = 'rainbow';
       }
-      // Animação individual (só se não tiver rainbow)
       else if (!hasAllThreeCandies && !prev.activeAnimation) {
-        for (const h of hits) {
-          const oldProg = prev.progress[h.symbol];
-          if (newProgress[h.symbol] === 3 && oldProg < 3) {
-            // Só permite animação de 🍦/🍧 se estiverem desbloqueados
-            if (h.symbol === '🍭' || newUnlocked[h.symbol]) {
-              triggerAnimation = h.symbol;
-              break; // Apenas o primeiro que completar
-            }
+        for (const h of unblockedHits) {
+          if (newProgress[h.symbol] === 3 && prev.progress[h.symbol] < 3) {
+            triggerAnimation = h.symbol;
+            break;
           }
         }
       }
@@ -194,28 +200,19 @@ export const useParaisoDoceDetector = () => {
     return hits;
   }, []);
 
-  // 🔍 Verifica se há barras completas aguardando processamento
   const checkPendingCompletions = useCallback(() => {
     const candies: CandySymbol[] = ['🍭', '🍦', '🍧'];
-    
     setState(prev => {
-      // Se já tem animação ativa, não faz nada
       if (prev.activeAnimation) return prev;
-      
-      // Procura por barras 3/3 que ainda não dispararam animação
       for (const candy of candies) {
-        if (prev.progress[candy] === 3) {
-          if (candy === '🍭' || prev.unlockedCandy[candy]) {
-            return { ...prev, activeAnimation: candy };
-          }
+        if (prev.progress[candy] === 3 && prev.unlockedCandy[candy]) {
+          return { ...prev, activeAnimation: candy };
         }
       }
-      
       return prev;
     });
   }, []);
 
-  // 💰 Reset individual candy COM RECOMPENSA FIXA
   const resetCandy = useCallback((candy: CandySymbol): number => {
     const reward = CANDY_REWARDS[candy];
     setState(prev => ({
@@ -223,23 +220,14 @@ export const useParaisoDoceDetector = () => {
       progress: { ...prev.progress, [candy]: 0 },
       activeAnimation: null,
     }));
-    
-    // 🔍 Agenda verificação de outras barras completas
     setTimeout(checkPendingCompletions, 100);
-    
     return reward;
   }, [checkPendingCompletions]);
 
-  // 💰 Reset all (para arco-íris) COM RECOMPENSA ESCALONADA POR NÍVEL DE 🌈
   const resetRainbowProgress = useCallback((): number => {
     const prev = stateRef.current;
-
-    // quantidade de hits exigida neste nível
     const requiredHits = prev.rainbowLevel + 1;
-    if (prev.rainbowHitsThisLevel < requiredHits) {
-      // ainda não cumpriu a condição deste nível
-      return 0;
-    }
+    if (prev.rainbowHitsThisLevel < requiredHits) return 0;
 
     const extraReward = BASE_RAINBOW_REWARD * prev.rainbowLevel;
     const reward = BASE_RAINBOW_REWARD + extraReward;
