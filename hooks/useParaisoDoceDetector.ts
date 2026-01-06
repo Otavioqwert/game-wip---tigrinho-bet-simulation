@@ -15,6 +15,25 @@ export interface ParaisoDetectorState {
   progress: Record<CandySymbol, number>;
   rainbowTriggered: boolean;
   activeAnimation: CandySymbol | 'rainbow' | null;
+
+  // Sistema de níveis global da run de febre
+  level: number;
+  totalCandyLevels: number; // soma ponderada: 🍭=1, 🍦=2, 🍧=3
+  unlockedCandy: {
+    '🍭': boolean;
+    '🍦': boolean;
+    '🍧': boolean;
+    'rainbow': boolean;
+  };
+
+  // Sistema de níveis específico do arco-íris
+  rainbowLevel: number;        // nível atual de 🌈
+  rainbowHitsThisLevel: number; // quantos acertos 🌈 neste nível
+}
+
+export interface ParaisoDetectorRewards {
+  CANDY: Record<CandySymbol, number>;
+  BASE_RAINBOW: number;
 }
 
 // 💰 RECOMPENSAS POR RESET
@@ -24,7 +43,7 @@ const CANDY_REWARDS: Record<CandySymbol, number> = {
   '🍧': 2500,
 };
 
-const RAINBOW_REWARD = 49999;
+const BASE_RAINBOW_REWARD = 49999;
 
 export const useParaisoDoceDetector = () => {
   const [state, setState] = useState<ParaisoDetectorState>({
@@ -34,6 +53,11 @@ export const useParaisoDoceDetector = () => {
     progress: { '🍭': 0, '🍦': 0, '🍧': 0 },
     rainbowTriggered: false,
     activeAnimation: null,
+    level: 0,
+    totalCandyLevels: 0,
+    unlockedCandy: { '🍭': true, '🍦': false, '🍧': false, 'rainbow': false },
+    rainbowLevel: 0,
+    rainbowHitsThisLevel: 0,
   });
   
   const stateRef = useRef(state);
@@ -47,11 +71,25 @@ export const useParaisoDoceDetector = () => {
       progress: { '🍭': 0, '🍦': 0, '🍧': 0 },
       rainbowTriggered: false,
       activeAnimation: null,
+      level: 0,
+      totalCandyLevels: 0,
+      unlockedCandy: { '🍭': true, '🍦': false, '🍧': false, 'rainbow': false },
+      rainbowLevel: 0,
+      rainbowHitsThisLevel: 0,
     });
   }, []);
 
   const deactivate = useCallback(() => {
-    setState(prev => ({ ...prev, isActive: false, activeAnimation: null }));
+    setState(prev => ({
+      ...prev,
+      isActive: false,
+      activeAnimation: null,
+      level: 0,
+      totalCandyLevels: 0,
+      unlockedCandy: { '🍭': true, '🍦': false, '🍧': false, 'rainbow': false },
+      rainbowLevel: 0,
+      rainbowHitsThisLevel: 0,
+    }));
   }, []);
 
   const detectCandyHits = useCallback((grid: SymbolKey[]): CandyHit[] => {
@@ -87,21 +125,41 @@ export const useParaisoDoceDetector = () => {
 
     if (hits.length === 0) return [];
 
-    // Atualiza progresso e detecta completações
+    // Atualiza progresso, níveis e detecta completações
     setState(prev => {
       const newTotals = { ...prev.totalHits };
       const newProgress = { ...prev.progress };
       let triggerAnimation: CandySymbol | 'rainbow' | null = prev.activeAnimation;
-      
+
+      // pesos de nível por doce
+      const levelWeights: Record<CandySymbol, number> = { '🍭': 1, '🍦': 2, '🍧': 3 };
+      let levelsGainedThisSpin = 0;
+
       hits.forEach(h => {
         newTotals[h.symbol] += h.count;
         newProgress[h.symbol] = Math.min(3, prev.progress[h.symbol] + h.count);
+        levelsGainedThisSpin += h.count * levelWeights[h.symbol];
       });
 
-      // 🌈 NOVO TRIGGER RAINBOW: 3 doces DIFERENTES no MESMO giro
+      const newTotalCandyLevels = prev.totalCandyLevels + levelsGainedThisSpin;
+      const newLevel = newTotalCandyLevels; // 1 nível por ponto acumulado
+
+      // desbloqueios por nível
+      const newUnlocked = { ...prev.unlockedCandy };
+      if (newLevel >= 10) newUnlocked['🍦'] = true;
+      if (newLevel >= 25) newUnlocked['🍧'] = true;
+      if (newLevel >= 50) newUnlocked['rainbow'] = true;
+
+      // 🌈 TRIGGER: 3 doces diferentes no mesmo giro + rainbow desbloqueado
       const uniqueCandiesHit = hits.length;
-      const hasAllThreeCandies = uniqueCandiesHit === 3;
-      
+      const hasAllThreeCandies = uniqueCandiesHit === 3 && newUnlocked['rainbow'];
+
+      // contabiliza hits de arco-íris para o sistema de nível de 🌈
+      let newRainbowHitsThisLevel = prev.rainbowHitsThisLevel;
+      if (hasAllThreeCandies) {
+        newRainbowHitsThisLevel += 1;
+      }
+
       if (hasAllThreeCandies && !prev.activeAnimation) {
         triggerAnimation = 'rainbow';
       }
@@ -110,8 +168,11 @@ export const useParaisoDoceDetector = () => {
         for (const h of hits) {
           const oldProg = prev.progress[h.symbol];
           if (newProgress[h.symbol] === 3 && oldProg < 3) {
-            triggerAnimation = h.symbol;
-            break; // Apenas o primeiro que completar
+            // Só permite animação de 🍦/🍧 se estiverem desbloqueados
+            if (h.symbol === '🍭' || newUnlocked[h.symbol]) {
+              triggerAnimation = h.symbol;
+              break; // Apenas o primeiro que completar
+            }
           }
         }
       }
@@ -123,6 +184,10 @@ export const useParaisoDoceDetector = () => {
         progress: newProgress,
         rainbowTriggered: hasAllThreeCandies || prev.rainbowTriggered,
         activeAnimation: triggerAnimation,
+        totalCandyLevels: newTotalCandyLevels,
+        level: newLevel,
+        unlockedCandy: newUnlocked,
+        rainbowHitsThisLevel: newRainbowHitsThisLevel,
       };
     });
 
@@ -140,7 +205,9 @@ export const useParaisoDoceDetector = () => {
       // Procura por barras 3/3 que ainda não dispararam animação
       for (const candy of candies) {
         if (prev.progress[candy] === 3) {
-          return { ...prev, activeAnimation: candy };
+          if (candy === '🍭' || prev.unlockedCandy[candy]) {
+            return { ...prev, activeAnimation: candy };
+          }
         }
       }
       
@@ -148,7 +215,7 @@ export const useParaisoDoceDetector = () => {
     });
   }, []);
 
-  // 💰 Reset individual candy COM RECOMPENSA
+  // 💰 Reset individual candy COM RECOMPENSA FIXA
   const resetCandy = useCallback((candy: CandySymbol): number => {
     const reward = CANDY_REWARDS[candy];
     setState(prev => ({
@@ -163,15 +230,30 @@ export const useParaisoDoceDetector = () => {
     return reward;
   }, [checkPendingCompletions]);
 
-  // 💰 Reset all (for rainbow) COM RECOMPENSA
+  // 💰 Reset all (para arco-íris) COM RECOMPENSA ESCALONADA POR NÍVEL DE 🌈
   const resetRainbowProgress = useCallback((): number => {
-    setState(prev => ({
+    const prev = stateRef.current;
+
+    // quantidade de hits exigida neste nível
+    const requiredHits = prev.rainbowLevel + 1;
+    if (prev.rainbowHitsThisLevel < requiredHits) {
+      // ainda não cumpriu a condição deste nível
+      return 0;
+    }
+
+    const extraReward = BASE_RAINBOW_REWARD * prev.rainbowLevel;
+    const reward = BASE_RAINBOW_REWARD + extraReward;
+
+    setState({
       ...prev,
       progress: { '🍭': 0, '🍦': 0, '🍧': 0 },
       rainbowTriggered: false,
       activeAnimation: null,
-    }));
-    return RAINBOW_REWARD;
+      rainbowLevel: prev.rainbowLevel + 1,
+      rainbowHitsThisLevel: 0,
+    });
+
+    return reward;
   }, []);
 
   return {
@@ -183,16 +265,20 @@ export const useParaisoDoceDetector = () => {
     isRainbowAnimating: state.activeAnimation === 'rainbow',
     isCandyAnimating: state.activeAnimation !== null && state.activeAnimation !== 'rainbow',
     currentAnimatingCandy: state.activeAnimation !== 'rainbow' ? state.activeAnimation : null,
+    level: state.level,
+    totalCandyLevels: state.totalCandyLevels,
+    unlockedCandy: state.unlockedCandy,
+    rainbowLevel: state.rainbowLevel,
+    rainbowHitsThisLevel: state.rainbowHitsThisLevel,
     activate,
     deactivate,
     detectCandyHits,
     resetCandy,
     resetRainbowProgress,
-    checkPendingCompletions, // 🆕 Exporta para uso externo
-    // 💰 Expõe as recompensas para referência externa
+    checkPendingCompletions,
     REWARDS: {
       CANDY: CANDY_REWARDS,
-      RAINBOW: RAINBOW_REWARD,
-    },
+      BASE_RAINBOW: BASE_RAINBOW_REWARD,
+    } as ParaisoDetectorRewards,
   };
 };
