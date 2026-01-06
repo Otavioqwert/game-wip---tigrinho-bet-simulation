@@ -79,6 +79,8 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         isActive: false, flipsRemaining: 0, currentMultiplier: 0, currentBet: 0, history: [], lastResult: null, isAnimating: false
     });
 
+    const [starStreak, setStarStreak] = useState(0); // sequência de acertos ⭐
+
     const propsRef = useRef(props);
     propsRef.current = props;
     
@@ -134,7 +136,10 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         const { inv, applyFinalGain } = propsRef.current;
         const results: StarBonusResult[] = [];
         let rawTotalWin = 0;
-        let spinsToProcess = 90 * lines;
+        
+        // 90 linhas base + 5 por nível de sequência de estrelas
+        const bonusLinesPerHit = 90 + starStreak * 5;
+        let spinsToProcess = bonusLinesPerHit * lines;
         
         const snapshot = createWeightSnapshot(inv, validKeys);
 
@@ -144,9 +149,11 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
             let win = 0;
             if (isWin) {
                 if (syms[0] === '⭐') {
+                    // Nova sequência de estrela dentro do bônus ainda adiciona linhas extras
                     spinsToProcess += 5;
                 } else {
-                    win = bet * midMultiplierValue(syms[0]) * 0.5;
+                    // 5% do valor normal: 0.05 * (bet * mult)
+                    win = bet * midMultiplierValue(syms[0]) * 0.05;
                 }
             }
             results.push({ symbols: syms, win, isWin });
@@ -155,7 +162,7 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
 
         const finalWin = applyFinalGain(rawTotalWin);
         setStarBonusState({ isActive: true, results, totalWin: finalWin });
-    }, [midMultiplierValue]);
+    }, [midMultiplierValue, starStreak]);
 
     const startCoinFlip = useCallback((flips: number, bet: number) => {
         setCoinFlipState({
@@ -192,7 +199,7 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
     }, [coinFlipState.currentBet, coinFlipState.currentMultiplier]);
 
     const getSpinResult = useCallback((finalGrid: SymbolKey[], validKeys: SymbolKey[]) => {
-        const { febreDocesAtivo, betValFebre, betVal, inv } = propsRef.current;
+        const { febreDocesAtivo, betValFebre, betVal } = propsRef.current;
         const lines = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
         let totalSweetWin = 0; let totalOtherWin = 0; let hitCount = 0; let sweetLinesCount = 0;
         const isCaminhoEstelarActive = getSkillLevel('caminhoEstelar') > 0;
@@ -200,58 +207,78 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         const currentBet = febreDocesAtivo ? betValFebre : betVal;
         let starLinesFound = 0; let tokenLinesFound = 0;
 
+        let hasStarHitInThisSpin = false;
+
         for (const line of lines) {
             const syms = line.map(i => finalGrid[i]);
             const wilds = syms.filter(s => s === '⭐').length;
             const nonWilds = syms.filter(s => s !== '⭐');
             let winSymbol: SymbolKey | null = null;
-            if (syms.every(s => s === '🪙')) { if (isCaminhoFichaActive) winSymbol = '🪙'; }
-            else if (wilds === 3) {
-                if (isCaminhoEstelarActive) winSymbol = '⭐';
-                else {
-                    const eligible = MID.filter(k => (inv[k] || 0) >= 3).sort((a, b) => (SYM[b]?.v || 0) - (SYM[a]?.v || 0));
-                    winSymbol = eligible.length > 0 ? (eligible[0] as SymbolKey) : null;
+
+            // 🪙 Fichas: linha pura de ficha
+            if (syms.every(s => s === '🪙')) {
+                if (isCaminhoFichaActive) winSymbol = '🪙';
+            }
+            // ⭐ Wild universal
+            else if (wilds > 0 && nonWilds.length > 0) {
+                const firstNonWild = nonWilds[0];
+                if (nonWilds.every(s => s === firstNonWild)) {
+                    winSymbol = firstNonWild;
                 }
             }
-            else if (wilds === 2 && nonWilds.length === 1) winSymbol = nonWilds[0];
-            else if (wilds === 1 && nonWilds.length === 2 && nonWilds[0] === nonWilds[1]) winSymbol = nonWilds[0];
-            else if (wilds === 0 && syms[0] === syms[1] && syms[1] === syms[2]) winSymbol = syms[0];
+            // 3 estrelas puras
+            else if (wilds === 3 && isCaminhoEstelarActive) {
+                winSymbol = '⭐';
+            }
+            // Sem wilds: símbolos iguais
+            else if (wilds === 0 && syms[0] === syms[1] && syms[1] === syms[2]) {
+                winSymbol = syms[0];
+            }
 
             if (winSymbol) {
                 const lineWin = currentBet * midMultiplierValue(winSymbol);
 
-                if (winSymbol === '⭐' && isCaminhoEstelarActive) {
-                    // Estrelas: ganho base + Star Bonus
-                    starLinesFound++;
-                    if (MID.includes(winSymbol as MidSymbolKey)) {
-                        totalSweetWin += lineWin;
-                        sweetLinesCount++;
-                    } else {
-                        totalOtherWin += lineWin;
-                    }
-                } else if (winSymbol === '🪙' && isCaminhoFichaActive) {
-                    // Fichas: ganho base + Coin Flip
-                    tokenLinesFound++;
-                    if (MID.includes(winSymbol as MidSymbolKey)) {
-                        totalSweetWin += lineWin;
-                        sweetLinesCount++;
-                    } else {
-                        totalOtherWin += lineWin;
-                    }
+                if (MID.includes(winSymbol as MidSymbolKey)) {
+                    totalSweetWin += lineWin;
+                    sweetLinesCount++;
                 } else {
-                    // Símbolos normais: apenas ganho base
-                    if (MID.includes(winSymbol as MidSymbolKey)) {
-                        totalSweetWin += lineWin;
-                        sweetLinesCount++;
-                    } else {
-                        totalOtherWin += lineWin;
-                    }
+                    totalOtherWin += lineWin;
                 }
+
+                // Trigger de bônus
+                if (winSymbol === '⭐' && isCaminhoEstelarActive) {
+                    starLinesFound++;
+                    hasStarHitInThisSpin = true;
+                }
+                if (winSymbol === '🪙' && isCaminhoFichaActive) {
+                    tokenLinesFound++;
+                }
+
                 hitCount++;
             }
         }
+
+        // Atualiza sequência de estrelas
+        setStarStreak(prev => hasStarHitInThisSpin ? prev + 1 : 0);
+
+        // Bônus de estrelas
         if (starLinesFound > 0) triggerStarBonus(validKeys, currentBet, starLinesFound);
-        if (tokenLinesFound > 0) startCoinFlip(tokenLinesFound, currentBet);
+
+        // Bônus de fichas com 50% de chance de ativar
+        if (tokenLinesFound > 0 && Math.random() < 0.5) {
+            for (let i = 0; i < tokenLinesFound; i++) {
+                const r = Math.random() * 93.75; // soma das probabilidades ativas
+                let extraLines = 0;
+                if (r < 50) extraLines = 2;            // ~53.33%
+                else if (r < 75) extraLines = 4;       // ~26.67%
+                else if (r < 87.5) extraLines = 8;     // ~13.33%
+                else if (r < 93.75) extraLines = 16;   // ~6.67%
+                if (extraLines > 0) {
+                    startCoinFlip(extraLines, currentBet);
+                }
+            }
+        }
+
         return { totalSweetWin, totalOtherWin, hitCount, sweetLinesCount };
     }, [getSkillLevel, midMultiplierValue, triggerStarBonus, startCoinFlip]);
 
