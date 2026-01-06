@@ -246,7 +246,35 @@ export interface StarBonusState {
     results: StarBonusResult[];
     totalWin: number;
 }
+// Função para gerar 90 resultados por acerto de ⭐
+export function triggerStarBonus(symbols: SymbolKey[]): StarBonusResult[] {
+    const results: StarBonusResult[] = [];
+    const starCount = symbols.filter(s => s === '⭐').length;
 
+    if (starCount > 0) {
+        for (let i = 0; i < starCount; i++) {
+            for (let j = 0; j < 90; j++) {
+                results.push({
+                    uid: `${i}-${j}-${Date.now()}`,
+                    symbols: ['⭐'],
+                    win: 1, // aqui você pode trocar pelo cálculo real do prêmio
+                    isWin: true
+                });
+            }
+        }
+    }
+
+    return results;
+}
+export function applyStarBonus(state: StarBonusState, symbols: SymbolKey[]): StarBonusState {
+    const newResults = triggerStarBonus(symbols);
+    return {
+        ...state,
+        isActive: true,
+        results: [...state.results, ...newResults],
+        totalWin: state.totalWin + newResults.reduce((acc, r) => acc + r.win, 0)
+    };
+}
 // --- COIN FLIP BONUS TYPES ---
 export interface CoinFlipState {
     isActive: boolean;
