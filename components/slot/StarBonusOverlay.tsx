@@ -26,28 +26,11 @@ const StarBonusOverlay: React.FC<StarBonusOverlayProps> = ({ results, totalWin, 
     }, [visibleResults]);
 
     const displayMaxSpins = useMemo(() => {
-        // 1. Calculate total bonus spins present in the entire result set
-        let totalBonusSpinsInResults = 0;
-        results.forEach(res => {
-            if (res.symbols.every(s => s === '⭐')) {
-                totalBonusSpinsInResults += 5; // Updated from 2 to 5
-            }
-        });
-
-        // 2. Infer the base (starting) spins
-        const inferredBase = Math.max(0, totalSpins - totalBonusSpinsInResults);
-
-        // 3. Calculate current bonus spins revealed so far
-        let currentBonusSpins = 0;
-        visibleResults.forEach(res => {
-            if (res.symbols.every(s => s === '⭐')) {
-                currentBonusSpins += 5; // Updated from 2 to 5
-            }
-        });
-
-        // 4. Current Max = Base + Revealed Bonus
-        return inferredBase + currentBonusSpins;
-    }, [results, visibleResults, totalSpins]);
+        // Como cada linha ⭐ do jogo normal agora dá 90 linhas bônus estelar,
+        // o total de spins é simplesmente o número de resultados
+        // (não há mais bônus de spins adicionais dentro do bônus estelar)
+        return totalSpins;
+    }, [results, totalSpins]);
 
 
     // --- ANIMATION LOOP (Optimized) ---
@@ -167,9 +150,7 @@ const StarBonusOverlay: React.FC<StarBonusOverlayProps> = ({ results, totalWin, 
                                     </div>
                                 </div>
                                 <div className={`font-bold text-sm sm:text-base ${res.isWin ? 'text-green-300' : 'text-gray-600'}`}>
-                                    {res.isWin 
-                                        ? (res.win === 0 && res.symbols.every(s => s === '⭐') ? '🔄 +5 GIROS' : `+$${res.win.toFixed(2)}`)
-                                        : '---'}
+                                    {res.isWin ? `+$${res.win.toFixed(2)}` : '---'}
                                 </div>
                             </div>
                         ))}

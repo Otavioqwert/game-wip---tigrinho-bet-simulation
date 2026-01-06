@@ -175,10 +175,12 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
 
     // ⭐ STAR BONUS FUNCTIONS
     const triggerStarBonus = useCallback((validKeys: SymbolKey[], bet: number, lines: number) => {
+        // Cada linha ⭐ do jogo normal adiciona 90 linhas bônus estelar
+        const bonusLines = lines * 90;
         const results: StarBonusResult[] = [];
         let totalWin = 0;
 
-        for (let i = 0; i < lines; i++) {
+        for (let i = 0; i < bonusLines; i++) {
             const symbols = Array.from({ length: 3 }, () => 
                 getRandomSymbolFromInventory(propsRef.current.inv, validKeys)
             );
