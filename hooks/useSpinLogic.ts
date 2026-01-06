@@ -5,6 +5,7 @@ import type { SymbolKey, MidSymbolKey, Inventory, Multipliers, PanificadoraLevel
 import type { UseSweetLadderResult } from './useSweetLadder';
 import type { useParaisoDoceDetector } from './useParaisoDoceDetector';
 import { isCandySymbol } from '../utils/mechanics/sweetLadder';
+import { useQuickSpinAvailability, QuickSpinStatus } from './useQuickSpinAvailability';
 
 interface SpinLogicProps {
     bal: number;
@@ -42,7 +43,28 @@ interface SpinLogicProps {
     paraisoDetector: ReturnType<typeof useParaisoDoceDetector>;
 }
 
-export const useSpinLogic = (props: SpinLogicProps) => {
+export interface UseSpinLogicResult {
+    isSpinning: boolean;
+    grid: SymbolKey[];
+    spinningColumns: boolean[];
+    stoppingColumns: boolean[];
+    pool: SymbolKey[];
+    midMultiplierValue: (sym: SymbolKey) => number;
+    handleSpin: () => void;
+    quickSpinQueue: number;
+    handleQuickSpin: () => boolean;
+    cancelQuickSpins: () => void;
+    quickSpinStatus: QuickSpinStatus;
+    starBonusState: StarBonusState;
+    closeStarBonus: () => void;
+    coinFlipState: CoinFlipState;
+    handleCoinGuess: (guess: 'heads' | 'tails') => void;
+    closeCoinFlip: () => void;
+    triggerStarBonus: (validKeys: SymbolKey[], bet: number, lines: number) => void;
+    startCoinFlip: (flips: number, bet: number) => void;
+}
+
+export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
     const [isSpinning, setIsSpinning] = useState(false);
     const [grid, setGrid] = useState<SymbolKey[]>(Array(9).fill('🍭'));
     const [spinningColumns, setSpinningColumns] = useState([false, false, false]);
@@ -373,20 +395,33 @@ export const useSpinLogic = (props: SpinLogicProps) => {
         startAnimationCycle(false);
     }, [isSpinning, availableKeys, quickSpinQueue, startAnimationCycle, starBonusState.isActive, coinFlipState.isActive]);
     
-    const handleQuickSpin = useCallback(() => {
-        const { febreDocesAtivo, febreDocesGiros, betVal, handleSpend, cashbackMultiplier, paraisoDetector } = propsRef.current;
-        
-        // 🍬 FREEZE DURANTE QUALQUER ANIMAÇÃO (individual ou rainbow)
-        if (paraisoDetector.activeAnimation !== null) {
+    // 🆕 Hook de disponibilidade centralizado para o botão rápido
+    const quickSpinStatus = useQuickSpinAvailability({
+        bal: props.bal,
+        betVal: props.betVal,
+        febreDocesAtivo: props.febreDocesAtivo,
+        febreDocesGiros: props.febreDocesGiros,
+        isSpinning,
+        quickSpinQueue,
+        starBonusState,
+        coinFlipState,
+        paraisoDetector: props.paraisoDetector,
+        cashbackMultiplier: props.cashbackMultiplier,
+        handleSpend: props.handleSpend
+    });
+    
+    // 🆕 Nova função handleQuickSpin usando quickSpinStatus
+    const handleQuickSpin = useCallback((): boolean => {
+        if (!quickSpinStatus.available) {
+            if (quickSpinStatus.reason) {
+                props.showMsg(quickSpinStatus.reason, 1000);
+            }
             return false;
         }
-        
-        if (febreDocesAtivo) { if (febreDocesGiros > 0) { setQuickSpinQueue(p => p + 1); return true; } return false; }
-        if (handleSpend(betVal * (1 - cashbackMultiplier))) { setQuickSpinQueue(p => p + 1); return true; }
-        return false;
-    }, []);
+        setQuickSpinQueue(p => p + 1);
+        return true;
+    }, [quickSpinStatus, props.showMsg]);
 
-    // 🗑️ Nova função para cancelar giros rápidos
     const cancelQuickSpins = useCallback(() => {
         setQuickSpinQueue(0);
     }, []);
@@ -414,7 +449,8 @@ export const useSpinLogic = (props: SpinLogicProps) => {
         handleSpin, 
         quickSpinQueue, 
         handleQuickSpin, 
-        cancelQuickSpins, // 🆕 Exporta nova função
+        cancelQuickSpins,
+        quickSpinStatus,
         starBonusState, 
         closeStarBonus, 
         coinFlipState, 
