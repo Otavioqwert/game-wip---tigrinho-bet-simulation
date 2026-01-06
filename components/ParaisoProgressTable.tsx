@@ -8,7 +8,6 @@ interface ParaisoProgressTableProps {
   onCandyComplete: (candy: CandySymbol) => number;
   onRainbowComplete: () => number;
   onReward: (amount: number, message: string) => void;
-  // Adicionando nível e desbloqueios para visualização
   level: number;
   unlockedCandy: {
     '🍭': boolean;
@@ -70,9 +69,9 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
   };
 
   const UNLOCK_INFO = {
-    '🍦': 10,
-    '🍧': 25,
-    'rainbow': 50
+    '🍦': 25,
+    '🍧': 100,
+    'rainbow': 300
   };
 
   const renderProgress = (symbol: CandySymbol) => {
@@ -223,7 +222,6 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
         </div>
       </div>
 
-      {/* 📦 CAIXINHA DE NÍVEL (NOVA) */}
       <div
         style={{
           marginTop: '15px',
@@ -251,11 +249,10 @@ export const ParaisoProgressTable: React.FC<ParaisoProgressTableProps> = ({
             </div>
         </div>
         
-        {/* Próximo desbloqueio rápido */}
         <div style={{ fontSize: '9px', color: '#9ca3af', textAlign: 'center', marginTop: '4px' }}>
-            {level < 10 ? '🍦 Libera no nível 10' : 
-             level < 25 ? '🍧 Libera no nível 25' : 
-             level < 50 ? '🌈 Libera no nível 50' : '✨ Tudo desbloqueado!'}
+            {level < UNLOCK_INFO['🍦'] ? `🍦 Libera no nível ${UNLOCK_INFO['🍦']}` : 
+             level < UNLOCK_INFO['🍧'] ? `🍧 Libera no nível ${UNLOCK_INFO['🍧']}` : 
+             level < UNLOCK_INFO['rainbow'] ? `🌈 Libera no nível ${UNLOCK_INFO['rainbow']}` : '✨ Tudo desbloqueado!'}
         </div>
       </div>
 
