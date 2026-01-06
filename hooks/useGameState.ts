@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { INITIAL_INVENTORY, INITIAL_MULTIPLIERS } from '../constants';
 import type { Inventory, Multipliers, PanificadoraLevels, RoiSaldo, RenegotiationTier, ActiveCookie, ScratchCardMetrics, LotericaInjectionState, BakeryState, CraftingSlot } from '../types';
 import { prepareSaveState, EMPTY_FEVER_SNAPSHOT, type FeverSnapshot } from '../utils/feverStateIsolation';
+import { checkVersionCompatibility, migrateSave, canSafelyLoadSave } from '../utils/saveVersioning';
 
 const SAVE_KEY = 'tigrinho-save-game';
 const SAVE_VERSION = 29; // Updated Version for 1 Initial Bakery Slot
@@ -10,7 +11,7 @@ export interface ItemPenalty { amount: number; }
 
 export interface SavedState {
     bal: number; betVal: number; inv: Inventory; mult: Multipliers;
-    bonusMult: Multipliers; // Níveis extras que não aumentam o preço
+    bonusMult: Multipliers;
     roiSaldo: RoiSaldo; panificadoraLevel: PanificadoraLevels;
     estrelaPrecoAtual: number; prestigePoints: number; prestigeLevel: number;
     skillLevels: Record<string, number>; secondarySkillLevels: Record<string, number>;
@@ -21,8 +22,8 @@ export interface SavedState {
     itemPenaltyDue: ItemPenalty | null; sugar: number; activeCookies: ActiveCookie[];
     scratchMetrics: ScratchCardMetrics; lotericaState: LotericaInjectionState;
     totalTokenPurchases: number; mortgageUsages: number;
-    bakery: BakeryState; // New Bakery State
-    feverSnapshot: FeverSnapshot; // Fever State Isolation
+    bakery: BakeryState;
+    feverSnapshot: FeverSnapshot;
 }
 
 const getInitialState = (): SavedState => ({
@@ -53,33 +54,24 @@ const getInitialState = (): SavedState => ({
     feverSnapshot: EMPTY_FEVER_SNAPSHOT
 });
 
-// VALIDAÇÃO E CORREÇÃO AUTOMÁTICA DE CRAFTING SLOTS
 const validateAndFixCraftingSlots = (bakery: BakeryState): BakeryState => {
     const expectedSlotCount = 1 + bakery.extraSlots;
     const currentSlotCount = bakery.craftingSlots.length;
 
-    // Se tiver a quantidade correta, retorna sem modificação
     if (currentSlotCount === expectedSlotCount) {
         return bakery;
     }
 
     console.log(`[Bakery Fix] Detectado ${currentSlotCount} slots, mas deveria ter ${expectedSlotCount} (1 base + ${bakery.extraSlots} extras)`);
 
-    // Se tiver MAIS slots que deveria (save antigo com 3 slots iniciais)
     if (currentSlotCount > expectedSlotCount) {
-        // Mantém apenas os slots ocupados + completa até expectedSlotCount
         const occupiedSlots = bakery.craftingSlots.filter(slot => slot.productId !== null);
-        const emptySlots = bakery.craftingSlots.filter(slot => slot.productId === null);
-        
-        // Usa os ocupados primeiro, depois preenche com vazios até o limite
         const fixedSlots: CraftingSlot[] = [];
         
-        // Adiciona slots ocupados primeiro
         for (let i = 0; i < Math.min(occupiedSlots.length, expectedSlotCount); i++) {
             fixedSlots.push({ ...occupiedSlots[i], id: i });
         }
         
-        // Completa com slots vazios
         for (let i = fixedSlots.length; i < expectedSlotCount; i++) {
             fixedSlots.push({ id: i, productId: null, startTime: null, endTime: null, quantity: 0 });
         }
@@ -89,7 +81,6 @@ const validateAndFixCraftingSlots = (bakery: BakeryState): BakeryState => {
         return { ...bakery, craftingSlots: fixedSlots };
     }
 
-    // Se tiver MENOS slots que deveria (caso improvável, mas trata mesmo assim)
     if (currentSlotCount < expectedSlotCount) {
         const fixedSlots = [...bakery.craftingSlots];
         for (let i = currentSlotCount; i < expectedSlotCount; i++) {
@@ -106,8 +97,8 @@ const validateAndFixCraftingSlots = (bakery: BakeryState): BakeryState => {
 
 export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e?: boolean) => void }) => {
     const [state, setState] = useState<SavedState>(getInitialState());
+    const [versionWarning, setVersionWarning] = useState<any>(null);
     
-    // Ref para manter o estado atualizado sem precisar recriar funções
     const stateRef = useRef(state);
     useEffect(() => {
         stateRef.current = state;
@@ -125,42 +116,81 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
         if (saved && saved.startsWith('V')) {
             try {
                 const parts = saved.split(':');
-                // parts[0] = Version, parts[1] = Timestamp/ID, parts[2] = Encoded Data
                 if (parts.length >= 3) {
-                    const decoded = JSON.parse(decodeURIComponent(escape(atob(parts[2]))));
-                    // Merge com o estado inicial para garantir novas propriedades
-                    const merged = { ...getInitialState(), ...decoded };
+                    // Extrai versão do save
+                    const saveVersionStr = parts[0].replace('V', '');
+                    const saveVersion = parseInt(saveVersionStr, 10);
                     
-                    // Deep merge for bakery
+                    const decoded = JSON.parse(decodeURIComponent(escape(atob(parts[2]))));
+                    
+                    // ✅ VALIDAÇÃO DE VERSÃO
+                    const safetyCheck = canSafelyLoadSave(saveVersion, SAVE_VERSION, decoded);
+                    
+                    if (!safetyCheck.canLoad) {
+                        console.error('[SaveVersioning] Save bloqueado:', safetyCheck.reason);
+                        showMsg(`⛔ ${safetyCheck.reason}`, 8000, true);
+                        // NÃO carrega o save, usa o inicial
+                        return;
+                    }
+                    
+                    if (safetyCheck.needsMigration) {
+                        const compatibility = checkVersionCompatibility(saveVersion, SAVE_VERSION, decoded);
+                        
+                        // Se é risco alto, mostra aviso antes de carregar
+                        if (compatibility.risk === 'high' || compatibility.risk === 'critical') {
+                            console.warn('[SaveVersioning] Save de alto risco detectado, requer atenção do usuário');
+                            setVersionWarning({ compatibility, saveData: decoded });
+                            return;
+                        }
+                        
+                        // Migra automaticamente para riscos baixos/médios
+                        const migration = migrateSave(decoded, saveVersion, SAVE_VERSION);
+                        
+                        if (!migration.success) {
+                            console.error('[SaveVersioning] Migração falhou:', migration.error);
+                            showMsg(`⚠️ Erro ao migrar save: ${migration.error}`, 5000, true);
+                            return;
+                        }
+                        
+                        console.info(`[SaveVersioning] Save migrado de v${saveVersion} para v${SAVE_VERSION}`);
+                        showMsg(`✅ Save atualizado de v${saveVersion} para v${SAVE_VERSION}`, 3000, true);
+                        
+                        const merged = { ...getInitialState(), ...migration.data };
+                        if (migration.data!.bakery) {
+                            merged.bakery = { ...getInitialState().bakery, ...migration.data!.bakery };
+                        }
+                        merged.bakery = validateAndFixCraftingSlots(merged.bakery);
+                        if (!migration.data!.feverSnapshot) {
+                            merged.feverSnapshot = EMPTY_FEVER_SNAPSHOT;
+                        }
+                        setState(merged);
+                        return;
+                    }
+                    
+                    // Carregamento normal (mesma versão)
+                    const merged = { ...getInitialState(), ...decoded };
                     if (decoded.bakery) {
                         merged.bakery = { ...getInitialState().bakery, ...decoded.bakery };
                     }
-                    
-                    // VALIDAÇÃO AUTOMÁTICA: Corrige craftingSlots baseado em extraSlots
                     merged.bakery = validateAndFixCraftingSlots(merged.bakery);
-                    
-                    // Ensure feverSnapshot exists
                     if (!decoded.feverSnapshot) {
                         merged.feverSnapshot = EMPTY_FEVER_SNAPSHOT;
                     }
-                    
                     setState(merged);
                 }
             } catch (e) { console.error("Load failed", e); }
         }
-    }, []);
+    }, [showMsg]);
 
     const saveGame = useCallback((isManual = false) => {
         const currentState = stateRef.current;
         
-        // APLICAR ISOLAMENTO DE FEBRE ANTES DE SALVAR
         const { inv: safeInv, mult: safeMult } = prepareSaveState(
             currentState.inv,
             currentState.mult,
             currentState.feverSnapshot
         );
         
-        // Criar cópia do estado com inv/mult corretos
         const safeState = {
             ...currentState,
             inv: safeInv,
@@ -169,10 +199,8 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
         
         const json = JSON.stringify(safeState);
         const encoded = btoa(unescape(encodeURIComponent(json)));
-        
-        // Usamos Date.now() como ID único do save para diferenciar cada salvamento
         const timestamp = Date.now();
-        localStorage.setItem(SAVE_KEY, `V29:${timestamp}:${encoded}`);
+        localStorage.setItem(SAVE_KEY, `V${SAVE_VERSION}:${timestamp}:${encoded}`);
         
         if (isManual) showMsg("✅ Jogo salvo!", 2000, true);
     }, [showMsg]);
@@ -191,7 +219,6 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
 
         if (persistentSkillLevels['caminhoEstelar'] > 0) adjustedInv['⭐'] += 3;
         
-        // Bônus do Start/Stop entra no BonusMult (não afeta preço)
         if (newPrestigeData.initialCloverMult > 0) {
             adjustedBonusMult['🍀'] = newPrestigeData.initialCloverMult;
         }
@@ -215,25 +242,22 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
 
     useEffect(() => { loadGame(); }, [loadGame]);
     
-    // --- CORREÇÃO DO AUTO-SAVE ---
-    // Armazena a função saveGame mais recente em uma ref.
-    // Isso permite que o setInterval chame a versão correta sem precisar
-    // adicionar saveGame como dependência (o que reiniciaria o timer).
     const savedCallback = useRef(saveGame);
     useEffect(() => {
         savedCallback.current = saveGame;
     }, [saveGame]);
 
     useEffect(() => { 
-        // O intervalo agora roda indefinidamente sem ser reiniciado
         const i = setInterval(() => {
             savedCallback.current(false);
         }, 30000); 
         return () => clearInterval(i); 
-    }, []); // Array vazio = monta apenas uma vez
+    }, []);
 
     return {
         ...state,
+        versionWarning,
+        setVersionWarning,
         setBal: (val: number | ((p: number) => number)) => updateState(s => ({ ...s, bal: typeof val === 'function' ? val(s.bal) : val })),
         setInv: (val: Inventory | ((p: Inventory) => Inventory)) => updateState(s => ({ ...s, inv: typeof val === 'function' ? val(s.inv) : val })),
         setMult: (val: Multipliers | ((p: Multipliers) => Multipliers)) => updateState(s => ({ ...s, mult: typeof val === 'function' ? val(s.mult) : val })),
