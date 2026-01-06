@@ -132,7 +132,7 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
     }, [starBonusState.totalWin]);
 
     const triggerStarBonus = useCallback((validKeys: SymbolKey[], bet: number, lines: number) => {
-        const { inv, applyFinalGain } = propsRef.current;
+        const { inv, applyFinalGain, showMsg } = propsRef.current;
         const results: StarBonusResult[] = [];
         let rawTotalWin = 0;
         
@@ -232,7 +232,7 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
     }, [coinFlipState.currentBet, coinFlipState.currentMultiplier]);
 
     const getSpinResult = useCallback((finalGrid: SymbolKey[], validKeys: SymbolKey[]) => {
-        const { febreDocesAtivo, betValFebre, betVal } = propsRef.current;
+        const { febreDocesAtivo, betValFebre, betVal, showMsg } = propsRef.current;
         const lines = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
         let totalSweetWin = 0; let totalOtherWin = 0; let hitCount = 0; let sweetLinesCount = 0;
         const isCaminhoEstelarActive = getSkillLevel('caminhoEstelar') > 0;
@@ -303,19 +303,15 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
                     const r = Math.random() * 100;
                     let extraLines = 0;
                     
-                    // Distribuição das probabilidades dentro dos 50% que ativaram:
-                    // 50% -> 2 linhas (0 a 50)
-                    // 25% -> 4 linhas (50 a 75)
-                    // 12.5% -> 8 linhas (75 a 87.5)
-                    // 6.25% -> 16 linhas (87.5 a 93.75)
-                    // 6.25% restante (nada) redistribuído proporcionalmente
-                    
+                    // Distribuição das probabilidades conforme diagrama:
                     if (r < 53.33) extraLines = 2;        // ~50% original + redistribuição
                     else if (r < 80) extraLines = 4;      // ~25% original + redistribuição
                     else if (r < 93.33) extraLines = 8;   // ~12.5% original + redistribuição
                     else extraLines = 16;                 // ~6.25% original + redistribuição
                     
                     if (extraLines > 0) {
+                        // UX: Notificação de ativação do bônus de fichas
+                        showMsg(`🔄️ +${extraLines} giros`, 2500, true);
                         startCoinFlip(extraLines, currentBet);
                     }
                 }
