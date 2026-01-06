@@ -1,5 +1,4 @@
-
-export type SymbolKey = '⭐' | '🍭' | '🍦' | '🍧' | '🍀' | '💵' | '💎' | '🐯' | '☄️' | '🪙';
+export type SymbolKey = '⭐' | '🍭' | '🍦' | '🍧' | '🍀' | '💵' | '💎' | '🐯' | '☄️' | '🪙' | '🎰';
 export type MidSymbolKey = '🍭' | '🍦' | '🍧';
 export type ExtraSymbolKey = '🍀' | '💵' | '💎' | '🐯' | '☄️' | '🪙';
 export type WildcardSymbolKey = '⭐';
@@ -16,6 +15,12 @@ export interface SymbolData {
 }
 
 export type SymbolMap = Record<SymbolKey, SymbolData>;
+
+// --- Leaf System (Folha 🍁) ---
+export interface LeafState {
+    count: number;
+    isActive: boolean;
+}
 
 // --- Cookie System ---
 export type CookieId = 'basic_cookie' | 'golden_cookie' | 'mega_cookie';
