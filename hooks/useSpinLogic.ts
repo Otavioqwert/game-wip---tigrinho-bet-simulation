@@ -4,7 +4,6 @@ import { getRandomSymbolFromInventory, calculateMidMultiplierValue, createWeight
 import type { SymbolKey, MidSymbolKey, Inventory, Multipliers, PanificadoraLevels, SkillId, RoiSaldo, ActiveCookie, StarBonusState, StarBonusResult, CoinFlipState } from '../types';
 import type { UseSweetLadderResult } from './useSweetLadder';
 import type { useParaisoDoceDetector } from './useParaisoDoceDetector';
-import { isCandySymbol } from '../utils/mechanics/sweetLadder';
 import { useQuickSpinAvailability, QuickSpinStatus } from './useQuickSpinAvailability';
 
 interface SpinLogicProps {
@@ -144,18 +143,20 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         const snapshot = createWeightSnapshot(inv, validKeys);
 
         for (let i = 0; i < spinsToProcess; i++) {
-            const syms = [spinFromSnapshot(snapshot), spinFromSnapshot(snapshot), spinFromSnapshot(snapshot)] as SymbolKey[];
+            const syms = [
+                spinFromSnapshot(snapshot),
+                spinFromSnapshot(snapshot),
+                spinFromSnapshot(snapshot),
+            ] as SymbolKey[];
+
             const isWin = syms[0] === syms[1] && syms[1] === syms[2];
             let win = 0;
-            if (isWin) {
-                if (syms[0] === '⭐') {
-                    // Nova sequência de estrela dentro do bônus ainda adiciona linhas extras
-                    spinsToProcess += 5;
-                } else {
-                    // 5% do valor normal: 0.05 * (bet * mult)
-                    win = bet * midMultiplierValue(syms[0]) * 0.05;
-                }
+
+            // Dentro do bônus: linha vencedora e NÃO ⭐ paga 5% do valor normal
+            if (isWin && syms[0] !== '⭐') {
+                win = bet * midMultiplierValue(syms[0]) * 0.05;
             }
+
             results.push({ symbols: syms, win, isWin });
             rawTotalWin += win;
         }
