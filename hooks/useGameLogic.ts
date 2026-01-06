@@ -142,7 +142,7 @@ export const useGameLogic = () => {
         showMsg,
         feverSnapshot: gameState.feverSnapshot,
         setFeverSnapshot: gameState.setFeverSnapshot,
-        paraisoDetector, // PASSA O DETECTOR
+        paraisoDetector, 
     });
 
     const spinLogic = useSpinLogic({
@@ -160,6 +160,8 @@ export const useGameLogic = () => {
         handleSpend, handleGain,
         sweetLadder: febreDoce.sweetLadder,
         paraisoDetector,
+        // 🍀 CORREÇÃO: Passando a flag de ativação do Pacote do Trevo para o Hook de Spin
+        isCloverPackActive: febreDoce.selectedPackages.some(p => p.id === 'safe_budget_2')
     });
 
     const shopLogic = useShopLogic({
@@ -277,7 +279,7 @@ export const useGameLogic = () => {
             handleGain(final);
         },
         paraisoDetector,
-        handleParaisoReward, // 🍭 EXPORTA O HELPER
+        handleParaisoReward, 
         isBankrupt: secondarySkills.getSecondarySkillLevel('bankruptcy') > 0 && gameState.creditCardDebt >= secondarySkills.creditLimit,
         creditCardLevel: secondarySkills.getSecondarySkillLevel('bankruptcy'),
         openCreditCardModal: () => setIsCreditCardModalOpen(true),
