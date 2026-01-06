@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { UseSpinLogicResult } from './useSpinLogic';
+import type { UseSpinLogicResult } from './spinLogicInterfaces';
 
 interface Props {
   bal: number;
@@ -51,7 +51,7 @@ export const useQuickSpinAvailability = (props: Props): QuickSpinStatus => {
     if (hasQueue) return { available: false, reason: "⏭️ Fila de giros rápidos ativa" };
     
     const cost = betVal * (1 - cashbackMultiplier);
-    if (!handleSpend(cost)) return { available: false, reason: "💰 Saldo insuficiente" };
+    if (bal < cost) return { available: false, reason: "💰 Saldo insuficiente" };
     
     return { available: true, reason: null };
   }, [bal, betVal, cashbackMultiplier, hasActiveAnimation, hasQueue, isParaisoAnimating]);
