@@ -150,7 +150,13 @@ const StarBonusOverlay: React.FC<StarBonusOverlayProps> = ({ results, totalWin, 
                                     </div>
                                 </div>
                                 <div className={`font-bold text-sm sm:text-base ${res.isWin ? 'text-green-300' : 'text-gray-600'}`}>
-                                    {res.isWin ? `+$${res.win.toFixed(2)}` : '---'}
+                                    {res.isWin ? (
+                                        res.win === 0 ? (
+                                            res.symbols.every(s => s === '⭐') ? '🔄 +5 GIROS' : 
+                                            res.symbols.every(s => s === '🪙') ? '🪙 +2 GIROS' : 
+                                            '---'
+                                        ) : `+$${res.win.toFixed(2)}`
+                                    ) : '---'}
                                 </div>
                             </div>
                         ))}

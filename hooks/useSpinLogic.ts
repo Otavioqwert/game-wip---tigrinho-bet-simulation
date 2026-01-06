@@ -179,15 +179,102 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         const bonusLines = lines * 90;
         const results: StarBonusResult[] = [];
         let totalWin = 0;
+        let additionalSpins = 0;
 
         for (let i = 0; i < bonusLines; i++) {
             const symbols = Array.from({ length: 3 }, () => 
                 getRandomSymbolFromInventory(propsRef.current.inv, validKeys)
             );
-            const isWin = symbols[0] === symbols[1] && symbols[1] === symbols[2];
-            const win = isWin ? bet * midMultiplierValue(symbols[0]) : 0;
-            totalWin += win;
-            results.push({ uid: `${Date.now()}-${i}`, symbols, win, isWin });
+            
+            // Lógica de verificação com ⭐ como wild
+            const wilds = symbols.filter(s => s === '⭐').length;
+            const nonWilds = symbols.filter(s => s !== '⭐');
+            let isWin = false;
+            let winSymbol: SymbolKey | null = null;
+            let winAmount = 0;
+            
+            // ⭐ é wild - combina com qualquer símbolo não-wild
+            if (wilds > 0 && nonWilds.length > 0) {
+                const firstNonWild = nonWilds[0];
+                if (nonWilds.every(s => s === firstNonWild)) {
+                    isWin = true;
+                    winSymbol = firstNonWild;
+                }
+            }
+            // Três ⭐ também é win
+            else if (wilds === 3) {
+                isWin = true;
+                winSymbol = '⭐';
+            }
+            // Três símbolos iguais sem wild
+            else if (wilds === 0 && symbols[0] === symbols[1] && symbols[1] === symbols[2]) {
+                isWin = true;
+                winSymbol = symbols[0];
+            }
+            
+            // Calcula ganho (0.05x o valor normal)
+            if (isWin && winSymbol) {
+                winAmount = bet * midMultiplierValue(winSymbol) * 0.05;
+                totalWin += winAmount;
+                
+                // Acerto de ⭐ adiciona +5 giros
+                if (winSymbol === '⭐') {
+                    additionalSpins += 5;
+                }
+                // Acerto de 🪙 adiciona +2 giros
+                else if (winSymbol === '🪙') {
+                    additionalSpins += 2;
+                }
+            }
+            
+            results.push({ uid: `${Date.now()}-${i}`, symbols, win: winAmount, isWin });
+        }
+
+        // Adiciona giros bônus adicionais se houver
+        if (additionalSpins > 0) {
+            for (let i = 0; i < additionalSpins; i++) {
+                const symbols = Array.from({ length: 3 }, () => 
+                    getRandomSymbolFromInventory(propsRef.current.inv, validKeys)
+                );
+                
+                // Aplica mesma lógica de wild para giros bônus
+                const wilds = symbols.filter(s => s === '⭐').length;
+                const nonWilds = symbols.filter(s => s !== '⭐');
+                let isWin = false;
+                let winSymbol: SymbolKey | null = null;
+                let winAmount = 0;
+                
+                if (wilds > 0 && nonWilds.length > 0) {
+                    const firstNonWild = nonWilds[0];
+                    if (nonWilds.every(s => s === firstNonWild)) {
+                        isWin = true;
+                        winSymbol = firstNonWild;
+                    }
+                }
+                else if (wilds === 3) {
+                    isWin = true;
+                    winSymbol = '⭐';
+                }
+                else if (wilds === 0 && symbols[0] === symbols[1] && symbols[1] === symbols[2]) {
+                    isWin = true;
+                    winSymbol = symbols[0];
+                }
+                
+                if (isWin && winSymbol) {
+                    winAmount = bet * midMultiplierValue(winSymbol) * 0.05;
+                    totalWin += winAmount;
+                    
+                    // Cascata: mais giros para mais ⭐ ou 🪙
+                    if (winSymbol === '⭐') {
+                        additionalSpins += 5; // Mais 5 giros
+                    }
+                    else if (winSymbol === '🪙') {
+                        additionalSpins += 2; // Mais 2 giros
+                    }
+                }
+                
+                results.push({ uid: `${Date.now()}-${bonusLines + i}`, symbols, win: winAmount, isWin });
+            }
         }
 
         setStarBonusState({ isActive: true, results, totalWin });
