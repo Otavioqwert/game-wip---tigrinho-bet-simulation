@@ -1,11 +1,10 @@
-
 import React from 'react';
 import Reel from './Reel';
 import SlotMachineControls from './SlotMachineControls';
 import StarBonusOverlay from './StarBonusOverlay';
 import CoinFlipOverlay from './CoinFlipOverlay';
 import ProbabilityWidget from './ProbabilityWidget';
-import type { RoiSaldo, StarBonusState, CoinFlipState, Inventory } from '../../types';
+import type { RoiSaldo, StarBonusState, CoinFlipState, Inventory, LeafState } from '../../types';
 
 interface SlotMachineProps {
     febreDocesAtivo: boolean;
@@ -22,20 +21,22 @@ interface SlotMachineProps {
     setBetVal: React.Dispatch<React.SetStateAction<number>>;
     criarEmbaixadorDoce: () => void;
     roiSaldo: RoiSaldo;
-    inv: Inventory; // Added prop for widget
+    inv: Inventory; 
     isPoolInvalid: boolean;
     quickSpinQueue: number;
     handleQuickSpin: () => boolean;
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     isBankrupt: boolean;
     isBettingLocked: boolean;
-    // New Props for Star Bonus
     starBonusState: StarBonusState;
     closeStarBonus: () => void;
-    // New Props for Coin Flip
     coinFlipState: CoinFlipState;
     handleCoinGuess: (guess: 'heads' | 'tails') => void;
     closeCoinFlip: () => void;
+    // 🍁 Novas Props do Leaf System
+    leafState: LeafState;
+    handleCellReroll: (index: number) => void;
+    handleGlobalReroll: () => void;
 }
 
 const SlotMachine: React.FC<SlotMachineProps> = (props) => {
@@ -55,12 +56,15 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
         coinFlipState,
         handleCoinGuess,
         closeCoinFlip,
-        inv
+        inv,
+        leafState,
+        handleCellReroll,
+        handleGlobalReroll,
+        isSpinning
     } = props;
     
     return (
         <div className="flex flex-col items-center justify-center h-full relative">
-            {/* Overlay for Star Bonus Animation */}
             {starBonusState.isActive && (
                 <StarBonusOverlay 
                     results={starBonusState.results}
@@ -69,7 +73,6 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
                 />
             )}
             
-            {/* Overlay for Coin Flip Minigame */}
             {coinFlipState.isActive && (
                 <CoinFlipOverlay 
                     coinState={coinFlipState}
@@ -96,11 +99,32 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
                 </div>
             )}
             
-            {/* Slot Machine Container - Added relative for widget positioning */}
             <div className="w-full max-w-sm relative">
-                
-                {/* PROBABILITY WIDGET (Attached to right side) */}
                 <ProbabilityWidget inv={inv} />
+
+                {/* 📦 Contador de Folhas (Canto Inferior Direito da Slot) */}
+                {leafState.isActive && (
+                    <div className="absolute -bottom-2 -right-2 z-20 flex flex-col items-end gap-2">
+                         {/* Botão de Reroll Global (🎰) */}
+                        <button
+                            onClick={handleGlobalReroll}
+                            disabled={isSpinning || leafState.count < 3}
+                            className={`
+                                w-12 h-12 rounded-full border-2 border-yellow-400 bg-stone-900 
+                                flex items-center justify-center text-2xl shadow-lg transition-transform active:scale-90
+                                ${isSpinning || leafState.count < 3 ? 'opacity-50 grayscale' : 'hover:scale-110 animate-pulse'}
+                            `}
+                            title="Rerolar Roleta (3🍁)"
+                        >
+                            🎰
+                        </button>
+
+                        <div className="bg-stone-900/90 border-2 border-green-500 rounded-lg px-2 py-1 flex items-center gap-1 shadow-md">
+                            <span className="text-sm font-black text-green-400 tabular-nums">{leafState.count}</span>
+                            <span className="text-base">🍁</span>
+                        </div>
+                    </div>
+                )}
 
                 <div className="bg-black/50 rounded-2xl p-4 sm:p-5 mb-5 inner-neon-border relative z-10">
                     <div className="grid grid-cols-3 gap-3 mb-3">
@@ -109,7 +133,22 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
                             const delay = `${column * 100}ms`;
                             const isColumnSpinning = spinningColumns[column];
                             const isColumnStopping = stoppingColumns[column];
-                            return <Reel key={i} symbol={s} isSpinning={isColumnSpinning} isStopping={isColumnStopping} delay={delay} />;
+                            
+                            // Tornamos a célula tocável se o Leaf System estiver ativo
+                            return (
+                                <div 
+                                    key={i} 
+                                    className={`relative transition-transform ${!isSpinning && leafState.isActive && leafState.count > 0 ? 'cursor-pointer hover:scale-105 active:scale-95' : ''}`}
+                                    onClick={() => !isSpinning && leafState.isActive && handleCellReroll(i)}
+                                >
+                                    <Reel symbol={s} isSpinning={isColumnSpinning} isStopping={isColumnStopping} delay={delay} />
+                                    
+                                    {/* Indicador visual de que a célula pode ser rerolada */}
+                                    {!isSpinning && leafState.isActive && leafState.count > 0 && (
+                                        <div className="absolute top-0 right-0 text-[10px] animate-bounce pointer-events-none">🍁</div>
+                                    )}
+                                </div>
+                            );
                         })}
                     </div>
                     <div className="text-center text-lg font-bold text-green-300 min-h-[28px] text-shadow shadow-green-400/50">{winMsg}</div>
