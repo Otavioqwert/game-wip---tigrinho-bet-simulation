@@ -133,44 +133,39 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
 
     const triggerStarBonus = useCallback((validKeys: SymbolKey[], bet: number, lines: number) => {
         const { inv, applyFinalGain, showMsg } = propsRef.current;
-        const results: StarBonusResult[] = [];
+        let results: StarBonusResult[] = [];
         let rawTotalWin = 0;
         
-        // 90 linhas base + 5 por nível de sequência de estrelas
         const bonusLinesPerHit = 90 + starStreak * 5;
         let spinsToProcess = bonusLinesPerHit * lines;
         
         const snapshot = createWeightSnapshot(inv, validKeys);
         const sessionId = Date.now().toString();
 
-        for (let i = 0; i < spinsToProcess; i++) {
+        let i = 0;
+        while (i < spinsToProcess) {
             const syms = [
                 spinFromSnapshot(snapshot),
                 spinFromSnapshot(snapshot),
                 spinFromSnapshot(snapshot),
             ] as SymbolKey[];
 
-            // --- Lógica de Linha no Bônus (Igual ao Jogo Base) ---
             const wilds = syms.filter(s => s === '⭐').length;
             const nonWilds = syms.filter(s => s !== '⭐');
             let winSymbol: SymbolKey | null = null;
 
-            // 🪙 Fichas: Triple pura
             if (syms.every(s => s === '🪙')) {
                 winSymbol = '🪙';
             }
-            // ⭐ Wild universal
             else if (wilds > 0 && nonWilds.length > 0) {
                 const firstNonWild = nonWilds[0];
                 if (nonWilds.every(s => s === firstNonWild)) {
                     winSymbol = firstNonWild;
                 }
             }
-            // 3 estrelas puras
             else if (wilds === 3) {
                 winSymbol = '⭐';
             }
-            // Sem wilds: Triple pura
             else if (wilds === 0 && syms[0] === syms[1] && syms[1] === syms[2]) {
                 winSymbol = syms[0];
             }
@@ -178,9 +173,22 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
             let win = 0;
             const isWin = winSymbol !== null;
 
-            // Payout de 5% se for win e NÃO for estrela pura OU moeda pura
-            // Moedas (🪙) NÃO pagam dinheiro no bônus, apenas ativam linhas extras
-            if (isWin && winSymbol !== '⭐' && winSymbol !== '🪙') {
+            // Lógica de Ganho de Linhas via Moeda (🪙) dentro do Bônus Estelar
+            if (isWin && winSymbol === '🪙') {
+                if (Math.random() < 0.5) {
+                    const r = Math.random() * 100;
+                    let extraLines = 0;
+                    if (r < 53.33) extraLines = 2;
+                    else if (r < 80) extraLines = 4;
+                    else if (r < 93.33) extraLines = 8;
+                    else extraLines = 16;
+
+                    if (extraLines > 0) {
+                        spinsToProcess += extraLines;
+                        showMsg(`🔄️ +${extraLines} linhas`, 2000, true);
+                    }
+                }
+            } else if (isWin && winSymbol !== '⭐') {
                 win = bet * midMultiplierValue(winSymbol!) * 0.05;
             }
 
@@ -191,6 +199,7 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
                 isWin
             });
             rawTotalWin += win;
+            i++;
         }
 
         const finalWin = applyFinalGain(rawTotalWin);
@@ -248,22 +257,18 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
             const nonWilds = syms.filter(s => s !== '⭐');
             let winSymbol: SymbolKey | null = null;
 
-            // 🪙 Fichas: Triple pura
             if (syms.every(s => s === '🪙')) {
                 if (isCaminhoFichaActive) winSymbol = '🪙';
             }
-            // ⭐ Wild universal
             else if (wilds > 0 && nonWilds.length > 0) {
                 const firstNonWild = nonWilds[0];
                 if (nonWilds.every(s => s === firstNonWild)) {
                     winSymbol = firstNonWild;
                 }
             }
-            // 3 estrelas puras
             else if (wilds === 3 && isCaminhoEstelarActive) {
                 winSymbol = '⭐';
             }
-            // Sem wilds: Triple pura
             else if (wilds === 0 && syms[0] === syms[1] && syms[1] === syms[2]) {
                 winSymbol = syms[0];
             }
@@ -275,7 +280,6 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
                     totalSweetWin += lineWin;
                     sweetLinesCount++;
                 } else if (winSymbol !== '🪙' && winSymbol !== '⭐') {
-                    // ⭐ e 🪙 não pagam dinheiro direto no giro normal (ativam bônus)
                     totalOtherWin += lineWin;
                 }
 
@@ -295,22 +299,18 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
 
         if (starLinesFound > 0) triggerStarBonus(validKeys, currentBet, starLinesFound);
 
-        // --- Lógica de Fichas (🪙) Corrigida conforme Diagrama ---
+        // No jogo BASE, moedas ativam o Coin Flip
         if (tokenLinesFound > 0) {
             for (let i = 0; i < tokenLinesFound; i++) {
-                // 50% de chance inicial de ativar
                 if (Math.random() < 0.5) {
                     const r = Math.random() * 100;
                     let extraLines = 0;
-                    
-                    // Distribuição das probabilidades conforme diagrama:
-                    if (r < 53.33) extraLines = 2;        // ~50% original + redistribuição
-                    else if (r < 80) extraLines = 4;      // ~25% original + redistribuição
-                    else if (r < 93.33) extraLines = 8;   // ~12.5% original + redistribuição
-                    else extraLines = 16;                 // ~6.25% original + redistribuição
+                    if (r < 53.33) extraLines = 2;
+                    else if (r < 80) extraLines = 4;
+                    else if (r < 93.33) extraLines = 8;
+                    else extraLines = 16;
                     
                     if (extraLines > 0) {
-                        // UX: Notificação de ativação do bônus de fichas
                         showMsg(`🔄️ +${extraLines} giros`, 2500, true);
                         startCoinFlip(extraLines, currentBet);
                     }
