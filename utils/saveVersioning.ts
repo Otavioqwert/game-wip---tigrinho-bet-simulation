@@ -241,7 +241,7 @@ export function downgradeSave(saveData: SavedState, targetVersion: number): Save
 }
 
 // ⬆️ Faz upgrade de um save antigo para a versão atual
-export function upgradeS ave(saveData: SavedState, targetVersion: number): SavedState {
+export function upgradeSave(saveData: SavedState, targetVersion: number): SavedState {
     const initial = getInitialSaveState();
     const upgraded = { ...initial, ...saveData };
     
@@ -286,7 +286,7 @@ export function canSafelyLoadSave(
 }
 
 // 🔄 Migra um save para a versão correta automaticamente
-export function migrateS ave(
+export function migrateSave(
     saveData: SavedState,
     saveVersion: number,
     targetVersion: number
@@ -298,7 +298,7 @@ export function migrateS ave(
         
         if (saveVersion > targetVersion) {
             // Downgrade
-            const downgraded = downgradeS ave(saveData, targetVersion);
+            const downgraded = downgradeSave(saveData, targetVersion);
             return { success: true, data: downgraded };
         } else {
             // Upgrade
