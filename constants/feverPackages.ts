@@ -21,9 +21,9 @@ export const ITEM_PACKAGES: FeverPackage[] = [
         cost: 1000,
         type: 'item', risk: 'safe', tier: 'budget',
         icon: '🍀',
-        // NERF: Removido multiplicadores, apenas 5 trevos e ativa a mecânica da 🍁
-        contents: { items: { '🍀': 5 }, multipliers: {} },
-        description: '🍀 5 Trevos + 🍁 MECÂNICA DA FOLHA: Acertos de trevo geram 🍁. Toque nas células para rerolar (1🍁) ou na 🎰 para rerolar tudo (3🍁)!'
+        // BUFF: 5 → 10 trevos (símbolo é fraco, valor está na mecânica 🍁)
+        contents: { items: { '🍀': 10 }, multipliers: {} },
+        description: '🍀 10 Trevos + 🍁 MECÂNICA DA FOLHA: Acertos de trevo geram 🍁. Toque nas células para rerolar (1🍁) ou na 🎰 para rerolar tudo (3🍁)!'
     },
     {
         id: 'risk_budget_1',
