@@ -5,6 +5,7 @@ import type { SymbolKey, MidSymbolKey, Inventory, Multipliers, PanificadoraLevel
 import type { UseSweetLadderResult } from './useSweetLadder';
 import type { useParaisoDoceDetector } from './useParaisoDoceDetector';
 import { useQuickSpinAvailability, QuickSpinStatus } from './useQuickSpinAvailability';
+import { validateSpinLogicProps } from '../utils/validateState';
 
 interface SpinLogicProps {
     bal: number;
@@ -40,6 +41,7 @@ interface SpinLogicProps {
     setSugar: React.Dispatch<React.SetStateAction<number>>;
     sweetLadder: UseSweetLadderResult;
     paraisoDetector: ReturnType<typeof useParaisoDoceDetector>;
+    isCloverPackActive?: boolean; // Optional but will be validated to safe default
 }
 
 export interface UseSpinLogicResult {
@@ -63,7 +65,11 @@ export interface UseSpinLogicResult {
     startCoinFlip: (flips: number, bet: number) => void;
 }
 
-export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
+export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
+    // VALIDATE ALL PROPS AT ENTRY POINT
+    // This ensures isCloverPackActive is NEVER undefined
+    const props = validateSpinLogicProps(rawProps);
+
     const [isSpinning, setIsSpinning] = useState(false);
     const [grid, setGrid] = useState<SymbolKey[]>(Array(9).fill('🍭'));
     const [spinningColumns, setSpinningColumns] = useState([false, false, false]);
