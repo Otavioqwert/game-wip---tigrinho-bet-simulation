@@ -290,7 +290,7 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
         setCoinFlipState({
             isActive: true,
             flipsRemaining: flips,
-            currentMultiplier: 1,
+            currentMultiplier: 0, // Começa em 0x
             currentBet: bet,
             history: [],
             lastResult: null,
@@ -304,21 +304,31 @@ export const useSpinLogic = (props: SpinLogicProps): UseSpinLogicResult => {
 
             const result: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';
             const won = guess === result;
-            const newMultiplier = won ? prev.currentMultiplier * 2 : 1; // Reset to 1 if lost
+            const newMultiplier = won ? (prev.currentMultiplier === 0 ? 2 : prev.currentMultiplier * 2) : 0;
             const newFlips = prev.flipsRemaining - 1;
+
+            // Verifica se é coringa (⭐) para adicionar +2 giros
+            const isWildcard = Math.random() < 0.1; // 10% de chance de coringa
+            const bonusFlips = isWildcard ? 2 : 0;
 
             // Inicia animação
             const animatingState = {
                 ...prev,
                 currentMultiplier: newMultiplier,
-                flipsRemaining: newFlips,
+                flipsRemaining: newFlips + bonusFlips, // Adiciona giros bônus se for coringa
                 history: [...prev.history, result],
                 lastResult: result,
                 isAnimating: true
             };
 
             // Se ganhou e ainda tem flips, continua animando
-            if (won && newFlips > 0) {
+            if (won && newFlips + bonusFlips > 0) {
+                // Mostra mensagem de coringa
+                if (isWildcard) {
+                    setTimeout(() => {
+                        propsRef.current.showMsg('⭐ CORINGA! +2 giros bônus!', 2000, true);
+                    }, 1000);
+                }
                 // Para animação após 2 segundos
                 setTimeout(() => {
                     setCoinFlipState(current => ({

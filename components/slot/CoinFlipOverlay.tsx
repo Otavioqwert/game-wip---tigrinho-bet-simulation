@@ -29,11 +29,11 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
                 <div className="h-48 flex items-center justify-center mb-6 perspective-1000">
                     <div className={`w-32 h-32 rounded-full relative transform-style-3d transition-all duration-1000 ${isAnimating ? 'animate-flip' : ''}`}>
                         {/* Front (Heads) */}
-                        <div className={`absolute inset-0 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center border-4 border-yellow-200 shadow-xl backface-hidden ${lastResult === 'tails' && !isAnimating ? 'opacity-0 rotate-y-180' : 'rotate-y-0'}`}>
+                        <div className={`absolute inset-0 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center border-4 border-yellow-200 shadow-xl backface-hidden transition-all duration-300 ${lastResult === 'tails' && !isAnimating ? 'opacity-0 -rotate-y-180' : 'opacity-100 rotate-y-0'}`}>
                              <span className="text-6xl">🤴</span>
                         </div>
                         {/* Back (Tails) */}
-                        <div className={`absolute inset-0 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center border-4 border-gray-200 shadow-xl backface-hidden ${lastResult !== 'tails' && !isAnimating ? 'opacity-0 rotate-y-0' : 'rotate-y-180'}`}>
+                        <div className={`absolute inset-0 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center border-4 border-gray-200 shadow-xl backface-hidden transition-all duration-300 ${lastResult !== 'tails' && !isAnimating ? 'opacity-0 rotate-y-0' : 'opacity-100 rotate-y-180'}`}>
                              <span className="text-6xl">🦅</span>
                         </div>
                     </div>
