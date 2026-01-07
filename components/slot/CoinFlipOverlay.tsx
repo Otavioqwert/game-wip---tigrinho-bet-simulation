@@ -16,7 +16,6 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
   const currentWin = currentBet * currentMultiplier;
   const isGameOver = flipsRemaining === 0;
 
-  // Mostra resultado após animação
   useEffect(() => {
     if (isAnimating) {
       const timer = setTimeout(() => setShowResult(true), 2000);
@@ -30,27 +29,22 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
       <div className="bg-gradient-to-b from-gray-800 to-black p-6 rounded-3xl border-4 border-slate-400 shadow-[0_0_50px_rgba(255,255,255,0.2)] text-center max-w-sm w-full relative overflow-hidden animate-in zoom-in duration-300">
 
-        {/* Header */}
         <div className="mb-6">
           <h2 className="text-2xl font-black text-slate-200 uppercase tracking-widest mb-1">Cara ou Coroa</h2>
           <p className="text-gray-400 text-sm">Adivinhe para DOBRAR!</p>
         </div>
 
-        {/* Coin Visual */}
         <div className="h-48 flex items-center justify-center mb-6 perspective-1000">
           <div className={`w-32 h-32 rounded-full relative transform-style-3d transition-all duration-1000 ${isAnimating ? 'animate-flip' : ''}`}>
-            {/* Heads */}
             <div className={`absolute inset-0 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center border-4 border-yellow-200 shadow-xl backface-hidden transition-all duration-300 ${lastResult === 'tails' && !isAnimating ? 'opacity-0 -rotate-y-180' : 'opacity-100 rotate-y-0'}`}>
               <span className="text-6xl">🤴</span>
             </div>
-            {/* Tails */}
             <div className={`absolute inset-0 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center border-4 border-gray-200 shadow-xl backface-hidden transition-all duration-300 ${lastResult !== 'tails' && !isAnimating ? 'opacity-0 rotate-y-0' : 'opacity-100 rotate-y-180'}`}>
               <span className="text-6xl">🦅</span>
             </div>
           </div>
         </div>
 
-        {/* Status */}
         <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-600 mb-6">
           <div className="flex justify-between items-center mb-1">
             <span className="text-gray-400 text-xs">Aposta Base</span>
@@ -66,7 +60,6 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
           </div>
         </div>
 
-        {/* Controls */}
         <div className="space-y-3">
           {!isGameOver ? (
             <>
@@ -122,7 +115,6 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
             </>
           )}
 
-          {/* Botão de sair sempre disponível */}
           <button
             onClick={onComplete}
             className="w-full py-2 mt-2 bg-red-600/80 hover:bg-red-500 text-white rounded-xl font-bold text-xs border border-red-400/30 transition-all active:scale-95 shadow-lg"
@@ -147,9 +139,4 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
           animation: flipCoin 2s ease-out forwards;
         }
       `}</style>
-    </div>,
-    document.body
-  );
-};
-
-export default CoinFlipOverlay;
+    </div
