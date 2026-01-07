@@ -144,5 +144,76 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
         document.body
     );
 };
+{/* Controls */}
+{!isGameOver ? (
+    <div className="space-y-3">
+        <div className="text-sm text-slate-300 mb-2">
+            Giros Restantes: <span className="font-bold text-white">{flipsRemaining}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+            <button 
+                onClick={() => onGuess('heads')}
+                disabled={isAnimating}
+                className="py-4 bg-slate-200 text-slate-900 rounded-xl font-bold shadow-[0_4px_0_#94a3b8] active:translate-y-[4px] active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+                CARA 🤴
+            </button>
+            <button 
+                onClick={() => onGuess('tails')}
+                disabled={isAnimating}
+                className="py-4 bg-slate-200 text-slate-900 rounded-xl font-bold shadow-[0_4px_0_#94a3b8] active:translate-y-[4px] active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+                COROA 🦅
+            </button>
+        </div>
+        
+        {/* Botão de Saída Antecipada */}
+        {showResult && (
+            <button
+                onClick={onComplete}
+                disabled={isAnimating}
+                className="w-full py-3 mt-4 bg-yellow-600/80 hover:bg-yellow-500 text-white rounded-xl font-bold text-sm border border-yellow-400/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            >
+                {currentMultiplier > 0 
+                    ? `💰 PARAR E RESGATAR $${currentWin.toFixed(2)}` 
+                    : '🚪 SAIR AGORA'}
+            </button>
+        )}
+
+        {/* Botão de Sair Sempre Disponível */}
+        <button
+            onClick={onComplete}
+            className="w-full py-2 mt-2 bg-red-600/80 hover:bg-red-500 text-white rounded-xl font-bold text-xs border border-red-400/30 transition-all active:scale-95 shadow-lg"
+        >
+            ❌ SAIR
+        </button>
+    </div>
+) : (
+    <div>
+        <div className="mb-4">
+            {showResult && currentMultiplier > 0 ? (
+                <p className="text-green-400 font-bold text-lg animate-pulse">🎉 PARABÉNS! 🎉</p>
+            ) : (
+                <p className="text-red-400 font-bold text-lg">💔 QUE PENA! 💔</p>
+            )}
+        </div>
+        {showResult && (
+            <button 
+                onClick={onComplete}
+                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg hover:brightness-110 active:scale-95 transition-all"
+            >
+                {currentMultiplier > 0 ? 'COLETAR GANHOS' : 'FECHAR'}
+            </button>
+        )}
+
+        {/* Botão de Sair Sempre Disponível */}
+        <button
+            onClick={onComplete}
+            className="w-full py-2 mt-2 bg-red-600/80 hover:bg-red-500 text-white rounded-xl font-bold text-xs border border-red-400/30 transition-all active:scale-95 shadow-lg"
+        >
+            ❌ SAIR
+        </button>
+    </div>
+)}
 
 export default CoinFlipOverlay;
