@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { CoinFlipState } from '../../types';
 
@@ -12,8 +11,22 @@ interface CoinFlipOverlayProps {
 const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, onComplete }) => {
     const { flipsRemaining, currentMultiplier, currentBet, isAnimating, lastResult } = coinState;
 
+    const [showResult, setShowResult] = useState(false);
+
     const currentWin = currentBet * currentMultiplier;
     const isGameOver = flipsRemaining === 0;
+
+    // Quando a animação termina, mostramos o resultado
+    useEffect(() => {
+        if (isAnimating) {
+            const timer = setTimeout(() => {
+                setShowResult(true);
+            }, 2000); // tempo da animação
+            return () => clearTimeout(timer);
+        } else {
+            setShowResult(false);
+        }
+    }, [isAnimating]);
 
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -79,31 +92,35 @@ const CoinFlipOverlay: React.FC<CoinFlipOverlayProps> = ({ coinState, onGuess, o
                         </div>
                         
                         {/* Botão de Saída Antecipada */}
-                        <button
-                            onClick={onComplete}
-                            disabled={isAnimating}
-                            className="w-full py-3 mt-4 bg-yellow-600/80 hover:bg-yellow-500 text-white rounded-xl font-bold text-sm border border-yellow-400/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                        >
-                            {currentMultiplier > 0 
-                                ? `💰 PARAR E RESGATAR $${currentWin.toFixed(2)}` 
-                                : '🚪 SAIR AGORA'}
-                        </button>
+                        {showResult && (
+                            <button
+                                onClick={onComplete}
+                                disabled={isAnimating}
+                                className="w-full py-3 mt-4 bg-yellow-600/80 hover:bg-yellow-500 text-white rounded-xl font-bold text-sm border border-yellow-400/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                            >
+                                {currentMultiplier > 0 
+                                    ? `💰 PARAR E RESGATAR $${currentWin.toFixed(2)}` 
+                                    : '🚪 SAIR AGORA'}
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div>
                          <div className="mb-4">
-                            {currentMultiplier > 0 ? (
+                            {showResult && currentMultiplier > 0 ? (
                                 <p className="text-green-400 font-bold text-lg animate-pulse">🎉 PARABÉNS! 🎉</p>
                             ) : (
                                 <p className="text-red-400 font-bold text-lg">💔 QUE PENA! 💔</p>
                             )}
                         </div>
-                        <button 
-                            onClick={onComplete}
-                            className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg hover:brightness-110 active:scale-95 transition-all"
-                        >
-                            {currentMultiplier > 0 ? 'COLETAR GANHOS' : 'FECHAR'}
-                        </button>
+                        {showResult && (
+                            <button 
+                                onClick={onComplete}
+                                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg hover:brightness-110 active:scale-95 transition-all"
+                            >
+                                {currentMultiplier > 0 ? 'COLETAR GANHOS' : 'FECHAR'}
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
