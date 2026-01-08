@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MID, SUGAR_CONVERSION, SYM } from '../constants';
 import { getRandomSymbolFromInventory, calculateMidMultiplierValue, createWeightSnapshot, spinFromSnapshot } from '../utils/spinCalculations';
+import { calculateMomentumThreshold } from '../utils/mechanics/momentumCalculator';
 import type { SymbolKey, MidSymbolKey, Inventory, Multipliers, PanificadoraLevels, SkillId, RoiSaldo, ActiveCookie, StarBonusState, StarBonusResult, CoinFlipState } from '../types';
 import type { UseSweetLadderResult } from './useSweetLadder';
 import type { useParaisoDoceDetector } from './useParaisoDoceDetector';
@@ -419,21 +420,38 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                     const currentSpinBet = febreDocesAtivo ? betValFebre : betVal;
                     if (!febreDocesAtivo) {
                         const netGain = finalWinnings - currentSpinBet;
-                        let curL = momentoLevel; let newP = momentoProgress + netGain; let threshold = (curL + 1) * 100;
+                        let curL = momentoLevel;
+                        let newP = momentoProgress + netGain;
                         const rewards: Partial<Record<MidSymbolKey, number>> = {};
                         let totalS = 0;
-                        while (newP >= threshold && newP > 0) {
-                            newP -= threshold; curL++; threshold = (curL + 1) * 100;
+                        
+                        // Progressão de Momentum com Nova Fórmula Tetraédrica
+                        while (newP >= 0) {
+                            const nextThreshold = calculateMomentumThreshold(curL + 1);
+                            if (newP < nextThreshold) break;
+                            
+                            newP -= nextThreshold;
+                            curL++;
+                            
                             const candies = curL;
                             for (let i = 0; i < candies; i++) {
                                 const r = MID[Math.floor(Math.random() * MID.length)] as MidSymbolKey;
-                                rewards[r] = (rewards[r] || 0) + 1; totalS += SUGAR_CONVERSION[r];
+                                rewards[r] = (rewards[r] || 0) + 1;
+                                totalS += SUGAR_CONVERSION[r];
                             }
                         }
+                        
                         if (totalS > 0) {
                             showMsg(`Momento Nível ${curL}! +${totalS} 🍬`, 4000, true);
-                            setInv(prev => { const n = { ...prev }; Object.entries(rewards).forEach(([k,v]) => { n[k as MidSymbolKey] = (n[k as MidSymbolKey] || 0) + v!; }); return n; });
-                            setSugar(prev => prev + totalS); setMomentoLevel(curL);
+                            setInv(prev => {
+                                const n = { ...prev };
+                                Object.entries(rewards).forEach(([k, v]) => {
+                                    n[k as MidSymbolKey] = (n[k as MidSymbolKey] || 0) + v!;
+                                });
+                                return n;
+                            });
+                            setSugar(prev => prev + totalS);
+                            setMomentoLevel(curL);
                         }
                         setMomentoProgress(newP);
                         if (finalWinnings < currentSpinBet * 2) setUnluckyPot(p => p + currentSpinBet);
