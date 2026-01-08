@@ -26,31 +26,6 @@ export const SWEET_LADDER_CONFIG = {
 export const CANDY_SYMBOLS = ['🍭', '🍦', '🍧'] as const;
 
 /**
- * Calcula momentum usando a fórmula de números tetraédricos e triangulares
- * f(1): Soma de n números triangulares (Número Tetraédrico) × 10
- * f(2): O n-ésimo número triangular multiplicado por 100
- * f(final): Soma dos dois resultados
- * 
- * @param n O número de termos (nível da corrente)
- * @returns Momentum total calculado
- */
-function calculateMomentum(n: number): number {
-  // f(1): Número Tetraédrico = (n × (n+1) × (n+2)) / 6) × 10
-  const f1 = ((n * (n + 1) * (n + 2)) / 6) * 10;
-  
-  // f(2): Número Triangular = (n × (n+1)) / 2) × 100
-  const f2 = ((n * (n + 1)) / 2) * 100;
-  
-  // f(final): Soma dos resultados
-  const fFinal = f1 + f2;
-  
-  // Log para debug (comentar em produção se necessário)
-  // console.log(`Momentum para n=${n}: f(1)=${f1.toLocaleString('pt-BR')}, f(2)=${f2.toLocaleString('pt-BR')}, f(final)=${fFinal.toLocaleString('pt-BR')}`);
-  
-  return fFinal;
-}
-
-/**
  * Verifica se um símbolo é um doce
  */
 export function isCandySymbol(symbol: string): boolean {
@@ -114,8 +89,8 @@ export function processMultipleHits(
     const newChainLevel = chainData.chain + 1;
     const newHits = chainData.hits + 1;
     
-    // Calcula bônus dessa corrente usando a nova fórmula de momentum
-    const bonus = calculateMomentum(newChainLevel);
+    // Calcula bônus dessa corrente
+    const bonus = newChainLevel * SWEET_LADDER_CONFIG.BONUS_PER_LEVEL;
     totalBonus += bonus;
 
     // Verifica se ganhou vida
@@ -147,7 +122,7 @@ export function processMultipleHits(
 
   for (let i = 0; i < chainsToCreate; i++) {
     // Nova corrente começa em nível 1 (já conta o primeiro acerto)
-    const bonus = calculateMomentum(1);
+    const bonus = 1 * SWEET_LADDER_CONFIG.BONUS_PER_LEVEL;
     totalBonus += bonus;
 
     newChains.push({
@@ -276,13 +251,13 @@ export function getChainsSummary(state: SweetLadderState): {
 }
 
 /**
- * Calcula bônus total acumulado de todas as correntes usando a nova fórmula de momentum
+ * Calcula bônus total acumulado de todas as correntes
  */
 export function getTotalBonusEarned(state: SweetLadderState): number {
   let total = 0;
   for (const chainData of state.chains) {
-    // Usa a fórmula de momentum tetrahedral + triangular
-    total += calculateMomentum(chainData.chain);
+    // Soma aritmética: 1 + 2 + 3 + ... + n = n * (n + 1) / 2
+    total += (chainData.chain * (chainData.chain + 1) / 2) * SWEET_LADDER_CONFIG.BONUS_PER_LEVEL;
   }
   return total;
 }
