@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { RoiSaldo, Inventory, SymbolKey, FeverPackage, PurchasedPackage, FeverContentResult, Multipliers, FeverReport, MidSymbolKey } from '../types';
 import { ALL_FEVER_PACKAGES } from '../constants/feverPackages';
-import { SYM, INITIAL_INVENTORY, INITIAL_MULTIPLIERS, MID, SUGAR_CONVERSION } from '../constants';
+import { SYM, INITIAL_INVENTORY, INITIAL_MULTIPLIERS, SUGAR_CONVERSION } from '../constants';
 import { useSweetLadder } from './useSweetLadder';
 import { createFeverSnapshot, restoreFromSnapshot, EMPTY_FEVER_SNAPSHOT, type FeverSnapshot } from '../utils/feverStateIsolation';
 import type { useParaisoDoceDetector } from './useParaisoDoceDetector';
@@ -15,6 +15,8 @@ interface FebreDoceProps {
     setMult: React.Dispatch<React.SetStateAction<Multipliers>>;
     bal: number;
     setBal: React.Dispatch<React.SetStateAction<number>>;
+    sugar: number; // 🍬 Doces disponíveis
+    setSugar: React.Dispatch<React.SetStateAction<number>>; // 🍬 Setter de doces
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     feverSnapshot: FeverSnapshot;
     setFeverSnapshot: (snapshot: FeverSnapshot) => void;
@@ -24,7 +26,7 @@ interface FebreDoceProps {
 export type FeverPhase = 'IDLE' | 'SETUP' | 'ACTIVE';
 
 export const useFebreDoce = (props: FebreDoceProps) => {
-    const { roiSaldo, setRoiSaldo, inv, setInv, mult, setMult, bal, setBal, showMsg, feverSnapshot, setFeverSnapshot, paraisoDetector } = props;
+    const { roiSaldo, setRoiSaldo, inv, setInv, mult, setMult, bal, setBal, sugar, setSugar, showMsg, feverSnapshot, setFeverSnapshot, paraisoDetector } = props;
 
     const [feverPhase, setFeverPhase] = useState<FeverPhase>('IDLE');
     const [cooldownEnd, setCooldownEnd] = useState<number | null>(null);
@@ -66,14 +68,14 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         if (feverPhase === 'SETUP') {
             if (selectedPackages.length > 0) {
                 const totalRefund = selectedPackages.reduce((acc, p) => acc + p.cost, 0);
-                setBal(b => b + totalRefund);
-                showMsg(`Cancelado: $${totalRefund.toLocaleString()} reembolsados!`, 3000, true);
+                setSugar(s => s + totalRefund); // 🍬 Reembolsa em doces
+                showMsg(`Cancelado: 🍬 ${totalRefund} doces reembolsados!`, 3000, true);
             }
             
             setSelectedPackages([]);
             setFeverPhase('IDLE');
         }
-    }, [feverPhase, selectedPackages, setBal, showMsg]);
+    }, [feverPhase, selectedPackages, setSugar, showMsg]);
 
     const resolvePackageRoll = (pkg: FeverPackage): { result: any, desc: string, contents?: FeverContentResult } => {
         if (!pkg.rolls) return { result: null, desc: '' };
@@ -172,11 +174,11 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         if (selectedPackages.some(p => p.id === pkg.id)) {
             return showMsg("Você já comprou este pacote!", 2000, true);
         }
-        if (bal < pkg.cost) {
-            return showMsg("Saldo insuficiente!", 2000, true);
+        if (sugar < pkg.cost) { // 🍬 Verifica doces em vez de dinheiro
+            return showMsg("Doces insuficientes!", 2000, true);
         }
 
-        setBal(b => b - pkg.cost);
+        setSugar(s => s - pkg.cost); // 🍬 Decrementa doces
 
         let purchased: PurchasedPackage = { ...pkg, uniqueId: `${pkg.id}_${Date.now()}` };
 
@@ -212,9 +214,9 @@ export const useFebreDoce = (props: FebreDoceProps) => {
         }
 
         setSelectedPackages(prev => [...prev, purchased]);
-        showMsg(`${pkg.name} adquirido!`, 1500, true);
+        showMsg(`${pkg.name} adquirido! (-🍬 ${pkg.cost})`, 1500, true);
 
-    }, [bal, selectedPackages, setBal, showMsg, paraisoDetector]);
+    }, [sugar, selectedPackages, setSugar, showMsg, paraisoDetector]);
 
 
     const startFever = useCallback(() => {
