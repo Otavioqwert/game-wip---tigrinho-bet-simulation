@@ -100,6 +100,7 @@ const App: React.FC = () => {
             {game.feverPhase === 'SETUP' && (
                 <FeverSetupModal
                     bal={game.bal}
+                    sugar={game.sugar} // 🍬 Passa doces para o modal
                     selectedPackages={game.selectedPackages}
                     buyPackage={game.buyPackage}
                     startFever={game.startFever}
