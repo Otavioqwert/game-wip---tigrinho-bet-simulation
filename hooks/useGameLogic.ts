@@ -130,6 +130,7 @@ export const useGameLogic = () => {
         priceIncreaseModifier: secondarySkills.priceIncreaseModifier
     });
 
+    // 🍬 FEBRE DOCE: Passando sugar e setSugar
     const febreDoce = useFebreDoce({
         roiSaldo: gameState.roiSaldo,
         setRoiSaldo: gameState.setRoiSaldo,
@@ -139,10 +140,12 @@ export const useGameLogic = () => {
         setMult: gameState.setMult,
         bal: gameState.bal,
         setBal: gameState.setBal,
+        sugar: gameState.sugar, // 🍬 Passa doces
+        setSugar: gameState.setSugar, // 🍬 Passa setter de doces
         showMsg,
         feverSnapshot: gameState.feverSnapshot,
         setFeverSnapshot: gameState.setFeverSnapshot,
-        paraisoDetector, // PASSA O DETECTOR
+        paraisoDetector,
     });
 
     const spinLogic = useSpinLogic({
@@ -277,7 +280,7 @@ export const useGameLogic = () => {
             handleGain(final);
         },
         paraisoDetector,
-        handleParaisoReward, // 🍭 EXPORTA O HELPER
+        handleParaisoReward,
         isBankrupt: secondarySkills.getSecondarySkillLevel('bankruptcy') > 0 && gameState.creditCardDebt >= secondarySkills.creditLimit,
         creditCardLevel: secondarySkills.getSecondarySkillLevel('bankruptcy'),
         openCreditCardModal: () => setIsCreditCardModalOpen(true),
