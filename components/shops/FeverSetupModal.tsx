@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import type { FeverPackage, PurchasedPackage, FeverTier, FeverType, FeverRollOption, FeverContentResult } from '../../types';
 import { ALL_FEVER_PACKAGES } from '../../constants/feverPackages';
 
 interface FeverSetupModalProps {
     bal: number;
+    sugar: number; // 🍬 Doce disponível
     selectedPackages: PurchasedPackage[];
     buyPackage: (pkg: FeverPackage) => void;
     startFever: () => void;
@@ -12,7 +12,7 @@ interface FeverSetupModalProps {
     momentoLevel: number;
 }
 
-const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages, buyPackage, startFever, onClose, momentoLevel }) => {
+const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, sugar, selectedPackages, buyPackage, startFever, onClose, momentoLevel }) => {
     const [activeTier, setActiveTier] = useState<FeverTier>('budget');
     const [activeType, setActiveType] = useState<FeverType | 'all'>('all');
     const [inspectedPackage, setInspectedPackage] = useState<FeverPackage | null>(null);
@@ -42,8 +42,8 @@ const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages
                     <p className="text-gray-300 text-sm">Monte seu arsenal para os 25 Giros Grátis!</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-2xl font-bold text-green-400">${bal.toFixed(2)}</p>
-                    <p className="text-xs text-gray-400">Saldo Atual</p>
+                    <p className="text-2xl font-bold text-pink-400">🍬 {sugar.toFixed(0)} Doces</p>
+                    <p className="text-xs text-gray-400">Custo: 1 🍬 = $100</p>
                 </div>
             </div>
 
@@ -57,7 +57,7 @@ const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages
                              <span className="text-lg">{p.type === 'bet' ? '🎲' : '📦'}</span>
                              <div className="flex flex-col leading-none">
                                 <span className="text-xs font-bold text-white">{p.name}</span>
-                                <span className="text-[10px] text-green-400">{p.resultDescription}</span>
+                                <span className="text-[10px] text-pink-400">🍬 {p.cost}</span>
                              </div>
                         </div>
                     ))
@@ -88,7 +88,7 @@ const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages
             <div className="flex-grow overflow-y-auto w-full max-w-6xl p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredPackages.map(pkg => {
                     const isPurchased = selectedPackages.some(p => p.id === pkg.id);
-                    const canAfford = bal >= pkg.cost;
+                    const canAfford = sugar >= pkg.cost;
                     const isFull = selectedPackages.length >= 3;
                     const isRisk = pkg.risk === 'risk';
                     
@@ -121,7 +121,7 @@ const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages
 
                             <div className="mt-auto pt-3 border-t border-gray-700">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xl font-bold text-white">${pkg.cost.toLocaleString()}</span>
+                                    <span className="text-xl font-bold text-white">🍬 {pkg.cost}</span>
                                     {pkg.expected_roi && (
                                         <span className={`text-xs font-bold ${pkg.expected_roi > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                             ROI {pkg.expected_roi > 0 ? '+' : ''}{pkg.expected_roi}%
@@ -139,7 +139,7 @@ const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages
                                         'bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white'
                                     }`}
                                 >
-                                    {isLocked ? 'BLOQUEADO (NÍVEL 10)' : isPurchased ? 'COMPRADO' : isFull ? 'MAX 3' : 'COMPRAR'}
+                                    {isLocked ? 'BLOQUEADO (NÍVEL 10)' : isPurchased ? 'COMPRADO' : isFull ? 'MAX 3' : '🍬 COMPRAR'}
                                 </button>
                             </div>
                         </div>
@@ -186,7 +186,7 @@ const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages
                                                 const mults = roll.contents.multipliers ? Object.entries(roll.contents.multipliers).map(([k,v]) => `${v}x ${k}`).join(', ') : '';
                                                 displayContent = [items, mults].filter(Boolean).join(' + ');
                                             } else {
-                                                displayContent = `$${(roll.value || 0).toLocaleString()}`;
+                                                displayContent = `🍬 ${(roll.value || 0).toLocaleString()}`;
                                             }
                                             
                                             return (
@@ -233,7 +233,7 @@ const FeverSetupModal: React.FC<FeverSetupModalProps> = ({ bal, selectedPackages
                         </div>
                         
                         <div className="mt-4 pt-2 border-t border-purple-800 text-center">
-                            <span className="text-gray-500 text-xs">Custo: ${inspectedPackage.cost.toLocaleString()}</span>
+                            <span className="text-pink-400 text-xs">Custo: 🍬 {inspectedPackage.cost} Doces</span>
                         </div>
                     </div>
                 </div>
