@@ -2,6 +2,7 @@ import type { FeverPackage } from '../types';
 
 // ==========================================
 // 📦 ITEM PACKAGES
+// CUSTO EM DOCES (🍬): $100 = 1 🍬
 // ==========================================
 
 export const ITEM_PACKAGES: FeverPackage[] = [
@@ -9,7 +10,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'safe_budget_1',
         name: '🍭 Pacote Docinho',
-        cost: 500,
+        cost: 5, // Era $500 → 5 doces
         type: 'item', risk: 'safe', tier: 'budget',
         icon: '🍭',
         contents: { items: { '🍭': 12, '🍦': 5, '🍧': 2 }, multipliers: { '🍭': 12, '🍦': 8 } },
@@ -18,7 +19,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'safe_budget_2',
         name: '🍀 Pacote Sortudo',
-        cost: 1000,
+        cost: 10, // Era $1.000 → 10 doces
         type: 'item', risk: 'safe', tier: 'budget',
         icon: '🍀',
         contents: { items: { '🍀': 8 }, multipliers: { '🍀': 10 } },
@@ -27,7 +28,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'risk_budget_1',
         name: '🎁 Caixa Mistério',
-        cost: 800,
+        cost: 8, // Era $800 → 8 doces
         type: 'item', risk: 'risk', tier: 'budget',
         icon: '🎁',
         contents: 'WEIGHTED_RANDOM',
@@ -44,7 +45,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'pkg_doce_escada',
         name: '🔗 Doce Corrente',
-        cost: 3250,
+        cost: 33, // Era $3.250 → 33 doces
         type: 'item', risk: 'safe', tier: 'budget',
         icon: '🔗',
         contents: { items: {}, multipliers: {} },
@@ -53,7 +54,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'pkg_star_junior',
         name: '⭐ Star Junior',
-        cost: 3500,
+        cost: 35, // Era $3.500 → 35 doces
         type: 'item', risk: 'safe', tier: 'budget',
         icon: '⭐',
         contents: { items: { '⭐': 3 }, multipliers: {} },
@@ -64,12 +65,9 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'safe_mid_1',
         name: '🍬 Paraíso Doce',
-        cost: 3000,
+        cost: 30, // Era $3.000 → 30 doces
         type: 'item', risk: 'safe', tier: 'mid',
         icon: '🍬',
-        // 🍭: 0.2 × 1.05^57 ≈ 3.0x ($10 → $30)
-        // 🍦: 0.3 × 1.05^66 ≈ 7.5x ($10 → $75)
-        // 🍧: 0.4 × 1.05^69 ≈ 12.5x ($10 → $125) - APENAS neste pacote!
         contents: { 
             items: { '🍭': 10, '🍦': 5 }, 
             multipliers: { '🍭': 57, '🍦': 66, '🍧': 69 }
@@ -79,7 +77,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'risk_mid_3',
         name: '⚡ Tigre Turbinado',
-        cost: 10000,
+        cost: 100, // Era $10.000 → 100 doces
         type: 'item', risk: 'safe', tier: 'mid',
         icon: '⚡',
         contents: { items: { '🐯': 3 }, multipliers: { '🐯': 50 } },
@@ -88,7 +86,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'risk_mid_1',
         name: '🎰 Baú do Apostador',
-        cost: 7500,
+        cost: 75, // Era $7.500 → 75 doces
         type: 'item', risk: 'risk', tier: 'mid',
         icon: '🎰',
         contents: 'TOTALLY_RANDOM_CHEST',
@@ -99,7 +97,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'safe_mid_3',
         name: '🐯 Caçada ao Tigre',
-        cost: 35000,
+        cost: 350, // Era $35.000 → 350 doces
         type: 'item', risk: 'risk', tier: 'premium',
         icon: '🐯',
         contents: { items: { '🐯': 6, '🍭': 10, '🍦': 10, '🍧': 10 }, multipliers: { '🐯': 500 } },
@@ -108,7 +106,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'safe_premium_1',
         name: '💼 Pacote Executivo',
-        cost: 15000,
+        cost: 150, // Era $15.000 → 150 doces
         type: 'item', risk: 'safe', tier: 'premium',
         icon: '💼',
         contents: { items: { '🐯': 4, '💎': 8, '💵': 12 }, multipliers: { '🐯': 40, '💎': 32, '💵': 20 } },
@@ -117,7 +115,7 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'safe_premium_4',
         name: '👑 Pacote Real',
-        cost: 35000,
+        cost: 350, // Era $35.000 → 350 doces
         type: 'item', risk: 'safe', tier: 'premium',
         icon: '👑',
         contents: { items: { '☄️': 2, '⭐': 3, '🐯': 5 }, multipliers: { '☄️': 50, '🐯': 60 } },
@@ -126,10 +124,9 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'risk_premium_2',
         name: '🌠 Chuva de Meteoros',
-        cost: 28000,
+        cost: 280, // Era $28.000 → 280 doces
         type: 'item', risk: 'safe', tier: 'premium',
         icon: '🌠',
-        // REVERTIDO: Não tem mais +69 níveis de 🍧
         contents: { items: { '☄️': 3, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, multipliers: { '☄️': 150 } },
         description: '3 Meteoros, 1 Estrela, Doces e +150% de Poder Real (Níveis)!'
     },
@@ -138,17 +135,16 @@ export const ITEM_PACKAGES: FeverPackage[] = [
     {
         id: 'risk_luxury_2',
         name: '💫 Explosão Estelar',
-        cost: 70000,
+        cost: 700, // Era $70.000 → 700 doces
         type: 'item', risk: 'safe', tier: 'luxury',
         icon: '💫',
-        // REVERTIDO: Não tem mais +69 níveis de 🍧
         contents: { items: { '☄️': 10, '⭐': 1, '🍭': 5, '🍦': 5, '🍧': 5 }, multipliers: { '☄️': 300 } },
         description: '10 Meteoros, 1 Estrela, Doces e +300% de Poder Real (Níveis)!'
     },
     {
         id: 'risk_luxury_3',
         name: '🌠 Aposta Suprema',
-        cost: 155000,
+        cost: 1550, // Era $155.000 → 1.550 doces
         type: 'item', risk: 'risk', tier: 'luxury',
         icon: '🌌',
         contents: 'MEGA_JACKPOT',
@@ -164,16 +160,17 @@ export const ITEM_PACKAGES: FeverPackage[] = [
 
 // ==========================================
 // 🎰 BET PACKAGES (SPINS)
+// CUSTO EM DOCES (🍬): $100 = 1 🍬
 // ==========================================
 
 export const BET_PACKAGES: FeverPackage[] = [
-    { id: 'bet_micro', name: '🎲 Micro Spins', cost: 1000, type: 'bet', tier: 'budget', spins: 10, icon: '🎲', description: '10 Spins ($100/giro) - ROI +50%' },
-    { id: 'bet_small', name: '🎲 Small Spins', cost: 10000, type: 'bet', tier: 'budget', spins: 50, icon: '🤏', description: '50 Spins ($200/giro) - ROI -25%' },
-    { id: 'bet_standard', name: '🎲 Standard Spins', cost: 25000, type: 'bet', tier: 'mid', spins: 100, icon: '🏪', description: '100 Spins ($250/giro) - ROI -40%' },
-    { id: 'bet_gambler', name: '🎲 Gambler Spins', cost: 5000, type: 'bet', risk: 'risk', tier: 'mid', icon: '🎴', spins: 'VARIABLE', rolls: { bad: { spins: 20, chance: 0.40 }, ok: { spins: 40, chance: 0.40 }, good: { spins: 60, chance: 0.20 } }, description: '20-60 Spins (MELHOR RISK! EV +20%)' },
-    { id: 'pkg_apostador', name: '😎 O Apostador', cost: 15000, type: 'bet', tier: 'mid', spins: 0, icon: '🕶️', description: 'Aposta sobe para $100, mas giros totais caem para 1/4.' },
-    { id: 'bet_volatile', name: '🌪️ Volatile Spins', cost: 50000, type: 'bet', risk: 'risk', tier: 'premium', icon: '🌪️', spins: 'EXTREME_VARIABLE', rolls: { disaster: { spins: 50, chance: 0.50 }, jackpot: { spins: 400, chance: 0.50 } }, description: '50 ou 400 Spins (Tudo ou Nada)' },
-    { id: 'bet_jackpot', name: '💎 Jackpot Spins', cost: 200000, type: 'bet', risk: 'risk', tier: 'luxury', icon: '💎', spins: 'MEGA_VARIABLE', rolls: { disaster: { spins: 100, chance: 0.40 }, bad: { spins: 500, chance: 0.30 }, good: { spins: 1200, chance: 0.20 }, jackpot: { spins: 2000, chance: 0.10 } }, description: '100 a 2000 Spins - 10% chance de Jackpot' }
+    { id: 'bet_micro', name: '🎲 Micro Spins', cost: 10, type: 'bet', tier: 'budget', spins: 10, icon: '🎲', description: '10 Spins (1 🍬/giro) - ROI +50%' },
+    { id: 'bet_small', name: '🎲 Small Spins', cost: 100, type: 'bet', tier: 'budget', spins: 50, icon: '🤏', description: '50 Spins (2 🍬/giro) - ROI -25%' },
+    { id: 'bet_standard', name: '🎲 Standard Spins', cost: 250, type: 'bet', tier: 'mid', spins: 100, icon: '🏪', description: '100 Spins (2.5 🍬/giro) - ROI -40%' },
+    { id: 'bet_gambler', name: '🎲 Gambler Spins', cost: 50, type: 'bet', risk: 'risk', tier: 'mid', icon: '🎴', spins: 'VARIABLE', rolls: { bad: { spins: 20, chance: 0.40 }, ok: { spins: 40, chance: 0.40 }, good: { spins: 60, chance: 0.20 } }, description: '20-60 Spins (MELHOR RISK! EV +20%)' },
+    { id: 'pkg_apostador', name: '😎 O Apostador', cost: 150, type: 'bet', tier: 'mid', spins: 0, icon: '🕶️', description: 'Aposta sobe para $100, mas giros totais caem para 1/4.' },
+    { id: 'bet_volatile', name: '🌪️ Volatile Spins', cost: 500, type: 'bet', risk: 'risk', tier: 'premium', icon: '🌪️', spins: 'EXTREME_VARIABLE', rolls: { disaster: { spins: 50, chance: 0.50 }, jackpot: { spins: 400, chance: 0.50 } }, description: '50 ou 400 Spins (Tudo ou Nada)' },
+    { id: 'bet_jackpot', name: '💎 Jackpot Spins', cost: 2000, type: 'bet', risk: 'risk', tier: 'luxury', icon: '💎', spins: 'MEGA_VARIABLE', rolls: { disaster: { spins: 100, chance: 0.40 }, bad: { spins: 500, chance: 0.30 }, good: { spins: 1200, chance: 0.20 }, jackpot: { spins: 2000, chance: 0.10 } }, description: '100 a 2000 Spins - 10% chance de Jackpot' }
 ];
 
 export const ALL_FEVER_PACKAGES = [...ITEM_PACKAGES, ...BET_PACKAGES];
