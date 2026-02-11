@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { FeverReport } from '../../types';
 
@@ -10,8 +9,6 @@ interface FeverReportModalProps {
 const FeverReportModal: React.FC<FeverReportModalProps> = ({ report, onClose }) => {
     const profit = report.endBalance - report.startBalance;
     const isProfit = profit >= 0;
-    
-    // Animate numbers? For now simple display.
     
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-lg">
@@ -29,6 +26,19 @@ const FeverReportModal: React.FC<FeverReportModalProps> = ({ report, onClose }) 
                         RELATÓRIO DA FEBRE
                     </h2>
                     <p className="text-gray-400 text-sm mb-6">Sessão Finalizada</p>
+
+                    {/* 🍬 NOVO: Anúncio da mudança de moeda */}
+                    <div className="bg-gradient-to-r from-pink-600/30 to-purple-600/30 border-2 border-pink-500 rounded-xl p-3 mb-4">
+                        <p className="text-pink-300 font-bold text-sm">🍬 NOVA MOEDA: DOCES!</p>
+                        <p className="text-gray-300 text-xs mt-1">
+                            A Febre Doce agora usa <span className="text-pink-400 font-bold">Doces (🍬)</span> como moeda! 
+                            <br />
+                            <span className="text-yellow-400">100$ = 1 🍬</span>
+                        </p>
+                        <p className="text-gray-400 text-[10px] mt-1 italic">
+                            Mais previsível, mais justo, mais doce! 🍭
+                        </p>
+                    </div>
 
                     {/* Main Result */}
                     <div className="bg-white/5 rounded-2xl p-6 mb-6 border border-white/10">
@@ -57,7 +67,7 @@ const FeverReportModal: React.FC<FeverReportModalProps> = ({ report, onClose }) 
                         </div>
                         <div className="bg-black/40 p-3 rounded-xl border border-white/5">
                             <p className="text-gray-500 text-xs">Pacotes</p>
-                            <p className="text-purple-400 font-bold">{report.packagesUsed.length}</p>
+                            <p className="text-pink-400 font-bold">{report.packagesUsed.length}</p>
                         </div>
                     </div>
 
