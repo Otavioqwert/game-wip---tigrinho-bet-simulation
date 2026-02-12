@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { INITIAL_INVENTORY, INITIAL_MULTIPLIERS } from '../constants';
 import type { Inventory, Multipliers, PanificadoraLevels, RoiSaldo, RenegotiationTier, ActiveCookie, ScratchCardMetrics, LotericaInjectionState, BakeryState, CraftingSlot } from '../types';
 import { prepareSaveState, EMPTY_FEVER_SNAPSHOT, type FeverSnapshot } from '../utils/feverStateIsolation';
+import { calculateMomentumLevel } from '../utils/mechanics/momentumCalculator';
 
 const SAVE_KEY = 'tigrinho-save-game';
-const SAVE_VERSION = 29; // Updated Version for 1 Initial Bakery Slot
+const SAVE_VERSION = 30; // Migração de Momento tetraédrico
 
 export interface ItemPenalty { amount: number; }
 
@@ -128,6 +129,11 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
                 // parts[0] = Version, parts[1] = Timestamp/ID, parts[2] = Encoded Data
                 if (parts.length >= 3) {
                     const decoded = JSON.parse(decodeURIComponent(escape(atob(parts[2]))));
+                    
+                    // Versão do save: V29, V30, etc
+                    const versionTag = parts[0]; // ex: "V29"
+                    const version = parseInt(versionTag.slice(1), 10) || 0;
+                    
                     // Merge com o estado inicial para garantir novas propriedades
                     const merged = { ...getInitialState(), ...decoded };
                     
@@ -142,6 +148,36 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
                     // Ensure feverSnapshot exists
                     if (!decoded.feverSnapshot) {
                         merged.feverSnapshot = EMPTY_FEVER_SNAPSHOT;
+                    }
+
+                    // --- MIGRAÇÃO DE MOMENTO PARA FÓRMULA TETRAÉDRICA ---
+                    // Só roda para saves antigos (V29 e anteriores)
+                    if (version > 0 && version < 30) {
+                        try {
+                            const oldLevel = merged.momentoLevel ?? 0;
+                            const oldProgress = merged.momentoProgress ?? 0;
+
+                            if (oldLevel > 0 || oldProgress > 0) {
+                                // Aproxima o total de progresso com a fórmula antiga (linear):
+                                // threshold_antigo(i) = i * 100
+                                let approxTotal = oldProgress;
+                                for (let i = 1; i <= oldLevel; i++) {
+                                    approxTotal += i * 100;
+                                }
+
+                                const { level, remainingProgress } = calculateMomentumLevel(approxTotal);
+                                merged.momentoLevel = level;
+                                merged.momentoProgress = remainingProgress;
+                                
+                                console.log('[Momentum Migration] Migrado de', 
+                                    { oldLevel, oldProgress }, 
+                                    'para', 
+                                    { level, remainingProgress }
+                                );
+                            }
+                        } catch (e) {
+                            console.warn('[Momentum Migration] Falha ao migrar Momento, mantendo valores antigos', e);
+                        }
                     }
                     
                     setState(merged);
@@ -172,7 +208,7 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
         
         // Usamos Date.now() como ID único do save para diferenciar cada salvamento
         const timestamp = Date.now();
-        localStorage.setItem(SAVE_KEY, `V29:${timestamp}:${encoded}`);
+        localStorage.setItem(SAVE_KEY, `V${SAVE_VERSION}:${timestamp}:${encoded}`);
         
         if (isManual) showMsg("✅ Jogo salvo!", 2000, true);
     }, [showMsg]);
