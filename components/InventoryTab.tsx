@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import type { Inventory, SymbolKey, RoiSaldo, ActiveCookie } from '../types';
 import PoolHealthIndicator from './PoolHealthIndicator';
 import { calculatePoolDensity } from '../utils/poolMetrics';
+import { calculateMomentumThreshold } from '../utils/mechanics/momentumCalculator';
 
 interface InventoryTabProps {
     inv: Inventory;
@@ -14,7 +15,7 @@ interface InventoryTabProps {
 }
 
 const InventoryTab: React.FC<InventoryTabProps> = ({ inv, roiSaldo, momentoLevel, momentoProgress, sugar, activeCookies }) => {
-    const nextThreshold = (momentoLevel + 1) * 100;
+    const nextThreshold = calculateMomentumThreshold(momentoLevel + 1);
     const displayProgress = Math.max(0, momentoProgress);
     const progressPercent = Math.min(100, (displayProgress / nextThreshold) * 100);
 
