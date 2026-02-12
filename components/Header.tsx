@@ -1,5 +1,5 @@
-
 import React from 'react';
+import { calculateMomentumThreshold } from '../utils/mechanics/momentumCalculator';
 
 interface HeaderProps {
     bal: number;
@@ -14,7 +14,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ bal, betVal, betValFebre, febreDocesAtivo, momentoLevel, momentoProgress, openFeverSetup, cooldownEnd }) => {
-    const nextThreshold = (momentoLevel + 1) * 100;
+    const nextThreshold = calculateMomentumThreshold(momentoLevel + 1);
     const displayProgress = Math.max(0, momentoProgress);
     const progressPercent = Math.min(100, (displayProgress / nextThreshold) * 100);
 
