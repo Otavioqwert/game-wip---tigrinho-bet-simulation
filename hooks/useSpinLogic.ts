@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MID, SUGAR_CONVERSION, SYM } from '../constants';
 import { getRandomSymbolFromInventory, calculateMidMultiplierValue, createWeightSnapshot, spinFromSnapshot } from '../utils/spinCalculations';
-import { calculateMomentumThreshold } from '../utils/mechanics/momentumCalculator';
 import type { SymbolKey, MidSymbolKey, Inventory, Multipliers, PanificadoraLevels, SkillId, RoiSaldo, ActiveCookie, StarBonusState, StarBonusResult, CoinFlipState } from '../types';
 import type { UseSweetLadderResult } from './useSweetLadder';
 import type { useParaisoDoceDetector } from './useParaisoDoceDetector';
@@ -42,7 +41,7 @@ interface SpinLogicProps {
     setSugar: React.Dispatch<React.SetStateAction<number>>;
     sweetLadder: UseSweetLadderResult;
     paraisoDetector: ReturnType<typeof useParaisoDoceDetector>;
-    isCloverPackActive?: boolean; // Optional but will be validated to safe default
+    isCloverPackActive?: boolean;
 }
 
 export interface UseSpinLogicResult {
@@ -66,13 +65,17 @@ export interface UseSpinLogicResult {
     startCoinFlip: (flips: number, bet: number) => void;
 }
 
+// Progress\u00e3o do Momento: threshold = 100x + x\u00b2/2
+// onde x \u00e9 o pr\u00f3ximo n\u00edvel a ser alcan\u00e7ado
+const calculateMomentumThreshold = (level: number): number => {
+    return 100 * level + (level * level) / 2;
+};
+
 export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
-    // VALIDATE ALL PROPS AT ENTRY POINT
-    // This ensures isCloverPackActive is NEVER undefined
     const props = validateSpinLogicProps(rawProps);
 
     const [isSpinning, setIsSpinning] = useState(false);
-    const [grid, setGrid] = useState<SymbolKey[]>(Array(9).fill('🍭'));
+    const [grid, setGrid] = useState<SymbolKey[]>(Array(9).fill('\ud83c\udf6d'));
     const [spinningColumns, setSpinningColumns] = useState([false, false, false]);
     const [stoppingColumns, setStoppingColumns] = useState([false, false, false]);
     const [quickSpinQueue, setQuickSpinQueue] = useState(0);
@@ -85,7 +88,7 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
         isActive: false, flipsRemaining: 0, currentMultiplier: 0, currentBet: 0, history: [], lastResult: null, isAnimating: false
     });
 
-    const [starStreak, setStarStreak] = useState(0); // sequência de acertos ⭐
+    const [starStreak, setStarStreak] = useState(0);
 
     const propsRef = useRef(props);
     propsRef.current = props;
@@ -109,9 +112,9 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
     const availableKeys = useMemo(() => {
         const { inv } = props;
         let keys = (Object.keys(inv) as SymbolKey[]).filter(k => (inv[k] || 0) > 0);
-        if (getSkillLevel('caminhoCometa') === 0) keys = keys.filter(s => s !== '☄️');
-        if (getSkillLevel('caminhoFicha') === 0) keys = keys.filter(s => s !== '🪙');
-        return keys.length > 0 ? keys : (['🍭'] as SymbolKey[]);
+        if (getSkillLevel('caminhoCometa') === 0) keys = keys.filter(s => s !== '\u2604\ufe0f');
+        if (getSkillLevel('caminhoFicha') === 0) keys = keys.filter(s => s !== '\ud83e\ude99');
+        return keys.length > 0 ? keys : (['\ud83c\udf6d'] as SymbolKey[]);
     }, [props.inv, getSkillLevel]);
 
     const getEffectiveMultLevels = useCallback(() => {
@@ -125,7 +128,7 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
 
     const midMultiplierValue = useCallback((sym: SymbolKey) => {
         const baseVal = calculateMidMultiplierValue(sym, getEffectiveMultLevels());
-        const isUpgradeable = !['⭐', '🪙'].includes(sym);
+        const isUpgradeable = !['\u2b50', '\ud83e\ude99'].includes(sym);
         const finalMultiplier = isUpgradeable ? propsRef.current.multUpgradeBonus : 1;
         return baseVal * finalMultiplier;
     }, [getEffectiveMultLevels]);
@@ -157,12 +160,12 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                 spinFromSnapshot(snapshot),
             ] as SymbolKey[];
 
-            const wilds = syms.filter(s => s === '⭐').length;
-            const nonWilds = syms.filter(s => s !== '⭐');
+            const wilds = syms.filter(s => s === '\u2b50').length;
+            const nonWilds = syms.filter(s => s !== '\u2b50');
             let winSymbol: SymbolKey | null = null;
 
-            if (syms.every(s => s === '🪙')) {
-                winSymbol = '🪙';
+            if (syms.every(s => s === '\ud83e\ude99')) {
+                winSymbol = '\ud83e\ude99';
             }
             else if (wilds > 0 && nonWilds.length > 0) {
                 const firstNonWild = nonWilds[0];
@@ -171,7 +174,7 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                 }
             }
             else if (wilds === 3) {
-                winSymbol = '⭐';
+                winSymbol = '\u2b50';
             }
             else if (wilds === 0 && syms[0] === syms[1] && syms[1] === syms[2]) {
                 winSymbol = syms[0];
@@ -180,8 +183,7 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
             let win = 0;
             const isWin = winSymbol !== null;
 
-            // Lógica de Ganho de Linhas via Moeda (🪙) dentro do Bônus Estelar
-            if (isWin && winSymbol === '🪙') {
+            if (isWin && winSymbol === '\ud83e\ude99') {
                 if (Math.random() < 0.5) {
                     const r = Math.random() * 100;
                     let extraLines = 0;
@@ -192,10 +194,10 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
 
                     if (extraLines > 0) {
                         spinsToProcess += extraLines;
-                        showMsg(`🔄️ +${extraLines} linhas`, 2000, true);
+                        showMsg(`\ud83d\udd04\ufe0f +${extraLines} linhas`, 2000, true);
                     }
                 }
-            } else if (isWin && winSymbol !== '⭐') {
+            } else if (isWin && winSymbol !== '\u2b50') {
                 win = bet * midMultiplierValue(winSymbol!) * 0.05;
             }
 
@@ -260,12 +262,12 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
 
         for (const line of lines) {
             const syms = line.map(i => finalGrid[i]);
-            const wilds = syms.filter(s => s === '⭐').length;
-            const nonWilds = syms.filter(s => s !== '⭐');
+            const wilds = syms.filter(s => s === '\u2b50').length;
+            const nonWilds = syms.filter(s => s !== '\u2b50');
             let winSymbol: SymbolKey | null = null;
 
-            if (syms.every(s => s === '🪙')) {
-                if (isCaminhoFichaActive) winSymbol = '🪙';
+            if (syms.every(s => s === '\ud83e\ude99')) {
+                if (isCaminhoFichaActive) winSymbol = '\ud83e\ude99';
             }
             else if (wilds > 0 && nonWilds.length > 0) {
                 const firstNonWild = nonWilds[0];
@@ -274,7 +276,7 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                 }
             }
             else if (wilds === 3 && isCaminhoEstelarActive) {
-                winSymbol = '⭐';
+                winSymbol = '\u2b50';
             }
             else if (wilds === 0 && syms[0] === syms[1] && syms[1] === syms[2]) {
                 winSymbol = syms[0];
@@ -286,15 +288,15 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                 if (MID.includes(winSymbol as MidSymbolKey)) {
                     totalSweetWin += lineWin;
                     sweetLinesCount++;
-                } else if (winSymbol !== '🪙' && winSymbol !== '⭐') {
+                } else if (winSymbol !== '\ud83e\ude99' && winSymbol !== '\u2b50') {
                     totalOtherWin += lineWin;
                 }
 
-                if (winSymbol === '⭐' && isCaminhoEstelarActive) {
+                if (winSymbol === '\u2b50' && isCaminhoEstelarActive) {
                     starLinesFound++;
                     hasStarHitInThisSpin = true;
                 }
-                if (winSymbol === '🪙' && isCaminhoFichaActive) {
+                if (winSymbol === '\ud83e\ude99' && isCaminhoFichaActive) {
                     tokenLinesFound++;
                 }
 
@@ -306,7 +308,6 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
 
         if (starLinesFound > 0) triggerStarBonus(validKeys, currentBet, starLinesFound);
 
-        // No jogo BASE, moedas ativam o Coin Flip
         if (tokenLinesFound > 0) {
             for (let i = 0; i < tokenLinesFound; i++) {
                 if (Math.random() < 0.5) {
@@ -318,7 +319,7 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                     else extraLines = 16;
                     
                     if (extraLines > 0) {
-                        showMsg(`🔄️ +${extraLines} giros`, 2500, true);
+                        showMsg(`\ud83d\udd04\ufe0f +${extraLines} giros`, 2500, true);
                         startCoinFlip(extraLines, currentBet);
                     }
                 }
@@ -387,7 +388,7 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                         const candyHits = paraisoDetector.detectCandyHits(animationState.current.finalGrid);
                         if (candyHits.length > 0) {
                             const hitMsg = candyHits.map(h => `${h.count}x ${h.symbol}`).join(' + ');
-                            showMsg(`🍬 Paraíso Doce: ${hitMsg}`, 2500, true);
+                            showMsg(`\ud83c\udf6c Para\u00edso Doce: ${hitMsg}`, 2500, true);
                         }
                     }
                     
@@ -399,13 +400,13 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                         if (result.sweetLinesCount > 0) {
                             const ladderResult = sweetLadder.onCandyLinesHit(result.sweetLinesCount);
                             ladderBonus = ladderResult.totalBonus;
-                            if (ladderResult.slotsUnlocked > 0) showMsg(`🔓 Desbloqueou +${ladderResult.slotsUnlocked} Slot!`, 3000, true);
-                            if (ladderResult.livesGained > 0) showMsg(`💚 +${ladderResult.livesGained} Vidas!`, 2000, true);
-                            if (ladderResult.chainsCreated > 0) showMsg(`⛓️ +${ladderResult.chainsCreated} Correntes!`, 2000, true);
+                            if (ladderResult.slotsUnlocked > 0) showMsg(`\ud83d\udd13 Desbloqueou +${ladderResult.slotsUnlocked} Slot!`, 3000, true);
+                            if (ladderResult.livesGained > 0) showMsg(`\ud83d\udc9a +${ladderResult.livesGained} Vidas!`, 2000, true);
+                            if (ladderResult.chainsCreated > 0) showMsg(`\u26d3\ufe0f +${ladderResult.chainsCreated} Correntes!`, 2000, true);
                         } else {
                             const missResult = sweetLadder.onMiss();
-                            if (missResult.livesUsed > 0) showMsg(`💔 ${missResult.livesUsed} Vida usada!`, 2000, true);
-                            if (missResult.chainsBroken > 0) showMsg(`💥 ${missResult.chainsBroken} Corrente quebrada!`, 2500, true);
+                            if (missResult.livesUsed > 0) showMsg(`\ud83d\udc94 ${missResult.livesUsed} Vida usada!`, 2000, true);
+                            if (missResult.chainsBroken > 0) showMsg(`\ud83d\udca5 ${missResult.chainsBroken} Corrente quebrada!`, 2500, true);
                         }
                     }
                     
@@ -425,7 +426,7 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                         const rewards: Partial<Record<MidSymbolKey, number>> = {};
                         let totalS = 0;
                         
-                        // Progressão de Momentum com Nova Fórmula Tetraédrica
+                        // Progress\u00e3o do Momento: threshold = 100x + x\u00b2/2
                         while (newP >= 0) {
                             const nextThreshold = calculateMomentumThreshold(curL + 1);
                             if (newP < nextThreshold) break;
@@ -442,7 +443,7 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                         }
                         
                         if (totalS > 0) {
-                            showMsg(`Momento Nível ${curL}! +${totalS} 🍬`, 4000, true);
+                            showMsg(`Momento N\u00edvel ${curL}! +${totalS} \ud83c\udf6c`, 4000, true);
                             setInv(prev => {
                                 const n = { ...prev };
                                 Object.entries(rewards).forEach(([k, v]) => {
@@ -454,66 +455,4 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                             setMomentoLevel(curL);
                         }
                         setMomentoProgress(newP);
-                        if (finalWinnings < currentSpinBet * 2) setUnluckyPot(p => p + currentSpinBet);
-                    } else {
-                        const nextG = febreDocesGiros - 1;
-                        if (nextG <= 0) endFever(); else setFebreDocesGiros(nextG);
-                    }
-                    if (finalWinnings > 0) setWinMsg(`🎉 ${result.hitCount} L! Ganhou $ ${finalWinnings.toFixed(2)}`);
-                    setIsSpinning(false);
-                }, 400);
-            } else requestAnimationFrame(animate);
-        };
-        requestAnimationFrame(animate);
-    }, [isSpinning, getSpinResult, startAnimationCycle]);
-
-    const handleSpin = useCallback(() => {
-        const { febreDocesAtivo, handleSpend, betVal, setWinMsg, cashbackMultiplier, paraisoDetector } = propsRef.current;
-        if (paraisoDetector.activeAnimation !== null) return;
-        if (isSpinning || availableKeys.length === 0 || quickSpinQueue > 0 || starBonusState.isActive || coinFlipState.isActive) return;
-        setWinMsg('');
-        if (!febreDocesAtivo && !handleSpend(betVal * (1 - cashbackMultiplier))) return;
-        startAnimationCycle(false);
-    }, [isSpinning, availableKeys, quickSpinQueue, startAnimationCycle, starBonusState.isActive, coinFlipState.isActive]);
-    
-    const quickSpinStatus = useQuickSpinAvailability({
-        bal: props.bal,
-        betVal: props.betVal,
-        febreDocesAtivo: props.febreDocesAtivo,
-        febreDocesGiros: props.febreDocesGiros,
-        isSpinning,
-        quickSpinQueue,
-        starBonusState,
-        coinFlipState,
-        paraisoDetector: props.paraisoDetector,
-        cashbackMultiplier: props.cashbackMultiplier,
-        handleSpend: props.handleSpend
-    });
-    
-    const handleQuickSpin = useCallback((): boolean => {
-        if (!quickSpinStatus.available) {
-            if (quickSpinStatus.reason) props.showMsg(quickSpinStatus.reason, 1000);
-            return false;
-        }
-        setQuickSpinQueue(p => p + 1);
-        return true;
-    }, [quickSpinStatus, props.showMsg]);
-
-    const cancelQuickSpins = useCallback(() => {
-        setQuickSpinQueue(0);
-    }, []);
-
-    useEffect(() => {
-        const { paraisoDetector } = propsRef.current;
-        if (paraisoDetector.activeAnimation !== null) return;
-        if (quickSpinQueue > 0 && !isSpinning && !starBonusState.isActive && !coinFlipState.isActive) {
-            setQuickSpinQueue(p => p - 1); startAnimationCycle(true);
-        }
-    }, [quickSpinQueue, isSpinning, starBonusState.isActive, coinFlipState.isActive, startAnimationCycle]);
-
-    return { 
-        isSpinning, grid, spinningColumns, stoppingColumns, pool: availableKeys, midMultiplierValue, handleSpin, 
-        quickSpinQueue, handleQuickSpin, cancelQuickSpins, quickSpinStatus, starBonusState, closeStarBonus, 
-        coinFlipState, handleCoinGuess, closeCoinFlip, triggerStarBonus, startCoinFlip 
-    };
-};
+                        if (finalWinnings < currentSpinBet * 2) setUnluckyPot(
