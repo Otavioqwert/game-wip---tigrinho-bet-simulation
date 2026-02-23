@@ -415,9 +415,10 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                     
                     const currentSpinBet = febreDocesAtivo ? betValFebre : betVal;
                     if (!febreDocesAtivo) {
-                        const netGain = finalWinnings - currentSpinBet;
+                        // Apenas lucro positivo conta pro momento (barra nunca regride)
+                        const profit = Math.max(0, finalWinnings - currentSpinBet);
                         let curL = momentoLevel;
-                        let newP = momentoProgress + netGain;
+                        let newP = momentoProgress + profit;
                         const rewards: Partial<Record<MidSymbolKey, number>> = {};
                         let totalS = 0;
 
