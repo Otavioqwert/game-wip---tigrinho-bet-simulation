@@ -85,3 +85,20 @@ export function getMomentumProgression(maxLevels: number = 10): Array<{ level: n
   
   return progression;
 }
+
+/**
+ * Calcula o valor do Momento baseado no nível e nos stacks de doces no inventário.
+ *
+ * Fórmula: 100x + (x²)/2 + 10y
+ *   x = momentoLevel  — nível atual de Momento
+ *   y = candyStacks   — total de figuras de doces no inventário (🍭 + 🍦 + 🍧)
+ *
+ * @param momentoLevel Nível atual de Momento (x)
+ * @param candyStacks  Total de doces no inventário (y)
+ * @returns O valor calculado de Momento
+ */
+export function calcMomentoValue(momentoLevel: number, candyStacks: number): number {
+  const x = Math.max(0, Math.floor(momentoLevel));
+  const y = Math.max(0, Math.floor(candyStacks));
+  return 100 * x + (x ** 2) / 2 + 10 * y;
+}

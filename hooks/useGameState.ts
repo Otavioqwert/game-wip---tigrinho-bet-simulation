@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { INITIAL_INVENTORY, INITIAL_MULTIPLIERS } from '../constants';
 import type { Inventory, Multipliers, PanificadoraLevels, RoiSaldo, RenegotiationTier, ActiveCookie, ScratchCardMetrics, LotericaInjectionState, BakeryState, CraftingSlot } from '../types';
 import { prepareSaveState, EMPTY_FEVER_SNAPSHOT, type FeverSnapshot } from '../utils/feverStateIsolation';
-import { calculateMomentumLevel } from '../utils/mechanics/momentumCalculator';
+import { calculateMomentumLevel, calcMomentoValue } from '../utils/mechanics/momentumCalculator';
 
 const SAVE_KEY = 'tigrinho-save-game';
 const SAVE_VERSION = 30; // Migração de Momento tetraédrico
@@ -268,8 +268,16 @@ export const useGameState = ({ showMsg }: { showMsg: (msg: string, d?: number, e
         return () => clearInterval(i); 
     }, []); // Array vazio = monta apenas uma vez
 
+    // --- MOMENTO VALUE (valor derivado por nível e inventário) ---
+    // Fórmula: 100x + (x²)/2 + 10y
+    // x = momentoLevel, y = total de figuras de doces no inventário (🍭 + 🍦 + 🍧)
+    const candyStacksForMomento = (state.inv['🍭'] || 0) + (state.inv['🍦'] || 0) + (state.inv['🍧'] || 0);
+    const momentoValue = calcMomentoValue(state.momentoLevel, candyStacksForMomento);
+
     return {
         ...state,
+        candyStacksForMomento,
+        momentoValue,
         setBal: (val: number | ((p: number) => number)) => updateState(s => ({ ...s, bal: typeof val === 'function' ? val(s.bal) : val })),
         setInv: (val: Inventory | ((p: Inventory) => Inventory)) => updateState(s => ({ ...s, inv: typeof val === 'function' ? val(s.inv) : val })),
         setMult: (val: Multipliers | ((p: Multipliers) => Multipliers)) => updateState(s => ({ ...s, mult: typeof val === 'function' ? val(s.mult) : val })),
