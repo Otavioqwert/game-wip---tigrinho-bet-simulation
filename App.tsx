@@ -14,6 +14,12 @@ import FeverReportModal from './components/shops/FeverReportModal';
 import TokenFlipOverlay from './components/shops/TokenFlipOverlay';
 import { ParaisoProgressTable } from './components/ParaisoProgressTable';
 
+// Progressão do Momento: threshold = 100x + x²/2
+// Deve ser idêntica à função em useSpinLogic.ts
+const calculateMomentumThreshold = (level: number): number => {
+    return 100 * level + (level * level) / 2;
+};
+
 // MEMOIZED COMPONENTS
 const MemoSlotMachine = React.memo(SlotMachine);
 const MemoInventoryTab = React.memo(InventoryTab);
@@ -65,6 +71,9 @@ const App: React.FC = () => {
     const topLevelBtnActiveClasses = 'scale-105 shadow-inner';
     const topLevelBtnInactiveClasses = 'opacity-70 hover:opacity-100';
 
+    // Threshold do próximo nível do Momento, para barra de progresso correta
+    const momentoThreshold = calculateMomentumThreshold(game.momentoLevel + 1);
+
     return (
         <div className={`h-screen flex flex-col items-center font-sans text-white bg-gradient-to-br ${BG_CLASS} transition-all duration-500 py-2 sm:py-8 px-1 sm:px-4 overflow-hidden`}>
             {game.isSnakeGameActive && <SnakeGame
@@ -77,7 +86,7 @@ const App: React.FC = () => {
                 resetSnakeUpgrades={game.resetSnakeUpgrades}
             />}
             
-            {/* 🍭 Paraiso Doce Progress Table - PASSANDO PROPS DE NÍVEL */}
+            {/* 🍭 Paraiso Doce Progress Table */}
             {game.paraisoDetector.isActive && (
                 <ParaisoProgressTable
                     progress={game.paraisoDetector.progress}
@@ -100,7 +109,7 @@ const App: React.FC = () => {
             {game.feverPhase === 'SETUP' && (
                 <FeverSetupModal
                     bal={game.bal}
-                    sugar={game.sugar} // 🍬 Passa doces para o modal
+                    sugar={game.sugar}
                     selectedPackages={game.selectedPackages}
                     buyPackage={game.buyPackage}
                     startFever={game.startFever}
@@ -131,7 +140,7 @@ const App: React.FC = () => {
                 handlePayInstallment={game.handlePayInstallment}
                 bal={game.bal}
             />
-             <PaymentDueModal 
+            <PaymentDueModal 
                 isOpen={game.isPaymentDueModalOpen}
                 onClose={game.closePaymentDueModal}
                 onPay={game.handlePayInstallment}
@@ -214,6 +223,7 @@ const App: React.FC = () => {
                                 febreDocesAtivo={game.febreDocesAtivo}
                                 momentoLevel={game.momentoLevel}
                                 momentoProgress={game.momentoProgress}
+                                momentoThreshold={momentoThreshold}
                                 openFeverSetup={game.openFeverSetup}
                                 cooldownEnd={game.cooldownEnd}
                             />
@@ -237,6 +247,7 @@ const App: React.FC = () => {
                                     roiSaldo={game.roiSaldo} 
                                     momentoLevel={game.momentoLevel} 
                                     momentoProgress={game.momentoProgress}
+                                    momentoThreshold={momentoThreshold}
                                     sugar={game.sugar}
                                     activeCookies={game.activeCookies} 
                                 />}
