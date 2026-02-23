@@ -1,5 +1,5 @@
 import React from 'react';
-import { calculateMomentumThreshold } from '../utils/mechanics/momentumCalculator';
+import MomentoBar from './MomentoBar';
 
 interface HeaderProps {
     bal: number;
@@ -20,9 +20,6 @@ const Header: React.FC<HeaderProps> = ({
     momentoValue, candyStacksForMomento,
     openFeverSetup, cooldownEnd
 }) => {
-    const nextThreshold = calculateMomentumThreshold(momentoLevel + 1);
-    const displayProgress = Math.max(0, momentoProgress);
-    const progressPercent = Math.min(100, (displayProgress / nextThreshold) * 100);
     const isCooldown = cooldownEnd && Date.now() < cooldownEnd;
 
     return (
@@ -39,7 +36,6 @@ const Header: React.FC<HeaderProps> = ({
                     )}
                 </div>
 
-                {/* Botão Febre Doce */}
                 {!febreDocesAtivo && openFeverSetup && (
                     <button
                         onClick={openFeverSetup}
@@ -56,62 +52,13 @@ const Header: React.FC<HeaderProps> = ({
                 )}
             </div>
 
-            {/* Barra de Progresso do Momento + Tooltip */}
-            <div className="w-full max-w-md">
-                <div className="flex justify-between items-center mb-1 text-sm">
-                    <span className="font-bold text-sky-300">⚡ Momento Nível {momentoLevel}</span>
-                    <span className="text-gray-500 text-xs">{progressPercent.toFixed(1)}%</span>
-                </div>
-
-                <div className="relative group">
-                    {/* Barra */}
-                    <div className="w-full bg-gray-800 rounded-full h-3 border-2 border-sky-700 overflow-hidden cursor-help">
-                        <div
-                            className="bg-gradient-to-r from-sky-500 to-cyan-400 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${progressPercent}%` }}
-                        />
-                    </div>
-
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 pointer-events-none">
-                        <div className="bg-black border border-sky-600 rounded p-3 text-xs text-left space-y-1.5 min-w-[210px] shadow-xl">
-                            <div className="text-sky-300 font-bold text-sm pb-1 border-b border-sky-900">⚡ Momento</div>
-
-                            <div className="flex justify-between gap-6">
-                                <span className="text-gray-400">Nível</span>
-                                <span className="font-bold text-white">{momentoLevel}</span>
-                            </div>
-
-                            <div className="flex justify-between gap-6">
-                                <span className="text-gray-400">Valor</span>
-                                <span className="font-bold text-cyan-300">{momentoValue.toFixed(1)}</span>
-                            </div>
-
-                            <div className="flex justify-between gap-6">
-                                <span className="text-gray-400">🍭 Doces (y)</span>
-                                <span className="font-bold text-pink-300">{candyStacksForMomento}</span>
-                            </div>
-
-                            <div className="flex justify-between gap-6 pt-1 border-t border-gray-800">
-                                <span className="text-gray-400">Progresso</span>
-                                <span className="font-bold text-white">{displayProgress.toFixed(0)} / {nextThreshold}</span>
-                            </div>
-
-                            <div className="flex justify-between gap-6">
-                                <span className="text-gray-400">Fórmula</span>
-                                <span className="text-gray-500 italic">100x + x²/2 + 10y</span>
-                            </div>
-                        </div>
-
-                        {/* Seta apontando para baixo (em direção ao cursor/barra) */}
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0
-                            border-l-[7px] border-l-transparent
-                            border-r-[7px] border-r-transparent
-                            border-t-[7px] border-t-sky-600">
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <MomentoBar
+                momentoLevel={momentoLevel}
+                momentoProgress={momentoProgress}
+                momentoValue={momentoValue}
+                candyStacksForMomento={candyStacksForMomento}
+                variant="header"
+            />
         </header>
     );
 };

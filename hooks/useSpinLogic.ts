@@ -6,6 +6,7 @@ import type { UseSweetLadderResult } from './useSweetLadder';
 import type { useParaisoDoceDetector } from './useParaisoDoceDetector';
 import { useQuickSpinAvailability, QuickSpinStatus } from './useQuickSpinAvailability';
 import { validateSpinLogicProps } from '../utils/validateState';
+import { calculateMomentumThreshold } from '../utils/mechanics/momentumCalculator';
 
 interface SpinLogicProps {
     bal: number;
@@ -64,12 +65,6 @@ export interface UseSpinLogicResult {
     triggerStarBonus: (validKeys: SymbolKey[], bet: number, lines: number) => void;
     startCoinFlip: (flips: number, bet: number) => void;
 }
-
-// Progress\u00e3o do Momento: threshold = 100x + x\u00b2/2
-// onde x \u00e9 o pr\u00f3ximo n\u00edvel a ser alcan\u00e7ado
-const calculateMomentumThreshold = (level: number): number => {
-    return 100 * level + (level * level) / 2;
-};
 
 export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
     const props = validateSpinLogicProps(rawProps);
@@ -425,15 +420,12 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                         let newP = momentoProgress + netGain;
                         const rewards: Partial<Record<MidSymbolKey, number>> = {};
                         let totalS = 0;
-                        
-                        // Progress\u00e3o do Momento: threshold = 100x + x\u00b2/2
+
                         while (newP >= 0) {
                             const nextThreshold = calculateMomentumThreshold(curL + 1);
                             if (newP < nextThreshold) break;
-                            
                             newP -= nextThreshold;
                             curL++;
-                            
                             const candies = curL;
                             for (let i = 0; i < candies; i++) {
                                 const r = MID[Math.floor(Math.random() * MID.length)] as MidSymbolKey;
@@ -441,7 +433,7 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                                 totalS += SUGAR_CONVERSION[r];
                             }
                         }
-                        
+
                         if (totalS > 0) {
                             showMsg(`Momento N\u00edvel ${curL}! +${totalS} \ud83c\udf6c`, 4000, true);
                             setInv(prev => {
@@ -460,7 +452,7 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                         const nextG = febreDocesGiros - 1;
                         if (nextG <= 0) endFever(); else setFebreDocesGiros(nextG);
                     }
-                    if (finalWinnings > 0) setWinMsg(`🎉 ${result.hitCount} L! Ganhou $ ${finalWinnings.toFixed(2)}`);
+                    if (finalWinnings > 0) setWinMsg(`\ud83c\udf89 ${result.hitCount} L! Ganhou $ ${finalWinnings.toFixed(2)}`);
                     setIsSpinning(false);
                 }, 400);
             } else requestAnimationFrame(animate);

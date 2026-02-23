@@ -28,7 +28,6 @@ const App: React.FC = () => {
     const [topLevelTab, setTopLevelTab] = useState('caça-níquel');
     const { style, scale, zoomIn, zoomOut, panHandlers, isPanModeActive, togglePanMode } = usePanAndZoom();
 
-    // Swipe navigation
     const touchStart = useRef(0);
     const touchEnd = useRef(0);
     const swipeThreshold = 50;
@@ -44,12 +43,8 @@ const App: React.FC = () => {
     };
     const handleTouchEnd = () => {
         if (scale > 1) return;
-        if (touchStart.current - touchEnd.current > swipeThreshold) {
-            setMainActiveTab(prev => Math.min(prev + 1, 3));
-        }
-        if (touchEnd.current - touchStart.current > swipeThreshold) {
-            setMainActiveTab(prev => Math.max(prev - 1, 0));
-        }
+        if (touchStart.current - touchEnd.current > swipeThreshold) setMainActiveTab(prev => Math.min(prev + 1, 3));
+        if (touchEnd.current - touchStart.current > swipeThreshold) setMainActiveTab(prev => Math.max(prev - 1, 0));
     };
 
     const tabBtnClasses = (isActive: boolean) =>
@@ -60,17 +55,14 @@ const App: React.FC = () => {
     const isPrestigeView = topLevelTab === 'prestigio';
 
     const BG_CLASS = isPrestigeView
-        ? "from-indigo-800 via-purple-900 to-fuchsia-950"
+        ? 'from-indigo-800 via-purple-900 to-fuchsia-950'
         : game.febreDocesAtivo
-            ? "from-[#ffadf6] via-[#e03aff] to-[#ff00b4]"
-            : "from-[#1a0e0e] to-[#3d1a1a]";
+            ? 'from-[#ffadf6] via-[#e03aff] to-[#ff00b4]'
+            : 'from-[#1a0e0e] to-[#3d1a1a]';
 
     const topLevelBtnBaseClasses = 'flex-1 py-3 text-lg font-bold rounded-lg transition-all duration-300 transform hover:-translate-y-1';
     const topLevelBtnActiveClasses = 'scale-105 shadow-inner';
     const topLevelBtnInactiveClasses = 'opacity-70 hover:opacity-100';
-
-    // Threshold para InventoryTab (centralizado em utils agora)
-    const momentoThreshold = calculateMomentumThreshold(game.momentoLevel + 1);
 
     return (
         <div className={`h-screen flex flex-col items-center font-sans text-white bg-gradient-to-br ${BG_CLASS} transition-all duration-500 py-2 sm:py-8 px-1 sm:px-4 overflow-hidden`}>
@@ -84,7 +76,6 @@ const App: React.FC = () => {
                 resetSnakeUpgrades={game.resetSnakeUpgrades}
             />}
 
-            {/* Paraiso Doce */}
             {game.paraisoDetector.isActive && (
                 <ParaisoProgressTable
                     progress={game.paraisoDetector.progress}
@@ -154,7 +145,6 @@ const App: React.FC = () => {
                 inventory={game.inv}
             />
 
-            {/* Controles de zoom */}
             <div className="fixed left-2 top-2 sm:left-4 sm:top-4 bg-black/35 p-1 sm:p-2 rounded-lg flex items-center gap-2 border-2 border-yellow-500 shadow-lg z-10 scale-90 sm:scale-100 origin-top-left">
                 <button onClick={zoomOut} className="px-2 font-bold text-lg leading-none bg-yellow-500 text-stone-900 rounded disabled:opacity-50" disabled={scale <= 0.25}>-</button>
                 <span className="font-bold text-white tabular-nums text-xs sm:text-base">{scale.toFixed(2)}x</span>
@@ -162,9 +152,7 @@ const App: React.FC = () => {
                 <button
                     onClick={togglePanMode}
                     className={`p-1.5 rounded transition-colors ${
-                        isPanModeActive
-                            ? 'bg-yellow-500 text-stone-900'
-                            : 'bg-stone-700 text-white hover:bg-stone-600'
+                        isPanModeActive ? 'bg-yellow-500 text-stone-900' : 'bg-stone-700 text-white hover:bg-stone-600'
                     }`}
                     title="Modo Agarrar e Deslizar"
                 >
@@ -175,7 +163,6 @@ const App: React.FC = () => {
                 </button>
             </div>
 
-            {/* Tabs topo */}
             <div className="w-full max-w-2xl mb-2 sm:mb-4 px-2">
                 <div className="flex gap-2 sm:gap-4">
                     <button
@@ -246,7 +233,8 @@ const App: React.FC = () => {
                                     roiSaldo={game.roiSaldo}
                                     momentoLevel={game.momentoLevel}
                                     momentoProgress={game.momentoProgress}
-                                    momentoThreshold={momentoThreshold}
+                                    momentoValue={game.momentoValue}
+                                    candyStacksForMomento={game.candyStacksForMomento}
                                     sugar={game.sugar}
                                     activeCookies={game.activeCookies}
                                 />}
