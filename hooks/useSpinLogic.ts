@@ -455,4 +455,66 @@ export const useSpinLogic = (rawProps: SpinLogicProps): UseSpinLogicResult => {
                             setMomentoLevel(curL);
                         }
                         setMomentoProgress(newP);
-                        if (finalWinnings < currentSpinBet * 2) setUnluckyPot(
+                        if (finalWinnings < currentSpinBet * 2) setUnluckyPot(p => p + currentSpinBet);
+                    } else {
+                        const nextG = febreDocesGiros - 1;
+                        if (nextG <= 0) endFever(); else setFebreDocesGiros(nextG);
+                    }
+                    if (finalWinnings > 0) setWinMsg(`🎉 ${result.hitCount} L! Ganhou $ ${finalWinnings.toFixed(2)}`);
+                    setIsSpinning(false);
+                }, 400);
+            } else requestAnimationFrame(animate);
+        };
+        requestAnimationFrame(animate);
+    }, [isSpinning, getSpinResult, startAnimationCycle]);
+
+    const handleSpin = useCallback(() => {
+        const { febreDocesAtivo, handleSpend, betVal, setWinMsg, cashbackMultiplier, paraisoDetector } = propsRef.current;
+        if (paraisoDetector.activeAnimation !== null) return;
+        if (isSpinning || availableKeys.length === 0 || quickSpinQueue > 0 || starBonusState.isActive || coinFlipState.isActive) return;
+        setWinMsg('');
+        if (!febreDocesAtivo && !handleSpend(betVal * (1 - cashbackMultiplier))) return;
+        startAnimationCycle(false);
+    }, [isSpinning, availableKeys, quickSpinQueue, startAnimationCycle, starBonusState.isActive, coinFlipState.isActive]);
+    
+    const quickSpinStatus = useQuickSpinAvailability({
+        bal: props.bal,
+        betVal: props.betVal,
+        febreDocesAtivo: props.febreDocesAtivo,
+        febreDocesGiros: props.febreDocesGiros,
+        isSpinning,
+        quickSpinQueue,
+        starBonusState,
+        coinFlipState,
+        paraisoDetector: props.paraisoDetector,
+        cashbackMultiplier: props.cashbackMultiplier,
+        handleSpend: props.handleSpend
+    });
+    
+    const handleQuickSpin = useCallback((): boolean => {
+        if (!quickSpinStatus.available) {
+            if (quickSpinStatus.reason) props.showMsg(quickSpinStatus.reason, 1000);
+            return false;
+        }
+        setQuickSpinQueue(p => p + 1);
+        return true;
+    }, [quickSpinStatus, props.showMsg]);
+
+    const cancelQuickSpins = useCallback(() => {
+        setQuickSpinQueue(0);
+    }, []);
+
+    useEffect(() => {
+        const { paraisoDetector } = propsRef.current;
+        if (paraisoDetector.activeAnimation !== null) return;
+        if (quickSpinQueue > 0 && !isSpinning && !starBonusState.isActive && !coinFlipState.isActive) {
+            setQuickSpinQueue(p => p - 1); startAnimationCycle(true);
+        }
+    }, [quickSpinQueue, isSpinning, starBonusState.isActive, coinFlipState.isActive, startAnimationCycle]);
+
+    return { 
+        isSpinning, grid, spinningColumns, stoppingColumns, pool: availableKeys, midMultiplierValue, handleSpin, 
+        quickSpinQueue, handleQuickSpin, cancelQuickSpins, quickSpinStatus, starBonusState, closeStarBonus, 
+        coinFlipState, handleCoinGuess, closeCoinFlip, triggerStarBonus, startCoinFlip 
+    };
+};
