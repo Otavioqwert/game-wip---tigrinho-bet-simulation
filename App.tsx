@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import { usePanAndZoom } from './hooks/usePanAndZoom';
+import { calculateMomentumThreshold } from './utils/mechanics/momentumCalculator';
 import Header from './components/Header';
 import SlotMachine from './components/slot/SlotMachine';
 import InventoryTab from './components/InventoryTab';
@@ -14,12 +15,6 @@ import FeverReportModal from './components/shops/FeverReportModal';
 import TokenFlipOverlay from './components/shops/TokenFlipOverlay';
 import { ParaisoProgressTable } from './components/ParaisoProgressTable';
 
-// Progressão do Momento: threshold = 100x + x²/2
-// Deve ser idêntica à função em useSpinLogic.ts
-const calculateMomentumThreshold = (level: number): number => {
-    return 100 * level + (level * level) / 2;
-};
-
 // MEMOIZED COMPONENTS
 const MemoSlotMachine = React.memo(SlotMachine);
 const MemoInventoryTab = React.memo(InventoryTab);
@@ -30,16 +25,16 @@ const MemoPrestigeTab = React.memo(PrestigeTab);
 const App: React.FC = () => {
     const game = useGameLogic();
     const [mainActiveTab, setMainActiveTab] = useState(0);
-    const [topLevelTab, setTopLevelTab] = useState('caça-niquel');
+    const [topLevelTab, setTopLevelTab] = useState('caça-níquel');
     const { style, scale, zoomIn, zoomOut, panHandlers, isPanModeActive, togglePanMode } = usePanAndZoom();
-    
-    // Swipe navigation logic
+
+    // Swipe navigation
     const touchStart = useRef(0);
     const touchEnd = useRef(0);
     const swipeThreshold = 50;
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        if (scale > 1) return; 
+        if (scale > 1) return;
         touchStart.current = e.targetTouches[0].clientX;
         touchEnd.current = e.targetTouches[0].clientX;
     };
@@ -57,7 +52,10 @@ const App: React.FC = () => {
         }
     };
 
-    const tabBtnClasses = (isActive: boolean) => `flex-1 p-2 rounded-t-lg font-bold cursor-pointer transition-colors ${isActive ? 'bg-yellow-500 text-stone-900' : 'bg-yellow-500/20 text-white hover:bg-yellow-500/30'}`;
+    const tabBtnClasses = (isActive: boolean) =>
+        `flex-1 p-2 rounded-t-lg font-bold cursor-pointer transition-colors ${
+            isActive ? 'bg-yellow-500 text-stone-900' : 'bg-yellow-500/20 text-white hover:bg-yellow-500/30'
+        }`;
 
     const isPrestigeView = topLevelTab === 'prestigio';
 
@@ -71,7 +69,7 @@ const App: React.FC = () => {
     const topLevelBtnActiveClasses = 'scale-105 shadow-inner';
     const topLevelBtnInactiveClasses = 'opacity-70 hover:opacity-100';
 
-    // Threshold do próximo nível do Momento, para barra de progresso correta
+    // Threshold para InventoryTab (centralizado em utils agora)
     const momentoThreshold = calculateMomentumThreshold(game.momentoLevel + 1);
 
     return (
@@ -85,8 +83,8 @@ const App: React.FC = () => {
                 totalScoreMultiplier={game.grandeGanhoMultiplier * game.scoreMultiplier}
                 resetSnakeUpgrades={game.resetSnakeUpgrades}
             />}
-            
-            {/* 🍭 Paraiso Doce Progress Table */}
+
+            {/* Paraiso Doce */}
             {game.paraisoDetector.isActive && (
                 <ParaisoProgressTable
                     progress={game.paraisoDetector.progress}
@@ -98,14 +96,14 @@ const App: React.FC = () => {
                     unlockedCandy={game.paraisoDetector.unlockedCandy}
                 />
             )}
-            
+
             {game.tokenFlipState.isActive && (
                 <TokenFlipOverlay
                     flipState={game.tokenFlipState}
                     onClose={game.closeTokenFlip}
                 />
             )}
-            
+
             {game.feverPhase === 'SETUP' && (
                 <FeverSetupModal
                     bal={game.bal}
@@ -140,7 +138,7 @@ const App: React.FC = () => {
                 handlePayInstallment={game.handlePayInstallment}
                 bal={game.bal}
             />
-            <PaymentDueModal 
+            <PaymentDueModal
                 isOpen={game.isPaymentDueModalOpen}
                 onClose={game.closePaymentDueModal}
                 onPay={game.handlePayInstallment}
@@ -148,13 +146,15 @@ const App: React.FC = () => {
                 debt={game.creditCardDebt}
                 installmentAmount={game.currentInstallment}
             />
-            <ItemPenaltyModal 
+            <ItemPenaltyModal
                 isOpen={game.isItemPenaltyModalOpen}
                 onClose={game.closeItemPenaltyModal}
                 onPay={game.handlePayItemPenalty}
                 penalty={game.itemPenaltyDue}
                 inventory={game.inv}
             />
+
+            {/* Controles de zoom */}
             <div className="fixed left-2 top-2 sm:left-4 sm:top-4 bg-black/35 p-1 sm:p-2 rounded-lg flex items-center gap-2 border-2 border-yellow-500 shadow-lg z-10 scale-90 sm:scale-100 origin-top-left">
                 <button onClick={zoomOut} className="px-2 font-bold text-lg leading-none bg-yellow-500 text-stone-900 rounded disabled:opacity-50" disabled={scale <= 0.25}>-</button>
                 <span className="font-bold text-white tabular-nums text-xs sm:text-base">{scale.toFixed(2)}x</span>
@@ -169,22 +169,23 @@ const App: React.FC = () => {
                     title="Modo Agarrar e Deslizar"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
-                      <path d="M10 3.5a1.5 1.5 0 011.456 1.842l-1.01 4.418a.5.5 0 00.91.4l1.554-1.554a1.5 1.5 0 012.122 2.121l-4.243 4.242a1.5 1.5 0 01-2.121 0l-4.242-4.242a1.5 1.5 0 112.12-2.121l1.555 1.554a.5.5 0 00.91-.4L8.544 5.342A1.5 1.5 0 0110 3.5z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+                        <path d="M10 3.5a1.5 1.5 0 011.456 1.842l-1.01 4.418a.5.5 0 00.91.4l1.554-1.554a1.5 1.5 0 012.122 2.121l-4.243 4.242a1.5 1.5 0 01-2.121 0l-4.242-4.242a1.5 1.5 0 112.12-2.121l1.555 1.554a.5.5 0 00.91-.4L8.544 5.342A1.5 1.5 0 0110 3.5z" clipRule="evenodd" />
                     </svg>
                 </button>
             </div>
 
+            {/* Tabs topo */}
             <div className="w-full max-w-2xl mb-2 sm:mb-4 px-2">
                 <div className="flex gap-2 sm:gap-4">
                     <button
-                        onClick={() => setTopLevelTab('caça-niquel')}
+                        onClick={() => setTopLevelTab('caça-níquel')}
                         className={`
                             ${topLevelBtnBaseClasses}
                             bg-yellow-950 text-yellow-300 border-2 border-yellow-500
                             shadow-[0_0_5px_#eab308,0_0_15px_#ca8a04]
                             text-sm sm:text-lg
-                            ${topLevelTab === 'caça-niquel' ? topLevelBtnActiveClasses : topLevelBtnInactiveClasses}
+                            ${topLevelTab === 'caça-níquel' ? topLevelBtnActiveClasses : topLevelBtnInactiveClasses}
                         `}
                     >
                         Caça-Níquel
@@ -204,14 +205,11 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            <div 
+            <div
                 className={`w-full ${isPrestigeView ? 'max-w-7xl' : 'max-w-2xl'} flex-grow overflow-hidden transition-all duration-300`}
                 {...panHandlers}
             >
-                <div
-                    className="w-full h-full"
-                    style={style}
-                >
+                <div className="w-full h-full" style={style}>
                     {isPrestigeView ? (
                         <MemoPrestigeTab {...game} />
                     ) : (
@@ -223,7 +221,8 @@ const App: React.FC = () => {
                                 febreDocesAtivo={game.febreDocesAtivo}
                                 momentoLevel={game.momentoLevel}
                                 momentoProgress={game.momentoProgress}
-                                momentoThreshold={momentoThreshold}
+                                momentoValue={game.momentoValue}
+                                candyStacksForMomento={game.candyStacksForMomento}
                                 openFeverSetup={game.openFeverSetup}
                                 cooldownEnd={game.cooldownEnd}
                             />
@@ -235,21 +234,21 @@ const App: React.FC = () => {
                                 ))}
                             </div>
 
-                            <main 
+                            <main
                                 className="bg-black/30 rounded-b-lg rounded-tr-lg p-2 sm:p-4 flex-grow overflow-y-auto"
                                 onTouchStart={handleTouchStart}
                                 onTouchMove={handleTouchMove}
                                 onTouchEnd={handleTouchEnd}
                             >
                                 {mainActiveTab === 0 && <MemoSlotMachine {...game} />}
-                                {mainActiveTab === 1 && <MemoInventoryTab 
-                                    inv={game.inv} 
-                                    roiSaldo={game.roiSaldo} 
-                                    momentoLevel={game.momentoLevel} 
+                                {mainActiveTab === 1 && <MemoInventoryTab
+                                    inv={game.inv}
+                                    roiSaldo={game.roiSaldo}
+                                    momentoLevel={game.momentoLevel}
                                     momentoProgress={game.momentoProgress}
                                     momentoThreshold={momentoThreshold}
                                     sugar={game.sugar}
-                                    activeCookies={game.activeCookies} 
+                                    activeCookies={game.activeCookies}
                                 />}
                                 {mainActiveTab === 2 && <MemoShopsTab {...game} />}
                                 {mainActiveTab === 3 && <MemoConfigTab {...game} />}
@@ -260,6 +259,6 @@ const App: React.FC = () => {
             </div>
         </div>
     );
-}
+};
 
 export default App;
