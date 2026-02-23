@@ -72,10 +72,10 @@ const Header: React.FC<HeaderProps> = ({
                         />
                     </div>
 
-                    {/* Tooltip (aparece no hover) */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover:block z-50 pointer-events-none">
-                        <div className="bg-gray-900/97 border border-sky-500 rounded-xl p-3 text-xs shadow-2xl shadow-sky-500/20 text-left space-y-1.5 min-w-[210px]">
-                            <div className="text-sky-300 font-bold text-sm pb-1 border-b border-sky-800">⚡ Momento</div>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 pointer-events-none">
+                        <div className="bg-black border border-sky-600 rounded p-3 text-xs text-left space-y-1.5 min-w-[210px] shadow-xl">
+                            <div className="text-sky-300 font-bold text-sm pb-1 border-b border-sky-900">⚡ Momento</div>
 
                             <div className="flex justify-between gap-6">
                                 <span className="text-gray-400">Nível</span>
@@ -88,7 +88,7 @@ const Header: React.FC<HeaderProps> = ({
                             </div>
 
                             <div className="flex justify-between gap-6">
-                                <span className="text-gray-400">🍭 Doces no inv. (y)</span>
+                                <span className="text-gray-400">🍭 Doces (y)</span>
                                 <span className="font-bold text-pink-300">{candyStacksForMomento}</span>
                             </div>
 
@@ -102,11 +102,12 @@ const Header: React.FC<HeaderProps> = ({
                                 <span className="text-gray-500 italic">100x + x²/2 + 10y</span>
                             </div>
                         </div>
-                        {/* Setinha */}
+
+                        {/* Seta apontando para baixo (em direção ao cursor/barra) */}
                         <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0
-                            border-l-[6px] border-l-transparent
-                            border-r-[6px] border-r-transparent
-                            border-t-[6px] border-t-sky-500">
+                            border-l-[7px] border-l-transparent
+                            border-r-[7px] border-r-transparent
+                            border-t-[7px] border-t-sky-600">
                         </div>
                     </div>
                 </div>
