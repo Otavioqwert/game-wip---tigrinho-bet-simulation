@@ -1,6 +1,6 @@
 {
-  "name": "(backup-4)-tigrinho-idle-simulator---wip",
-  "private": true,
+  "name": "tigrinho-idle-simulator",
+  "private": false,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
@@ -10,13 +10,11 @@
   },
   "dependencies": {
     "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "vite": "^7.3.0",
-    "@vitejs/plugin-react": "^5.1.2"
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
+    "@vitejs/plugin-react": "^5.1.2",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }
