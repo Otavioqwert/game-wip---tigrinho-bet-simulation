@@ -1,4 +1,3 @@
-
 import type { ScratchCardTierV3, CookieRecipe, BakeryProduct, BakeryProductId } from '../types';
 export * from './economy';
 
@@ -46,37 +45,37 @@ export const BAKERY_PRODUCTS: Record<BakeryProductId, BakeryProduct> = {
         id: 'cookie',
         name: 'Cookie',
         icon: '🍪',
-        craftTime: 60,           // 1 minuto
-        craftCost: 1,            // 1 açúcar
-        sellPrice: 200,          // $200
-        passiveIncome: 0.1,      // +$0.1/s
-        upgradeBonus: 0.10,      // +10% por nível
-        upgradeCost: 40,         // $40 (20% do sell price)
-        upgradeCostIncrease: 2   // +$2 por nível
+        craftTime: 60,
+        craftCost: 1,
+        sellPrice: 200,
+        passiveIncome: 0.1,
+        upgradeBonus: 0.10,
+        upgradeCost: 40,
+        upgradeCostIncrease: 2
     },
     cupcake: {
         id: 'cupcake',
         name: 'Cupcake',
         icon: '🧁',
-        craftTime: 180,          // 3 minutos
-        craftCost: 2,            // 2 açúcar
-        sellPrice: 500,          // $500
-        passiveIncome: 0.3,      // +$0.3/s
-        upgradeBonus: 0.25,      // +25% por nível
-        upgradeCost: 100,        // $100
-        upgradeCostIncrease: 5   // +$5 por nível
+        craftTime: 180,
+        craftCost: 2,
+        sellPrice: 500,
+        passiveIncome: 0.3,
+        upgradeBonus: 0.25,
+        upgradeCost: 100,
+        upgradeCostIncrease: 5
     },
     cake: {
         id: 'cake',
         name: 'Bolo',
         icon: '🎂',
-        craftTime: 360,          // 6 minutos
-        craftCost: 4,            // 4 açúcar
-        sellPrice: 1200,         // $1,200
-        passiveIncome: 0.7,      // +$0.7/s
-        upgradeBonus: 0.40,      // +40% por nível
-        upgradeCost: 240,        // $240
-        upgradeCostIncrease: 12  // +$12 por nível
+        craftTime: 360,
+        craftCost: 4,
+        sellPrice: 1200,
+        passiveIncome: 0.7,
+        upgradeBonus: 0.40,
+        upgradeCost: 240,
+        upgradeCostIncrease: 12
     }
 };
 
@@ -128,56 +127,70 @@ export const SCRATCH_CARD_TIERS_V3: ScratchCardTierV3[] = [
 ];
 
 export const SCRATCH_PRIZE_TIERS = [
-    { id: 'divino', name: 'Divino', mult: 800, prob: 0.00008, minTier: 7, color: 'text-pink-500' },
-    { id: 'celestial', name: 'Celestial', mult: 600, prob: 0.00012, minTier: 7, color: 'text-cyan-300' },
-    { id: 'exaltado', name: 'Exaltado', mult: 400, prob: 0.0002, minTier: 5, color: 'text-purple-300' },
-    { id: 'supremo', name: 'Supremo', mult: 300, prob: 0.00035, minTier: 5, color: 'text-indigo-400' },
-    { id: 'ancestral', name: 'Ancestral', mult: 200, prob: 0.0005, minTier: 2, color: 'text-violet-400' },
-    { id: 'primordial', name: 'Primordial', mult: 150, prob: 0.0008, minTier: 2, color: 'text-fuchsia-400' },
-    { id: 'arcano', name: 'Arcano', mult: 120, prob: 0.0012, minTier: 2, color: 'text-purple-400' },
-    { id: 'mítico', name: 'Mítico', mult: 100, prob: 0.0018, minTier: 0, color: 'text-red-500' },
-    { id: 'lendário', name: 'Lendário', mult: 80, prob: 0.0025, minTier: 0, color: 'text-orange-500' },
-    { id: 'épico', name: 'Épico', mult: 65, prob: 0.004, minTier: 0, color: 'text-yellow-500' },
-    { id: 'raro', name: 'Raro', mult: 50, prob: 0.0065, minTier: 0, color: 'text-blue-500' },
-    { id: 'incomum', name: 'Incomum', mult: 35, prob: 0.012, minTier: 0, color: 'text-green-500' },
-    { id: 'comum', name: 'Comum', mult: 22, prob: 0.025, minTier: 0, color: 'text-green-400' },
-    { id: 'básico', name: 'Básico', mult: 15, prob: 0.035, minTier: 0, color: 'text-gray-300' },
-    { id: 'simples', name: 'Simples', mult: 10, prob: 0.045, minTier: 0, color: 'text-gray-400' },
-    { id: 'modesto', name: 'Modesto', mult: 6, prob: 0.055, minTier: 0, color: 'text-gray-500' },
-    { id: 'mínimo', name: 'Mínimo', mult: 3, prob: 0.065, minTier: 0, color: 'text-slate-500' },
-    { id: 'migalha', name: 'Migalha', mult: 1.5, prob: 0.075, minTier: 0, color: 'text-slate-600' }
+    { id: 'divino',     name: 'Divino',     mult: 800,  prob: 0.00008, minTier: 7, color: 'text-pink-500' },
+    { id: 'celestial',  name: 'Celestial',  mult: 600,  prob: 0.00012, minTier: 7, color: 'text-cyan-300' },
+    { id: 'exaltado',   name: 'Exaltado',   mult: 400,  prob: 0.0002,  minTier: 5, color: 'text-purple-300' },
+    { id: 'supremo',    name: 'Supremo',    mult: 300,  prob: 0.00035, minTier: 5, color: 'text-indigo-400' },
+    { id: 'ancestral',  name: 'Ancestral',  mult: 200,  prob: 0.0005,  minTier: 2, color: 'text-violet-400' },
+    { id: 'primordial', name: 'Primordial', mult: 150,  prob: 0.0008,  minTier: 2, color: 'text-fuchsia-400' },
+    { id: 'arcano',     name: 'Arcano',     mult: 120,  prob: 0.0012,  minTier: 2, color: 'text-purple-400' },
+    { id: 'mítico',     name: 'Mítico',     mult: 100,  prob: 0.0018,  minTier: 0, color: 'text-red-500' },
+    { id: 'lendário',   name: 'Lendário',   mult: 80,   prob: 0.0025,  minTier: 0, color: 'text-orange-500' },
+    { id: 'épico',      name: 'Épico',      mult: 65,   prob: 0.004,   minTier: 0, color: 'text-yellow-500' },
+    { id: 'raro',       name: 'Raro',       mult: 50,   prob: 0.0065,  minTier: 0, color: 'text-blue-500' },
+    { id: 'incomum',    name: 'Incomum',    mult: 35,   prob: 0.012,   minTier: 0, color: 'text-green-500' },
+    { id: 'comum',      name: 'Comum',      mult: 22,   prob: 0.025,   minTier: 0, color: 'text-green-400' },
+    { id: 'básico',     name: 'Básico',     mult: 15,   prob: 0.035,   minTier: 0, color: 'text-gray-300' },
+    { id: 'simples',    name: 'Simples',    mult: 10,   prob: 0.045,   minTier: 0, color: 'text-gray-400' },
+    { id: 'modesto',    name: 'Modesto',    mult: 6,    prob: 0.055,   minTier: 0, color: 'text-gray-500' },
+    { id: 'mínimo',     name: 'Mínimo',     mult: 3,    prob: 0.065,   minTier: 0, color: 'text-slate-500' },
+    { id: 'migalha',    name: 'Migalha',    mult: 1.5,  prob: 0.075,   minTier: 0, color: 'text-slate-600' }
 ];
 
-// Sistema de Inflação Híbrido V2
-// Fórmula: novoPreço = (preçoAtual × (1 + percentPerPurchase)) + (baseCost × flatPerPurchase)
 export const SCRATCH_INFLATION_CONFIG_V2 = [
-    { percentPerPurchase: 0.05, flatPerPurchase: 0,    exponent: 1.0 },  // Tier 0: Papelão
-    { percentPerPurchase: 0.05, flatPerPurchase: 0.03, exponent: 1.0 },  // Tier 1: Bronze
-    { percentPerPurchase: 0.05, flatPerPurchase: 0.06, exponent: 1.0 },  // Tier 2: Prata
-    { percentPerPurchase: 0.05, flatPerPurchase: 0.09, exponent: 1.0 },  // Tier 3: Ouro
-    { percentPerPurchase: 0.05, flatPerPurchase: 0.12, exponent: 1.0 },  // Tier 4: Platina
-    { percentPerPurchase: 0.05, flatPerPurchase: 0.15, exponent: 1.0 },  // Tier 5: Diamante
-    { percentPerPurchase: 0.05, flatPerPurchase: 0.18, exponent: 1.0 },  // Tier 6: Titânio
-    { percentPerPurchase: 0.05, flatPerPurchase: 0.21, exponent: 1.0 },  // Tier 7: Obsidiana
-    { percentPerPurchase: 0.07, flatPerPurchase: 0.24, exponent: 1.0 },  // Tier 8: Celestial (+0.02)
-    { percentPerPurchase: 0.08, flatPerPurchase: 0.27, exponent: 1.0 }   // Tier 9: Divino (+0.03)
+    { percentPerPurchase: 0.05, flatPerPurchase: 0,    exponent: 1.0 },
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.03, exponent: 1.0 },
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.06, exponent: 1.0 },
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.09, exponent: 1.0 },
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.12, exponent: 1.0 },
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.15, exponent: 1.0 },
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.18, exponent: 1.0 },
+    { percentPerPurchase: 0.05, flatPerPurchase: 0.21, exponent: 1.0 },
+    { percentPerPurchase: 0.07, flatPerPurchase: 0.24, exponent: 1.0 },
+    { percentPerPurchase: 0.08, flatPerPurchase: 0.27, exponent: 1.0 }
 ];
 
 export const SCRATCH_CARD_UNLOCK_THRESHOLDS = [0, 50, 250, 1000, 5000, 20000, 100000, 500000, 2500000, 10000000];
 
-// Sistema de Injeção Lotérica V2
-// costMultiplier: multiplicador do custo atual da raspadinha
-// reduction: % de compras que serão removidas (0.80 = remove 80%)
-// cooldown: tempo em ms até poder injetar novamente
 export const LOTERICA_INJECTION_CONFIG_V2 = [
-    { costMultiplier: 0.5, reduction: 0.80, cooldown: 3600000  },  // Tier 0: 1h cooldown
-    { costMultiplier: 0.6, reduction: 0.78, cooldown: 5400000  },  // Tier 1: 1.5h
-    { costMultiplier: 0.8, reduction: 0.75, cooldown: 7200000  },  // Tier 2: 2h
-    { costMultiplier: 1.0, reduction: 0.72, cooldown: 10800000 },  // Tier 3: 3h
-    { costMultiplier: 1.3, reduction: 0.70, cooldown: 10800000 },  // Tier 4: 3h
-    { costMultiplier: 1.6, reduction: 0.68, cooldown: 14400000 },  // Tier 5: 4h
-    { costMultiplier: 2.0, reduction: 0.65, cooldown: 14400000 },  // Tier 6: 4h
-    { costMultiplier: 2.5, reduction: 0.63, cooldown: 14400000 },  // Tier 7: 4h
-    { costMultiplier: 3.0, reduction: 0.60, cooldown: 14400000 },  // Tier 8: 4h
-    { costMultiplier: 3.5, reduction: 0.58, cooldown: 14400000 }   // Tier 9: 4h
+    { costMultiplier: 0.5, reduction: 0.80, cooldown: 3600000  },
+    { costMultiplier: 0.6, reduction: 0.78, cooldown: 5400000  },
+    { costMultiplier: 0.8, reduction: 0.75, cooldown: 7200000  },
+    { costMultiplier: 1.0, reduction: 0.72, cooldown: 10800000 },
+    { costMultiplier: 1.3, reduction: 0.70, cooldown: 10800000 },
+    { costMultiplier: 1.6, reduction: 0.68, cooldown: 14400000 },
+    { costMultiplier: 2.0, reduction: 0.65, cooldown: 14400000 },
+    { costMultiplier: 2.5, reduction: 0.63, cooldown: 14400000 },
+    { costMultiplier: 3.0, reduction: 0.60, cooldown: 14400000 },
+    { costMultiplier: 3.5, reduction: 0.58, cooldown: 14400000 }
 ];
+
+// Delay fixo de agendamento por tier (em ms).
+// Só se aplica quando a fila tem 2+ raspadinhas.
+// Independente da quantidade agendada, o delay é sempre o mesmo.
+// Cada raspadinha extra na fila entra com +1 nível de inflação.
+// Fórmula base: (log100(ROI_liquido) ^ tier) * tier  — Divino fixado em 1800s.
+export const SCRATCH_SCHEDULE_DELAY_MS = [
+    1150,    // Tier 0: Papelão   (~1.15s)
+    1270,    // Tier 1: Bronze    (~1.27s)
+    3710,    // Tier 2: Prata     (~3.71s)
+    8700,    // Tier 3: Ouro      (~8.7s)
+    19100,   // Tier 4: Platina   (~19.1s)
+    42370,   // Tier 5: Diamante  (~42.4s)
+    90760,   // Tier 6: Titânio   (~1.5min)
+    201490,  // Tier 7: Obsidiana (~3.4min)
+    436910,  // Tier 8: Celestial (~7.3min)
+    1800000, // Tier 9: Divino    (30min)
+];
+
+export const SCRATCH_QUEUE_MAX = 10;
