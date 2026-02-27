@@ -175,11 +175,6 @@ export const LOTERICA_INJECTION_CONFIG_V2 = [
     { costMultiplier: 3.5, reduction: 0.58, cooldown: 14400000 }
 ];
 
-// Delay fixo de agendamento por tier (em ms).
-// Só se aplica quando a fila tem 2+ raspadinhas.
-// Independente da quantidade agendada, o delay é sempre o mesmo.
-// Cada raspadinha extra na fila entra com +1 nível de inflação.
-// Fórmula base: (log100(ROI_liquido) ^ tier) * tier  — Divino fixado em 1800s.
 export const SCRATCH_SCHEDULE_DELAY_MS = [
     1150,    // Tier 0: Papelão   (~1.15s)
     1270,    // Tier 1: Bronze    (~1.27s)
@@ -194,3 +189,30 @@ export const SCRATCH_SCHEDULE_DELAY_MS = [
 ];
 
 export const SCRATCH_QUEUE_MAX = 10;
+
+// ── Sistema de Envelopes ─────────────────────────────────────
+// Chances independentes por tier (não normalizadas entre si).
+// Papelão–Ouro: repartidos 4/3/2/1 do pool baixo (95.11%).
+// Platina+: peso dobrado em relação à fórmula base.
+export const ENVELOPE_CARD_CHANCES: number[] = [
+    0.38045, // Tier 0 — 📦 Papelão
+    0.28534, // Tier 1 — 🥉 Bronze
+    0.19023, // Tier 2 — 🥈 Prata
+    0.09511, // Tier 3 — 🥇 Ouro
+    0.01948, // Tier 4 — 💠 Platina
+    0.01131, // Tier 5 — 💎 Diamante
+    0.00721, // Tier 6 — ⚙️ Titânio
+    0.00487, // Tier 7 — 🔮 Obsidiana
+    0.00346, // Tier 8 — 🌌 Celestial
+    0.00254, // Tier 9 — 👑 Divino
+];
+
+export const ENVELOPE_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutos
+
+// Distribuição de quantidade de cartas por envelope
+export const ENVELOPE_QTY_TABLE: { qty: number; prob: number }[] = [
+    { qty: 1, prob: 0.40 },
+    { qty: 2, prob: 0.30 },
+    { qty: 3, prob: 0.20 },
+    { qty: 4, prob: 0.10 },
+];
