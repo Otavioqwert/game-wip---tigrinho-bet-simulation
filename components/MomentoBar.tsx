@@ -15,7 +15,9 @@ const MomentoBar: React.FC<MomentoBarProps> = ({
 }) => {
     const nextThreshold = calculateMomentumThreshold(momentoLevel + 1);
     const displayProgress = Math.max(0, momentoProgress);
-    const progressPercent = Math.min(100, (displayProgress / nextThreshold) * 100);
+    const progressPercent = momentoValue > 0
+        ? Math.min(100, (displayProgress / momentoValue) * 100)
+        : 0;
     const isHeader = variant === 'header';
 
     return (
@@ -59,7 +61,11 @@ const MomentoBar: React.FC<MomentoBarProps> = ({
                         </div>
                         <div className="flex justify-between gap-6 pt-1 border-t border-gray-800">
                             <span className="text-gray-400">Progresso</span>
-                            <span className="font-bold text-white">{displayProgress.toFixed(0)} / {nextThreshold}</span>
+                            <span className="font-bold text-white">{displayProgress.toFixed(0)} / {momentoValue.toFixed(0)}</span>
+                        </div>
+                        <div className="flex justify-between gap-6">
+                            <span className="text-gray-400">Próx. nível</span>
+                            <span className="text-gray-500">{displayProgress.toFixed(0)} / {nextThreshold}</span>
                         </div>
                         <div className="flex justify-between gap-6">
                             <span className="text-gray-400">Fórmula</span>
