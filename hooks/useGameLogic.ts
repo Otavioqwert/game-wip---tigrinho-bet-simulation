@@ -36,10 +36,9 @@ export const useGameLogic = () => {
     }, [msgTimeout]);
 
     const gameState = useGameState({ showMsg });
-    
-    // Paraiso Doce Detector
+
     const paraisoDetector = useParaisoDoceDetector();
-    
+
     const secondarySkills = useSecondaryPrestigeSkills({
         prestigePoints: gameState.prestigePoints,
         setPrestigePoints: gameState.setPrestigePoints,
@@ -66,7 +65,7 @@ export const useGameLogic = () => {
     const finalGainCalculation = useCallback((baseAmount: number) => {
         if (baseAmount <= 0) return 0;
         const afterLinear = baseAmount * prestigeSkills.grandeGanhoMultiplier;
-        const final = afterLinear > 1 
+        const final = afterLinear > 1
             ? Math.pow(afterLinear, secondarySkills.hydraExponent)
             : afterLinear;
         return final;
@@ -94,7 +93,6 @@ export const useGameLogic = () => {
         gameState.setBal(b => b + amount);
     }, [gameState]);
 
-    // 🍭 HELPER: Processa recompensas do Paraíso Doce
     const handleParaisoReward = useCallback((amount: number, message: string) => {
         handleGain(amount);
         showMsg(message, 3000, true);
@@ -130,7 +128,6 @@ export const useGameLogic = () => {
         priceIncreaseModifier: secondarySkills.priceIncreaseModifier
     });
 
-    // 🍬 FEBRE DOCE: Passando sugar e setSugar
     const febreDoce = useFebreDoce({
         roiSaldo: gameState.roiSaldo,
         setRoiSaldo: gameState.setRoiSaldo,
@@ -140,8 +137,8 @@ export const useGameLogic = () => {
         setMult: gameState.setMult,
         bal: gameState.bal,
         setBal: gameState.setBal,
-        sugar: gameState.sugar, // 🍬 Passa doces
-        setSugar: gameState.setSugar, // 🍬 Passa setter de doces
+        sugar: gameState.sugar,
+        setSugar: gameState.setSugar,
         showMsg,
         feverSnapshot: gameState.feverSnapshot,
         setFeverSnapshot: gameState.setFeverSnapshot,
@@ -204,7 +201,9 @@ export const useGameLogic = () => {
         showMsg, handleGain
     });
 
-    const prestigeRequirement = useMemo(() => PRESTIGE_BASE_REQUIREMENT * Math.pow(PRESTIGE_GROWTH_FACTOR, gameState.prestigeLevel), [gameState.prestigeLevel]);
+    const prestigeRequirement = useMemo(() =>
+        PRESTIGE_BASE_REQUIREMENT * Math.pow(PRESTIGE_GROWTH_FACTOR, gameState.prestigeLevel)
+    , [gameState.prestigeLevel]);
 
     const handlePrestige = useCallback(() => {
         if (gameState.bal < prestigeRequirement) {
@@ -212,23 +211,26 @@ export const useGameLogic = () => {
             return;
         }
         const pointsEarned = Math.floor(gameState.bal / CASH_TO_PA_RATIO);
-        
+
         const currentSS = secondarySkillsRef.current;
-        const initialBal = 100 + currentSS.startStopBonus;
-        const initialSugar = currentSS.startStopSugar;
-        const initialCloverMult = currentSS.startStopCloverMultBonus;
+        const initialBal         = 100 + currentSS.startStopBonus;
+        const initialSugar        = currentSS.startStopSugar;
+        const initialCloverMult   = currentSS.startStopCloverMultBonus;
+
+        // ── limpar séries de agendamento antes do prestige ──
+        scratchCardLogic.resetScheduleSeries();
 
         gameState.softReset({
             points: gameState.prestigePoints + pointsEarned,
-            level: gameState.prestigeLevel + 1,
+            level:  gameState.prestigeLevel + 1,
             initialBal,
             initialSugar,
             initialCloverMult
         });
-    }, [gameState, prestigeRequirement, showMsg]);
+    }, [gameState, prestigeRequirement, scratchCardLogic, showMsg]);
 
     const currentInstallment = useMemo(() => {
-        const den = [24, 48, 60][gameState.renegotiationTier] || 24;
+        const den  = [24, 48, 60][gameState.renegotiationTier] || 24;
         const rate = [1.15, 1.21, 1.29][gameState.renegotiationTier] || 1.15;
         return (gameState.creditCardDebt * rate) / den;
     }, [gameState.creditCardDebt, gameState.renegotiationTier]);
@@ -261,6 +263,17 @@ export const useGameLogic = () => {
         setIsItemPenaltyModalOpen(false);
         showMsg("Multa paga! Apostas liberadas.", 3000, true);
     }, [gameState, showMsg]);
+
+    // ── wrappers de reset com limpeza de agendamento ─────────
+    const hardResetWithCleanup = useCallback(() => {
+        scratchCardLogic.resetScheduleSeries();
+        gameState.hardReset();
+    }, [scratchCardLogic, gameState]);
+
+    const importStateWithCleanup = useCallback((data: string): boolean => {
+        scratchCardLogic.resetScheduleSeries();
+        return gameState.importState(data);
+    }, [scratchCardLogic, gameState]);
 
     return {
         ...gameState, ...febreDoce, ...spinLogic, ...shopLogic, ...prestigeSkills, ...secondarySkills,
@@ -306,6 +319,9 @@ export const useGameLogic = () => {
         isItemPenaltyModalOpen,
         closeItemPenaltyModal: () => setIsItemPenaltyModalOpen(false),
         handlePayItemPenalty,
-        criarEmbaixadorDoce: () => {}
+        criarEmbaixadorDoce: () => {},
+        // sobrescreve hardReset e importState originais com versão que limpa agendamento
+        hardReset: hardResetWithCleanup,
+        importState: importStateWithCleanup,
     };
 };
