@@ -1,5 +1,4 @@
-
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { SkillId } from '../types';
 
 interface PassiveIncomeProps {
@@ -11,55 +10,60 @@ interface PassiveIncomeProps {
     applyFinalGain: (baseAmount: number) => number;
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     handleGain: (amount: number) => void;
+    isGameReady?: boolean; // pausa durante troca de slot
 }
 
 export const usePassiveIncome = (props: PassiveIncomeProps) => {
-    const {
-        betVal,
-        getSkillLevel,
-        passiveSalary,
-        echoChance,
-        applyFinalGain,
-        handleGain,
-    } = props;
+    // ─── Ref que sempre aponta para os props mais recentes ─────────────────────
+    // Isso permite que os dois setIntervals sejam montados UMA única vez
+    // (array de deps vazio) e sempre leiam os valores mais atuais sem
+    // precisar ser recriados, o que só resetaria o timer.
+    const propsRef = useRef(props);
+    propsRef.current = props;
 
-    // Main passive income from skills
+    // ─── Renda passiva principal (1x por segundo garantido) ─────────────────
     useEffect(() => {
-        const economiaLevel = getSkillLevel('caminhoEconomia');
-        const salaryIncome = passiveSalary;
-        const constantIncome = 0.5;
-        
-        const intervalId = setInterval(() => {
-            let totalPassive = constantIncome;
-            // Economia
+        const id = setInterval(() => {
+            const {
+                getSkillLevel,
+                passiveSalary,
+                echoChance,
+                applyFinalGain,
+                handleGain,
+                isGameReady,
+            } = propsRef.current;
+
+            // Não processa durante troca de slot
+            if (isGameReady === false) return;
+
+            const economiaLevel = getSkillLevel('caminhoEconomia');
+            let total = 0.5; // renda constante base
+
             if (economiaLevel > 0) {
-                totalPassive += (0.5 + (economiaLevel * 0.1));
-            }
-            // Salary
-            if (salaryIncome > 0) {
-                let currentSalary = salaryIncome;
-                if (echoChance > 0 && Math.random() < echoChance) {
-                    currentSalary *= 2;
-                }
-                totalPassive += currentSalary;
+                total += 0.5 + economiaLevel * 0.1;
             }
 
-            // Aplica Grande Ganho e Hidra
-            const finalIncome = applyFinalGain(totalPassive);
-            handleGain(finalIncome);
-        }, 1000); 
-        
-        return () => clearInterval(intervalId); 
-    }, [getSkillLevel, passiveSalary, echoChance, applyFinalGain, handleGain]);
-
-    // Anti-stuck passive income
-    useEffect(() => {
-        const interval = setInterval(() => {
-            // If the user has no money, give them a small boost.
-            if (props.bal < betVal) {
-                handleGain(applyFinalGain(0.5));
+            if (passiveSalary > 0) {
+                const salary = (echoChance > 0 && Math.random() < echoChance)
+                    ? passiveSalary * 2
+                    : passiveSalary;
+                total += salary;
             }
+
+            handleGain(applyFinalGain(total));
         }, 1000);
-        return () => clearInterval(interval);
-    }, [betVal, props.bal, handleGain, applyFinalGain]);
+
+        return () => clearInterval(id);
+    }, []); // monta uma única vez — nunca reseta o timer
+
+    // ─── Anti-stuck (1x por segundo garantido) ─────────────────────────
+    useEffect(() => {
+        const id = setInterval(() => {
+            const { bal, betVal, handleGain, applyFinalGain, isGameReady } = propsRef.current;
+            if (isGameReady === false) return;
+            if (bal < betVal) handleGain(applyFinalGain(0.5));
+        }, 1000);
+
+        return () => clearInterval(id);
+    }, []); // idem
 };
