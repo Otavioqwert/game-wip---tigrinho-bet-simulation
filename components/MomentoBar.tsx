@@ -1,5 +1,4 @@
 import React from 'react';
-import { calculateMomentumThreshold } from '../utils/mechanics/momentumCalculator';
 
 interface MomentoBarProps {
     momentoLevel: number;
@@ -13,7 +12,6 @@ interface MomentoBarProps {
 const MomentoBar: React.FC<MomentoBarProps> = ({
     momentoLevel, momentoProgress, momentoValue, candyStacksForMomento, variant = 'header'
 }) => {
-    const nextThreshold = calculateMomentumThreshold(momentoLevel + 1);
     const displayProgress = Math.max(0, momentoProgress);
     const progressPercent = momentoValue > 0
         ? Math.min(100, (displayProgress / momentoValue) * 100)
@@ -62,10 +60,6 @@ const MomentoBar: React.FC<MomentoBarProps> = ({
                         <div className="flex justify-between gap-6 pt-1 border-t border-gray-800">
                             <span className="text-gray-400">Progresso</span>
                             <span className="font-bold text-white">{displayProgress.toFixed(0)} / {momentoValue.toFixed(0)}</span>
-                        </div>
-                        <div className="flex justify-between gap-6">
-                            <span className="text-gray-400">Próx. nível</span>
-                            <span className="text-gray-500">{displayProgress.toFixed(0)} / {nextThreshold}</span>
                         </div>
                         <div className="flex justify-between gap-6">
                             <span className="text-gray-400">Fórmula</span>
