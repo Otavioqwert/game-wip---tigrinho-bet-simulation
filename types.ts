@@ -1,4 +1,3 @@
-
 export type SymbolKey = '⭐' | '🍭' | '🍦' | '🍧' | '🍀' | '💵' | '💎' | '🐯' | '☄️' | '🪙';
 export type MidSymbolKey = '🍭' | '🍦' | '🍧';
 export type ExtraSymbolKey = '🍀' | '💵' | '💎' | '🐯' | '☄️' | '🪙';
@@ -150,6 +149,18 @@ export interface ActiveScratchCard {
     cells: ScratchCardCell[];
     totalWin: number;
     isRevealing: boolean;
+}
+
+// --- Envelope System Types ---
+
+// Quantidade de cartas não raspadas por tier (index = tier)
+export type ScratchCardInventory = number[];
+
+// Estado persistido do envelope
+export interface EnvelopeState {
+    lastOpenTime: number;   // timestamp do último envelope aberto
+    totalOpened: number;    // total de envelopes abertos (lifetime)
+    // cooldownRemaining é calculado em runtime, não persistido
 }
 
 // --- Snake Minigame Upgrade Types ---
