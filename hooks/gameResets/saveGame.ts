@@ -1,17 +1,18 @@
 import { prepareSaveState } from '../../utils/feverStateIsolation';
-import { SAVE_KEY, SAVE_VERSION } from './initialState';
+import { getSaveKey, SAVE_VERSION } from './initialState';
 import type { SavedState } from '../useGameState';
+import type { SaveSlotId } from './initialState';
 
 /**
- * Serializa e persiste o estado no localStorage.
- * Se isManual = true, exibe mensagem de confirmação.
+ * Persiste o estado no localStorage de forma SÍNCRONA.
+ * Recebe o slot explicitamente para nunca salvar no slot errado.
  */
 export const persistGameState = (
     state: SavedState,
+    slot: SaveSlotId,
     showMsg: (msg: string, d?: number, e?: boolean) => void,
     isManual = false
-) => {
-    // Isola o estado da febre antes de salvar
+): void => {
     const { inv: safeInv, mult: safeMult } = prepareSaveState(
         state.inv,
         state.mult,
@@ -23,7 +24,21 @@ export const persistGameState = (
     const encoded   = btoa(unescape(encodeURIComponent(json)));
     const timestamp = Date.now();
 
-    localStorage.setItem(SAVE_KEY, `V${SAVE_VERSION}:${timestamp}:${encoded}`);
+    // Escrita síncrona — localStorage.setItem é bloqueante por spec
+    localStorage.setItem(getSaveKey(slot), `V${SAVE_VERSION}:${timestamp}:${encoded}`);
 
-    if (isManual) showMsg('✅ Jogo salvo!', 2000, true);
+    if (isManual) showMsg(`✅ Salvo no Slot ${slot}!`, 2000, true);
+};
+
+/**
+ * Exporta o save atual como string (para backup / clone).
+ * Garante que o snapshot do momento atual é exportado, não uma versão antiga.
+ */
+export const exportCurrentState = (
+    state: SavedState,
+    slot: SaveSlotId,
+    showMsg: (msg: string, d?: number, e?: boolean) => void
+): string => {
+    persistGameState(state, slot, showMsg, false);
+    return localStorage.getItem(getSaveKey(slot)) ?? '';
 };

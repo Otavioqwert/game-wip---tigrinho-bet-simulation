@@ -3,9 +3,23 @@ import { EMPTY_FEVER_SNAPSHOT } from '../../utils/feverStateIsolation';
 import type { SavedState } from '../useGameState';
 import type { CraftingSlot, BakeryState } from '../../types';
 
-export const SAVE_KEY = 'tigrinho-save-game';
+// ─── Slots de save ──────────────────────────────────────────────────────────
+// Cada slot tem sua própria chave no localStorage.
+// Slot 0 é o padrão (retrocompatível com a chave antiga).
+export type SaveSlotId = 0 | 1 | 2;
+
+export const SAVE_SLOT_KEYS: Record<SaveSlotId, string> = {
+    0: 'tigrinho-save-game',      // chave legada preservada
+    1: 'tigrinho-save-game-slot1',
+    2: 'tigrinho-save-game-slot2',
+};
+
+/** Retorna a chave correta do localStorage para o slot informado. */
+export const getSaveKey = (slot: SaveSlotId = 0): string => SAVE_SLOT_KEYS[slot];
+
 export const SAVE_VERSION = 30;
 
+// ─── Estado inicial ──────────────────────────────────────────────────────────
 export const getInitialState = (): SavedState => ({
     bal: 100,
     betVal: 1,
@@ -56,11 +70,10 @@ export const getInitialState = (): SavedState => ({
     feverSnapshot: EMPTY_FEVER_SNAPSHOT,
 });
 
-// ─── Validação e correção automática de crafting slots ───────────────────────
+// ─── Validação de crafting slots ─────────────────────────────────────────────
 export const validateAndFixCraftingSlots = (bakery: BakeryState): BakeryState => {
     const expected = 1 + bakery.extraSlots;
     const current  = bakery.craftingSlots.length;
-
     if (current === expected) return bakery;
 
     console.log(`[Bakery Fix] Detectado ${current} slots, esperado ${expected}`);
@@ -68,19 +81,46 @@ export const validateAndFixCraftingSlots = (bakery: BakeryState): BakeryState =>
     if (current > expected) {
         const occupied = bakery.craftingSlots.filter(s => s.productId !== null);
         const fixed: CraftingSlot[] = [];
-        for (let i = 0; i < Math.min(occupied.length, expected); i++) {
+        for (let i = 0; i < Math.min(occupied.length, expected); i++)
             fixed.push({ ...occupied[i], id: i });
-        }
-        for (let i = fixed.length; i < expected; i++) {
+        for (let i = fixed.length; i < expected; i++)
             fixed.push({ id: i, productId: null, startTime: null, endTime: null, quantity: 0 });
-        }
         return { ...bakery, craftingSlots: fixed };
     }
 
-    // current < expected
     const fixed = [...bakery.craftingSlots];
-    for (let i = current; i < expected; i++) {
+    for (let i = current; i < expected; i++)
         fixed.push({ id: i, productId: null, startTime: null, endTime: null, quantity: 0 });
-    }
     return { ...bakery, craftingSlots: fixed };
+};
+
+// ─── Snapshot de metadados de todos os slots (para tela de seleção) ──────────
+export interface SlotMeta {
+    slot: SaveSlotId;
+    exists: boolean;
+    bal?: number;
+    prestigeLevel?: number;
+    savedAt?: number;   // timestamp do último save
+}
+
+/** Lê metadados leves de todos os slots sem carregar o estado completo. */
+export const readAllSlotsMeta = (): SlotMeta[] => {
+    return ([0, 1, 2] as SaveSlotId[]).map(slot => {
+        const raw = localStorage.getItem(getSaveKey(slot));
+        if (!raw || !raw.startsWith('V')) return { slot, exists: false };
+        try {
+            const parts = raw.split(':');
+            if (parts.length < 3) return { slot, exists: false };
+            const data = JSON.parse(decodeURIComponent(escape(atob(parts[2]))));
+            return {
+                slot,
+                exists: true,
+                bal: data.bal ?? 0,
+                prestigeLevel: data.prestigeLevel ?? 0,
+                savedAt: Number(parts[1]) || undefined,
+            };
+        } catch {
+            return { slot, exists: false };
+        }
+    });
 };

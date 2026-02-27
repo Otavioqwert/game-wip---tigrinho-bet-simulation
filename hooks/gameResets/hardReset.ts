@@ -1,23 +1,21 @@
-import { SAVE_KEY } from './initialState';
+import { getSaveKey } from './initialState';
+import type { SaveSlotId } from './initialState';
 
-/**
- * Apaga o save do localStorage.
- * Quem chamar deve aplicar getInitialState() ao setState depois.
- */
-export const clearSaveFromStorage = () => {
-    localStorage.removeItem(SAVE_KEY);
+/** Apaga o save de um slot específico do localStorage. */
+export const clearSaveFromStorage = (slot: SaveSlotId): void => {
+    localStorage.removeItem(getSaveKey(slot));
 };
 
 /**
- * Sobrescreve o save com dados externos (importar save).
- * Retorna true para sinalizar sucesso ao chamador.
+ * Sobrescreve o slot com dados externos (importar save).
+ * Retorna true em caso de sucesso.
  */
-export const importSaveToStorage = (encodedData: string): boolean => {
+export const importSaveToStorage = (slot: SaveSlotId, encodedData: string): boolean => {
     try {
-        localStorage.setItem(SAVE_KEY, encodedData);
+        localStorage.setItem(getSaveKey(slot), encodedData);
         return true;
     } catch (e) {
-        console.error('[importSave] Falha ao escrever no localStorage:', e);
+        console.error(`[importSave] Falha ao escrever no slot ${slot}:`, e);
         return false;
     }
 };
