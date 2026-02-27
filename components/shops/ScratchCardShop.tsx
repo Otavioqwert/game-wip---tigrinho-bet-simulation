@@ -13,14 +13,16 @@ import {
     WITHDRAW_FEE_MAX,
     WITHDRAW_COOLDOWN,
 } from '../../hooks/useScratchCardLogic';
-import type { ScratchCardMetrics, LotericaInjectionState, QueueEntry } from '../../hooks/useScratchCardLogic';
-import type { ScratchCardMetrics as SCM, LotericaInjectionState as LIS } from '../../types';
+import type {
+    ScheduleSeries,
+} from '../../hooks/useScratchCardLogic';
+import type { ScratchCardMetrics, LotericaInjectionState } from '../../types';
 
 interface ScratchCardShopProps {
     bal: number;
     unluckyPot: number;
-    scratchMetrics: SCM;
-    lotericaState: LIS;
+    scratchMetrics: ScratchCardMetrics;
+    lotericaState: LotericaInjectionState;
     calculateCurrentCost: (tier: number, extra?: number) => number;
     calculateCurrentRTP: (tier: number) => number;
     buyScratchCard: (tier: number) => void;
@@ -32,7 +34,7 @@ interface ScratchCardShopProps {
     withdrawCooldownRem: number;
     // agendamento
     scheduleCards: (tier: number, qty: number) => void;
-    scheduleQueue: QueueEntry[];
+    scheduleSeries: (ScheduleSeries | null)[];
     scheduleQty: number[];
     setScheduleQty: React.Dispatch<React.SetStateAction<number[]>>;
 }
@@ -43,14 +45,15 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
         calculateCurrentCost, calculateCurrentRTP,
         buyScratchCard, injetarLoterica,
         withdrawUnluckyPot, getCurrentWithdrawFee, withdrawCount, withdrawCooldownRem,
-        scheduleCards, scheduleQueue, scheduleQty, setScheduleQty,
+        scheduleCards, scheduleSeries, scheduleQty, setScheduleQty,
     } = props;
 
     const [activeInfoCard, setActiveInfoCard] = useState<number | null>(null);
-    const [withdrawPct, setWithdrawPct] = useState(20);
+    const [withdrawPct, setWithdrawPct]       = useState(20);
 
     const formatTime = (ms: number) => {
-        if (ms < 60000)  return `${Math.ceil(ms / 1000)}s`;
+        if (ms <= 0)      return '0s';
+        if (ms < 60000)   return `${Math.ceil(ms / 1000)}s`;
         if (ms < 3600000) return `${Math.ceil(ms / 60000)}m`;
         return `${(ms / 3600000).toFixed(1)}h`;
     };
@@ -158,46 +161,54 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
             {/* ── Grid de Cards ── */}
             <div className="grid grid-cols-1 gap-6">
                 {SCRATCH_CARD_TIERS_V3.map((tier, index) => {
-                    const purchases     = scratchMetrics.tierPurchaseCounts[index];
-                    const currentCost   = calculateCurrentCost(index);
-                    const currentRTP    = calculateCurrentRTP(index);
-                    const expectedValue = (currentCost * currentRTP) / 100;
-                    const feeRate       = getServiceFeeRate(index);
-                    const serviceFee    = Math.ceil(currentCost * feeRate);
+                    const purchases       = scratchMetrics.tierPurchaseCounts[index];
+                    const currentCost     = calculateCurrentCost(index);
+                    const currentRTP      = calculateCurrentRTP(index);
+                    const expectedValue   = (currentCost * currentRTP) / 100;
+                    const feeRate         = getServiceFeeRate(index);
+                    const serviceFee      = Math.ceil(currentCost * feeRate);
                     const unlockThreshold = SCRATCH_CARD_UNLOCK_THRESHOLDS[index];
-                    const isLocked      = bal < unlockThreshold && purchases === 0;
-                    const canAfford1    = unluckyPot >= currentCost && bal >= serviceFee;
-                    const theme         = getTierTheme(tier.theme.color);
-                    const cdRemaining   = scratchMetrics.tierCooldownRemaining[index] || 0;
-                    const isInfoOpen    = activeInfoCard === index;
-                    const injectionCd   = lotericaState.injectionCooldownRemaining[index] || 0;
+                    const isLocked        = bal < unlockThreshold && purchases === 0;
+                    const canAfford1      = unluckyPot >= currentCost && bal >= serviceFee;
+                    const theme           = getTierTheme(tier.theme.color);
+                    const cdRemaining     = scratchMetrics.tierCooldownRemaining[index] || 0;
+                    const isInfoOpen      = activeInfoCard === index;
+                    const injectionCd     = lotericaState.injectionCooldownRemaining[index] || 0;
 
-                    // fila deste tier
-                    const tierQueue     = scheduleQueue.filter(e => e.tier === index);
-                    const inQueue       = tierQueue.length;
-                    const nextDelivery  = tierQueue.length > 0 ? Math.min(...tierQueue.map(e => e.deliverAt)) : null;
-                    const qty           = scheduleQty[index];
+                    // ── série de agendamento deste tier
+                    const series         = scheduleSeries[index];
+                    const hasSeries      = series !== null;
+                    const now            = Date.now();
+                    const seriesRemMs    = hasSeries ? Math.max(0, series!.seriesEndsAt - now) : 0;
+                    const deliveredCount = hasSeries
+                        ? series!.slots.filter(s => s.processed).length
+                        : 0;
+                    const nextSlot       = hasSeries
+                        ? series!.slots.find(s => !s.processed)
+                        : null;
+                    const nextDeliveryMs = nextSlot ? Math.max(0, nextSlot.deliverAt - now) : 0;
 
-                    // custo total do agendamento (preview)
+                    const qty = scheduleQty[index];
+
+                    // preview custo de agendar
                     let previewPot = 0, previewFee = 0;
                     for (let i = 0; i < qty; i++) {
                         const c = calculateCurrentCost(index, i);
                         previewPot += c;
                         previewFee += Math.ceil(c * feeRate);
                     }
-                    const canAffordQueue = unluckyPot >= previewPot && bal >= previewFee
-                        && (inQueue + qty) <= SCRATCH_QUEUE_MAX;
+                    const canAffordSchedule = !hasSeries && unluckyPot >= previewPot && bal >= previewFee;
 
                     const delayMs      = SCRATCH_SCHEDULE_DELAY_MS[index];
-                    const deliveryTime = SCRATCH_CARD_TIERS_V3[index].cooldown + delayMs;
+                    const deliveryEta  = delayMs + SCRATCH_CARD_TIERS_V3[index].cooldown;
 
-                    const linear         = index * 0.15;
-                    const scaled         = index > 0 ? Math.pow(index / 9, 0.7) * 0.40 : 0;
-                    const tierLuckFactor = 1 + linear + scaled;
-                    const baseSlotValue  = tier.cost / tier.slots;
+                    const linear          = index * 0.15;
+                    const scaled          = index > 0 ? Math.pow(index / 9, 0.7) * 0.40 : 0;
+                    const tierLuckFactor  = 1 + linear + scaled;
+                    const baseSlotValue   = tier.cost / tier.slots;
                     const availablePrizes = SCRATCH_PRIZE_TIERS.filter(p => index >= p.minTier);
-                    const totalWinProb   = availablePrizes.reduce((s, p) => s + p.prob * tierLuckFactor, 0);
-                    const lossProb       = Math.max(0, 1 - totalWinProb);
+                    const totalWinProb    = availablePrizes.reduce((s, p) => s + p.prob * tierLuckFactor, 0);
+                    const lossProb        = Math.max(0, 1 - totalWinProb);
 
                     return (
                         <div key={index} className={`relative group ${isLocked && !isInfoOpen ? 'grayscale opacity-75' : ''}`}>
@@ -253,11 +264,13 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <p className="text-[9px] text-gray-500 mt-2 text-center">*Prêmios fixos baseados no custo original: ${tier.cost.toLocaleString()}</p>
+                                        <p className="text-[9px] text-gray-500 mt-2 text-center">
+                                            *Prêmios fixos baseados no custo original: ${tier.cost.toLocaleString()}
+                                        </p>
                                     </div>
                                 )}
 
-                                {/* cabeçalho do card */}
+                                {/* cabeçalho */}
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex gap-3">
                                         <div className="text-5xl bg-black/20 p-2 rounded-lg backdrop-blur-sm border border-white/10">{tier.theme.icon}</div>
@@ -275,7 +288,7 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                     </div>
                                 </div>
 
-                                {/* preço + compra normal */}
+                                {/* preço + compra avulsa */}
                                 <div className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5 relative z-20">
                                     <div className="flex-grow">
                                         <span className="text-[9px] font-black text-red-400 uppercase block mb-0.5">Preço do Ticket</span>
@@ -284,7 +297,7 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
                                             <span className="text-2xl font-black text-white">{currentCost.toLocaleString()}</span>
                                         </div>
                                         <div className="text-[9px] text-yellow-400/80 mt-0.5">
-                                            + <span className="font-bold">${serviceFee.toFixed(0)}</span> taxa ({(feeRate * 100).toFixed(1)}% em $)
+                                            + <span className="font-bold">${serviceFee.toFixed(0)}</span> taxa ({(feeRate * 100).toFixed(1)}%)
                                         </div>
                                     </div>
                                     {cdRemaining > 0 ? (
@@ -306,60 +319,105 @@ const ScratchCardShop: React.FC<ScratchCardShopProps> = (props) => {
 
                                 {/* ── Painel de Agendamento ── */}
                                 {!isLocked && (
-                                    <div className="mt-3 bg-black/30 border border-white/10 rounded-xl p-3 space-y-2 relative z-20">
+                                    <div className={`mt-3 rounded-xl p-3 space-y-2 relative z-20 border transition-all ${
+                                        hasSeries
+                                            ? 'bg-orange-950/40 border-orange-500/30'
+                                            : 'bg-black/30 border-white/10'
+                                    }`}>
+
                                         <div className="flex justify-between items-center">
-                                            <span className="text-[10px] font-black text-white/60 uppercase tracking-wider">📋 Agendar em Lote</span>
+                                            <span className="text-[10px] font-black text-white/60 uppercase tracking-wider">
+                                                📋 Agendar Série
+                                            </span>
                                             <span className="text-[9px] text-gray-500">
-                                                entrega em {formatTime(deliveryTime)}
-                                                {inQueue > 0 && <span className="text-orange-400 ml-1">({inQueue}/{SCRATCH_QUEUE_MAX} na fila)</span>}
+                                                {hasSeries
+                                                    ? <span className="text-orange-400">série ativa • termina em {formatTime(seriesRemMs)}</span>
+                                                    : `1ª entrega em ${formatTime(deliveryEta)}`
+                                                }
                                             </span>
                                         </div>
 
-                                        {/* seletor de quantidade */}
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => setScheduleQty(q => q.map((v, i) => i === index ? Math.max(2, v - 1) : v))}
-                                                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black flex items-center justify-center transition-colors">−</button>
-                                            <span className="flex-1 text-center text-white font-black tabular-nums">{qty}x</span>
-                                            <button
-                                                onClick={() => setScheduleQty(q => q.map((v, i) => i === index ? Math.min(SCRATCH_QUEUE_MAX - inQueue, v + 1) : v))}
-                                                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black flex items-center justify-center transition-colors">+</button>
-                                            <div className="flex gap-1 ml-1">
-                                                {[2, 5, 10].map(n => (
-                                                    <button key={n}
-                                                        onClick={() => setScheduleQty(q => q.map((v, i) => i === index ? Math.min(SCRATCH_QUEUE_MAX - inQueue, n) : v))}
-                                                        className={`text-[9px] font-bold px-2 py-1 rounded transition-colors ${
-                                                            qty === n ? 'bg-white/30 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'
-                                                        }`}>{n}x</button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* preview de custo */}
-                                        <div className="flex justify-between text-[9px] text-gray-400 bg-black/20 px-2 py-1 rounded-lg">
-                                            <span>🏺 {previewPot.toLocaleString()} pote + ${previewFee.toFixed(0)} taxa</span>
-                                            <span className="text-orange-300 font-bold">
-                                                +{qty - 1} nível{qty > 2 ? 's' : ''} inflação
-                                            </span>
-                                        </div>
-
-                                        {/* fila ativa */}
-                                        {inQueue > 0 && nextDelivery && (
-                                            <div className="flex items-center gap-2 bg-orange-900/20 border border-orange-500/20 rounded-lg px-2 py-1">
-                                                <span className="text-orange-400 text-sm">⏱</span>
-                                                <span className="text-[9px] text-orange-300">
-                                                    {inQueue} raspadinha{inQueue > 1 ? 's' : ''} na fila •
-                                                    próxima em {formatTime(Math.max(0, nextDelivery - Date.now()))}
-                                                </span>
+                                        {/* série ativa: barra de progresso */}
+                                        {hasSeries && (
+                                            <div className="space-y-1.5">
+                                                <div className="flex justify-between text-[9px]">
+                                                    <span className="text-orange-300">
+                                                        {deliveredCount}/{series!.totalQty} entregues
+                                                    </span>
+                                                    {nextSlot && (
+                                                        <span className="text-gray-400">
+                                                            próxima em {formatTime(nextDeliveryMs)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-orange-500 rounded-full transition-all duration-500"
+                                                        style={{ width: `${(deliveredCount / series!.totalQty) * 100}%` }}
+                                                    />
+                                                </div>
+                                                {/* mini slots visuais */}
+                                                <div className="flex gap-1 flex-wrap">
+                                                    {series!.slots.map((slot, si) => (
+                                                        <div key={si}
+                                                            className={`w-5 h-5 rounded text-[8px] flex items-center justify-center font-black border ${
+                                                                slot.processed
+                                                                    ? 'bg-green-600/60 border-green-500/50 text-green-200'
+                                                                    : slot.deliverAt - now < 5000
+                                                                        ? 'bg-yellow-600/60 border-yellow-400/50 text-yellow-200 animate-pulse'
+                                                                        : 'bg-white/10 border-white/10 text-gray-500'
+                                                            }`}>
+                                                            {slot.processed ? '✓' : si + 1}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
 
-                                        <button
-                                            onClick={() => scheduleCards(index, qty)}
-                                            disabled={!canAffordQueue || isLocked}
-                                            className="w-full py-2 rounded-xl font-black text-xs uppercase transition-all bg-orange-600 hover:bg-orange-500 text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed">
-                                            {canAffordQueue ? `AGENDAR ${qty}x` : 'SALDO INSUFICIENTE'}
-                                        </button>
+                                        {/* seletor de quantidade (desabilitado se há série ativa) */}
+                                        {!hasSeries && (
+                                            <>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => setScheduleQty(q => q.map((v, i) => i === index ? Math.max(2, v - 1) : v))}
+                                                        className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black flex items-center justify-center transition-colors">−</button>
+                                                    <span className="flex-1 text-center text-white font-black tabular-nums">{qty}x</span>
+                                                    <button
+                                                        onClick={() => setScheduleQty(q => q.map((v, i) => i === index ? Math.min(SCRATCH_QUEUE_MAX, v + 1) : v))}
+                                                        className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black flex items-center justify-center transition-colors">+</button>
+                                                    <div className="flex gap-1 ml-1">
+                                                        {[2, 5, 10].map(n => (
+                                                            <button key={n}
+                                                                onClick={() => setScheduleQty(q => q.map((v, i) => i === index ? n : v))}
+                                                                className={`text-[9px] font-bold px-2 py-1 rounded transition-colors ${
+                                                                    qty === n ? 'bg-white/30 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                                                                }`}>{n}x</button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex justify-between text-[9px] text-gray-400 bg-black/20 px-2 py-1 rounded-lg">
+                                                    <span>🏺 {previewPot.toLocaleString()} pote + ${previewFee.toFixed(0)} taxa</span>
+                                                    <span className="text-orange-300 font-bold">
+                                                        +{qty - 1} nível{qty > 2 ? 's' : ''} inflação
+                                                    </span>
+                                                </div>
+
+                                                <button
+                                                    onClick={() => scheduleCards(index, qty)}
+                                                    disabled={!canAffordSchedule}
+                                                    className="w-full py-2 rounded-xl font-black text-xs uppercase transition-all bg-orange-600 hover:bg-orange-500 text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed">
+                                                    AGENDAR {qty}x
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {/* bloqueado enquanto série ativa */}
+                                        {hasSeries && (
+                                            <div className="text-center text-[9px] text-orange-400/70 italic">
+                                                Novo agendamento disponível após a série terminar
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

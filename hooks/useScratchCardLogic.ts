@@ -21,13 +21,22 @@ export const WITHDRAW_FEE_MAX    = 0.15;
 export const WITHDRAW_EFFICIENCY = 0.15;
 export const WITHDRAW_COOLDOWN   = 10 * 60 * 1000;
 
-// ── Fila de agendamento ──────────────────────────────────────
-export interface QueueEntry {
+// ── Tipos de agendamento ─────────────────────────────────
+
+// Um slot agendado individual dentro da série
+export interface ScheduledSlot {
     tier: number;
-    inflaOffset: number;  // quantas compras extras já foram precificadas neste slot
-    deliverAt: number;    // timestamp em que esta raspadinha fica pronta
-    potCost: number;      // custo em pote já descontado na hora de agendar
-    serviceFee: number;   // taxa já descontada em bal na hora de agendar
+    inflaOffset: number;   // nível de inflação aplicado na precificação
+    deliverAt: number;     // timestamp de entrega
+    processed: boolean;    // já foi resolvido?
+}
+
+// Série ativa por tier (1 por vez)
+export interface ScheduleSeries {
+    tier: number;
+    slots: ScheduledSlot[];
+    seriesEndsAt: number;  // timestamp da última entrega da série
+    totalQty: number;
 }
 
 interface ScratchCardLogicProps {
@@ -58,14 +67,20 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
     const [lastWithdrawTime,    setLastWithdrawTime]    = useState(0);
     const [withdrawCooldownRem, setWithdrawCooldownRem] = useState(0);
 
-    // ── fila de agendamento ──────────────────────────────────
-    const [scheduleQueue, setScheduleQueue] = useState<QueueEntry[]>([]);
-    const [scheduleQty,   setScheduleQty]   = useState<number[]>(Array(SCRATCH_CARD_TIERS_V3.length).fill(1));
-    const processingRef = useRef<Set<number>>(new Set()); // evita duplo-disparo no tick
+    // ── séries agendadas (1 por tier) ────────────────────────
+    // null = tier livre para novo agendamento
+    const [scheduleSeries, setScheduleSeries] = useState<(ScheduleSeries | null)[]>(
+        Array(SCRATCH_CARD_TIERS_V3.length).fill(null)
+    );
+    const [scheduleQty, setScheduleQty] = useState<number[]>(
+        Array(SCRATCH_CARD_TIERS_V3.length).fill(2)
+    );
+    const processingRef = useRef<Set<string>>(new Set()); // chave: `tier-deliverAt`
 
     // ── helpers ──────────────────────────────────────────────
     const formatTimeSec = (ms: number) => {
-        if (ms < 60000)  return `${Math.ceil(ms / 1000)}s`;
+        if (ms <= 0)      return '0s';
+        if (ms < 60000)   return `${Math.ceil(ms / 1000)}s`;
         if (ms < 3600000) return `${Math.ceil(ms / 60000)}m`;
         return `${(ms / 3600000).toFixed(1)}h`;
     };
@@ -76,18 +91,39 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
         return 1 + linear + scaled;
     };
 
-    // ── tick global (cooldowns + fila) ───────────────────────
+    const rollScratchCard = useCallback((tier: number): number => {
+        const tierData      = SCRATCH_CARD_TIERS_V3[tier];
+        const baseSlotValue = tierData.cost / tierData.slots;
+        const luck          = getTierLuckFactor(tier);
+        let totalWin = 0;
+        for (let i = 0; i < tierData.slots; i++) {
+            const roll = Math.random();
+            let threshold = 0, mult = 0;
+            for (const p of SCRATCH_PRIZE_TIERS) {
+                if (tier < p.minTier) continue;
+                const ep = p.prob * luck;
+                if (roll < threshold + ep) { mult = p.mult; break; }
+                threshold += ep;
+            }
+            if (mult > 0) totalWin += baseSlotValue * mult * tierData.efficiency;
+        }
+        return applyFinalGain(totalWin);
+    }, [applyFinalGain]);
+
+    // ── tick global ──────────────────────────────────────────
     useEffect(() => {
         const interval = setInterval(() => {
             const now = Date.now();
 
-            // cooldowns normais
+            // cooldowns normais de compra avulsa
             setScratchMetrics(prev => ({
                 ...prev,
                 tierCooldownRemaining: prev.tierLastPurchase.map((lastTime, i) =>
                     Math.max(0, (SCRATCH_CARD_TIERS_V3[i]?.cooldown || 0) - (now - lastTime))
                 )
             }));
+
+            // cooldowns de lotérica
             setLotericaState(prev => ({
                 ...prev,
                 injectionCooldownRemaining: prev.lastInjectionTime.map((lastTime, i) =>
@@ -96,66 +132,80 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
             }));
 
             // cooldown de saque
-            setWithdrawCooldownRem(prev =>
-                Math.max(0, WITHDRAW_COOLDOWN - (now - lastWithdrawTime))
+            setWithdrawCooldownRem(
+                prev => Math.max(0, WITHDRAW_COOLDOWN - (now - lastWithdrawTime))
             );
 
-            // processar fila: raspadinhas prontas
-            setScheduleQueue(prev => {
-                const ready = prev.filter(e => e.deliverAt <= now && !processingRef.current.has(e.deliverAt));
-                if (ready.length === 0) return prev;
+            // processar séries: entregar slots prontos
+            setScheduleSeries(prev => {
+                let changed = false;
+                const next = prev.map(series => {
+                    if (!series) return null;
 
-                ready.forEach(entry => {
-                    processingRef.current.add(entry.deliverAt);
-                    // sortear prêmios e creditar
-                    const tierData = SCRATCH_CARD_TIERS_V3[entry.tier];
-                    const baseSlotValue = tierData.cost / tierData.slots;
-                    const luck = getTierLuckFactor(entry.tier);
-                    let totalWin = 0;
+                    let seriesChanged = false;
+                    const updatedSlots = series.slots.map(slot => {
+                        if (slot.processed || slot.deliverAt > now) return slot;
+                        const key = `${slot.tier}-${slot.deliverAt}`;
+                        if (processingRef.current.has(key)) return slot;
+                        processingRef.current.add(key);
 
-                    for (let i = 0; i < tierData.slots; i++) {
-                        const roll = Math.random();
-                        let threshold = 0;
-                        let mult = 0;
-                        for (const p of SCRATCH_PRIZE_TIERS) {
-                            if (entry.tier < p.minTier) continue;
-                            const ep = p.prob * luck;
-                            if (roll < threshold + ep) { mult = p.mult; break; }
-                            threshold += ep;
+                        // sortear e creditar
+                        const win = rollScratchCard(slot.tier);
+                        if (win > 0) {
+                            setBal(b => b + win);
+                            showMsg(
+                                `🎫 ${SCRATCH_CARD_TIERS_V3[slot.tier].name} entregue! +$${win.toFixed(2)}`,
+                                3000, true
+                            );
+                        } else {
+                            showMsg(
+                                `🎫 ${SCRATCH_CARD_TIERS_V3[slot.tier].name} entregue — sem prêmio.`,
+                                2000, true
+                            );
                         }
-                        if (mult > 0) totalWin += baseSlotValue * mult * tierData.efficiency;
+
+                        // conta como compra para inflação
+                        setScratchMetrics(m => ({
+                            ...m,
+                            tierPurchaseCounts: m.tierPurchaseCounts.map((c, i) =>
+                                i === slot.tier ? c + 1 : c
+                            ),
+                            tierLastPurchase: m.tierLastPurchase.map((t, i) =>
+                                i === slot.tier ? now : t
+                            ),
+                        }));
+
+                        seriesChanged = true;
+                        return { ...slot, processed: true };
+                    });
+
+                    if (seriesChanged) changed = true;
+
+                    // série concluída quando todos os slots foram processados
+                    const allDone = updatedSlots.every(s => s.processed);
+                    if (allDone) {
+                        changed = true;
+                        return null; // libera o slot de agendamento do tier
                     }
 
-                    const finalWin = applyFinalGain(totalWin);
-                    if (finalWin > 0) {
-                        setBal(b => b + finalWin);
-                        showMsg(`🎫 Raspadinha ${tierData.name} entregue! +$${finalWin.toFixed(2)}`, 3000, true);
-                    } else {
-                        showMsg(`🎫 Raspadinha ${tierData.name} entregue — sem prêmio.`, 2000, true);
-                    }
-
-                    // registrar compra pra inflação
-                    setScratchMetrics(m => ({
-                        ...m,
-                        tierPurchaseCounts: m.tierPurchaseCounts.map((c, i) =>
-                            i === entry.tier ? c + 1 : c
-                        ),
-                        tierLastPurchase: m.tierLastPurchase.map((t, i) =>
-                            i === entry.tier ? now : t
-                        )
-                    }));
+                    return seriesChanged ? { ...series, slots: updatedSlots } : series;
                 });
 
-                return prev.filter(e => e.deliverAt > now);
+                return changed ? next : prev;
             });
         }, 500);
+
         return () => clearInterval(interval);
-    }, [setScratchMetrics, setLotericaState, lastWithdrawTime, applyFinalGain, setBal, showMsg]);
+    }, [
+        setScratchMetrics, setLotericaState,
+        lastWithdrawTime, rollScratchCard,
+        setBal, showMsg,
+    ]);
 
     // ── custo / RTP ──────────────────────────────────────────
     const calculateCurrentCost = useCallback((tier: number, extraPurchases = 0): number => {
-        const baseCost = SCRATCH_CARD_TIERS_V3[tier].cost;
-        const config   = SCRATCH_INFLATION_CONFIG_V2[tier];
+        const baseCost  = SCRATCH_CARD_TIERS_V3[tier].cost;
+        const config    = SCRATCH_INFLATION_CONFIG_V2[tier];
         const purchases = scratchMetrics.tierPurchaseCounts[tier] + extraPurchases;
         if (purchases === 0) return baseCost;
         let cost = baseCost;
@@ -167,22 +217,21 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
     }, [scratchMetrics.tierPurchaseCounts]);
 
     const calculateCurrentRTP = useCallback((tier: number): number => {
-        const tierData = SCRATCH_CARD_TIERS_V3[tier];
-        const currentCost = calculateCurrentCost(tier);
+        const tierData      = SCRATCH_CARD_TIERS_V3[tier];
+        const currentCost   = calculateCurrentCost(tier);
         const baseSlotValue = tierData.cost / tierData.slots;
-        const luck = getTierLuckFactor(tier);
+        const luck          = getTierLuckFactor(tier);
         let ev = 0;
         for (const p of SCRATCH_PRIZE_TIERS) {
             if (tier >= p.minTier)
                 ev += (p.prob * luck) * (baseSlotValue * p.mult * tierData.efficiency);
         }
-        const totalEV = ev * tierData.slots;
-        return currentCost > 0 ? (totalEV / currentCost) * 100 : 0;
+        return currentCost > 0 ? (ev * tierData.slots / currentCost) * 100 : 0;
     }, [calculateCurrentCost]);
 
-    // ── compra normal (1 raspadinha, sem agendamento) ─────────
+    // ── compra normal (avulsa, não bloqueia agendamento) ──────
     const buyScratchCard = useCallback((tier: number) => {
-        const now = Date.now();
+        const now             = Date.now();
         const lastPurchase    = scratchMetrics.tierLastPurchase[tier];
         const cooldown        = SCRATCH_CARD_TIERS_V3[tier].cooldown;
         const unlockThreshold = SCRATCH_CARD_UNLOCK_THRESHOLDS[tier];
@@ -200,7 +249,7 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
             showMsg(`🏺 Pote insuficiente! Requer ${currentCost.toFixed(0)}`, 1500, true); return;
         }
         if (bal < serviceFee) {
-            showMsg(`💸 Taxa de serviço: $${serviceFee} (${(feeRate*100).toFixed(1)}%). Saldo insuficiente!`, 2000, true); return;
+            showMsg(`💸 Taxa: $${serviceFee}. Saldo insuficiente!`, 2000, true); return;
         }
 
         setUnluckyPot(p => p - currentCost);
@@ -223,22 +272,24 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
             prizes.push(mult > 0 ? baseSlotValue * mult * tierData.efficiency : 0);
         }
 
-        const finalWin = applyFinalGain(prizes.reduce((s, p) => s + p, 0));
+        const totalWin = prizes.reduce((s, p) => s + p, 0);
+        const finalWin = applyFinalGain(totalWin);
+
         setActiveScratchCard({
             tier,
             cells: prizes.map(p => ({
                 prize: applyFinalGain(p),
                 revealed: false,
-                isJackpot: p >= baseSlotValue * 50
+                isJackpot: p >= baseSlotValue * 50,
             })),
             totalWin: finalWin,
-            isRevealing: true
+            isRevealing: true,
         });
 
         setScratchMetrics(prev => ({
             ...prev,
             tierPurchaseCounts: prev.tierPurchaseCounts.map((c, i) => i === tier ? c + 1 : c),
-            tierLastPurchase:   prev.tierLastPurchase.map((t, i)   => i === tier ? now : t)
+            tierLastPurchase:   prev.tierLastPurchase.map((t, i)   => i === tier ? now  : t),
         }));
 
         showMsg(`🎫 Raspadinha comprada! Taxa: -$${serviceFee.toFixed(0)}`, 2000, true);
@@ -253,12 +304,12 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
         setActiveScratchCard(null);
     }, [activeScratchCard, setBal, showMsg]);
 
-    // ── agendamento (2–10 raspadinhas) ───────────────────────
+    // ── agendamento de série (2–10, 1 série ativa por tier) ────
     const scheduleCards = useCallback((tier: number, qty: number) => {
         const now             = Date.now();
         const unlockThreshold = SCRATCH_CARD_UNLOCK_THRESHOLDS[tier];
         const clampedQty      = Math.max(2, Math.min(SCRATCH_QUEUE_MAX, qty));
-        const delayMs         = SCRATCH_SCHEDULE_DELAY_MS[tier];
+        const delayMs         = SCRATCH_SCHEDULE_DELAY_MS[tier];   // delay fixo da série
         const cooldown        = SCRATCH_CARD_TIERS_V3[tier].cooldown;
         const feeRate         = getServiceFeeRate(tier);
 
@@ -266,20 +317,17 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
             showMsg(`🔒 Bloqueado! Requer $${unlockThreshold.toLocaleString()}.`, 2000, true); return;
         }
 
-        // checar slots disponíveis na fila
-        const inQueue = scheduleQueue.filter(e => e.tier === tier).length;
-        if (inQueue + clampedQty > SCRATCH_QUEUE_MAX) {
-            showMsg(`📋 Fila cheia! Máximo ${SCRATCH_QUEUE_MAX} por tier.`, 2000, true); return;
+        // bloquear se já há uma série ativa
+        if (scheduleSeries[tier] !== null) {
+            const rem = scheduleSeries[tier]!.seriesEndsAt - now;
+            showMsg(`📋 Série em andamento! Termina em ${formatTimeSec(rem)}.`, 2000, true); return;
         }
 
-        // calcular custo total de todas as raspadinhas (com inflação incremental)
-        const basePurchases = scratchMetrics.tierPurchaseCounts[tier];
-        let totalPot = 0;
-        let totalFee = 0;
+        // custo total: cada slot paga inflação incremental
+        let totalPot = 0, totalFee = 0;
         const costs: number[] = [];
-
         for (let i = 0; i < clampedQty; i++) {
-            const cost = calculateCurrentCost(tier, i); // +i níveis de inflação
+            const cost = calculateCurrentCost(tier, i);
             const fee  = Math.ceil(cost * feeRate);
             totalPot  += cost;
             totalFee  += fee;
@@ -287,34 +335,41 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
         }
 
         if (unluckyPot < totalPot) {
-            showMsg(`🏺 Pote insuficiente! Precisa de ${totalPot.toFixed(0)} no pote.`, 2000, true); return;
+            showMsg(`🏺 Pote insuficiente! Precisa de ${totalPot.toFixed(0)}.`, 2000, true); return;
         }
         if (bal < totalFee) {
             showMsg(`💸 Taxa total: $${totalFee.toFixed(0)}. Saldo insuficiente!`, 2000, true); return;
         }
 
-        // descontar tudo de uma vez
+        // desconto imediato
         setUnluckyPot(p => p - totalPot);
         setBal(p => p - totalFee);
 
-        // montar entradas da fila
-        // a 1ª entrega = cooldown normal; o delay de agendamento
-        // é adicionado ao tempo de entrega de TODAS (pois é o custo de agendar em lote)
-        const newEntries: QueueEntry[] = costs.map((cost, i) => ({
+        // montar slots da série:
+        // slot 0: entrega após delayMs (o delay de agendamento)
+        // slot i: delayMs + i * cooldown  (cada slot respeita o cooldown do tier)
+        const slots: ScheduledSlot[] = costs.map((_, i) => ({
             tier,
             inflaOffset: i,
-            deliverAt: now + cooldown + delayMs + i * 1000, // pequeno gap entre entregas
-            potCost:   cost,
-            serviceFee: Math.ceil(cost * feeRate),
+            deliverAt:   now + delayMs + i * cooldown,
+            processed:   false,
         }));
 
-        setScheduleQueue(prev => [...prev, ...newEntries]);
+        const seriesEndsAt = slots[slots.length - 1].deliverAt;
+
+        setScheduleSeries(prev =>
+            prev.map((s, i) => i === tier ? { tier, slots, seriesEndsAt, totalQty: clampedQty } : s)
+        );
 
         showMsg(
-            `📋 ${clampedQty}x ${SCRATCH_CARD_TIERS_V3[tier].name} agendadas! Entrega em ${formatTimeSec(cooldown + delayMs)}. Taxa: -$${totalFee.toFixed(0)}`,
+            `📋 ${clampedQty}x ${SCRATCH_CARD_TIERS_V3[tier].name} agendadas! Última entrega em ${formatTimeSec(seriesEndsAt - now)}. Taxa: -$${totalFee.toFixed(0)}`,
             4000, true
         );
-    }, [bal, unluckyPot, setUnluckyPot, setBal, calculateCurrentCost, scratchMetrics, scheduleQueue, showMsg]);
+    }, [
+        bal, unluckyPot, setUnluckyPot, setBal,
+        calculateCurrentCost, scratchMetrics,
+        scheduleSeries, showMsg,
+    ]);
 
     // ── saque do pote ─────────────────────────────────────────
     const getCurrentWithdrawFee = useCallback((): number =>
@@ -326,17 +381,17 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
         if (withdrawCooldownRem > 0) {
             showMsg(`⏳ Saque disponível em ${formatTimeSec(withdrawCooldownRem)}`, 2000, true); return;
         }
-        const pct       = Math.max(1, Math.min(100, percentToWithdraw));
-        const potSlice  = unluckyPot * (pct / 100);
-        const gross     = potSlice * WITHDRAW_EFFICIENCY;
-        const fee       = gross * getCurrentWithdrawFee();
-        const net       = gross - fee;
+        const pct      = Math.max(1, Math.min(100, percentToWithdraw));
+        const potSlice = unluckyPot * (pct / 100);
+        const gross    = potSlice * WITHDRAW_EFFICIENCY;
+        const fee      = gross * getCurrentWithdrawFee();
+        const net      = gross - fee;
         if (net <= 0) { showMsg('❌ Valor muito baixo.', 1500, true); return; }
         setUnluckyPot(p => p - potSlice);
         setBal(p => p + net);
         setWithdrawCount(c => c + 1);
         setLastWithdrawTime(Date.now());
-        showMsg(`💸 +$${net.toFixed(2)} (${pct}% do pote, taxa ${(getCurrentWithdrawFee()*100).toFixed(1)}%)`, 4000, true);
+        showMsg(`💸 +$${net.toFixed(2)} (${pct}% do pote, taxa ${(getCurrentWithdrawFee() * 100).toFixed(1)}%)`, 4000, true);
     }, [unluckyPot, withdrawCooldownRem, getCurrentWithdrawFee, setUnluckyPot, setBal, showMsg]);
 
     // ── lotérica ─────────────────────────────────────────────
@@ -354,18 +409,18 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
             showMsg(`💸 Precisa de $${injCost.toLocaleString()} para injetar!`, 2000, true); return;
         }
         setBal(p => p - injCost);
-        const newCount = Math.floor(scratchMetrics.tierPurchaseCounts[tier] * (1 - config.reduction));
+        const prevCount = scratchMetrics.tierPurchaseCounts[tier];
+        const newCount  = Math.floor(prevCount * (1 - config.reduction));
         setScratchMetrics(prev => ({
             ...prev,
-            tierPurchaseCounts: prev.tierPurchaseCounts.map((c, i) => i === tier ? newCount : c)
+            tierPurchaseCounts: prev.tierPurchaseCounts.map((c, i) => i === tier ? newCount : c),
         }));
         setLotericaState(prev => ({
             ...prev,
             lastInjectionTime: prev.lastInjectionTime.map((t, i) => i === tier ? now : t),
-            totalInjections:   prev.totalInjections.map((c, i)   => i === tier ? c + 1 : c)
+            totalInjections:   prev.totalInjections.map((c, i)   => i === tier ? c + 1 : c),
         }));
-        const prev = scratchMetrics.tierPurchaseCounts[tier];
-        showMsg(`✅ Lotérica! ${prev} → ${newCount} compras (-${(config.reduction*100).toFixed(0)}%)`, 3000, true);
+        showMsg(`✅ Lotérica! ${prevCount} → ${newCount} compras (-${(config.reduction * 100).toFixed(0)}%)`, 3000, true);
     }, [bal, calculateCurrentCost, scratchMetrics, lotericaState, setBal, setScratchMetrics, setLotericaState, showMsg]);
 
     return {
@@ -382,7 +437,7 @@ export const useScratchCardLogic = (props: ScratchCardLogicProps) => {
         withdrawCooldownRem,
         // agendamento
         scheduleCards,
-        scheduleQueue,
+        scheduleSeries,
         scheduleQty,
         setScheduleQty,
     };
