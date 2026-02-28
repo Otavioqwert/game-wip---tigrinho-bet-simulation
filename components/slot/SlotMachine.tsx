@@ -6,6 +6,7 @@ import CoinFlipOverlay from './CoinFlipOverlay';
 import ProbabilityWidget from './ProbabilityWidget';
 import EnvelopeWidget from './EnvelopeWidget';
 import type { RoiSaldo, StarBonusState, CoinFlipState, Inventory, ScratchCardInventory } from '../../types';
+import { SCRATCH_CARD_TIERS_V3 } from '../../constants';
 
 interface SlotMachineProps {
     febreDocesAtivo: boolean;
@@ -36,13 +37,16 @@ interface SlotMachineProps {
     coinFlipState: CoinFlipState;
     handleCoinGuess: (guess: 'heads' | 'tails') => void;
     closeCoinFlip: () => void;
-    // Envelope
-    openEnvelope: () => void;
-    cooldownRemaining: number;
-    fmtCooldown: (ms: number) => string;
-    scratchCardInventory: ScratchCardInventory;
-    envelopeTotalOpened: number;
+    // Envelope (opcional enquanto nao integrado ao useGameLogic)
+    openEnvelope?: () => void;
+    cooldownRemaining?: number;
+    fmtCooldown?: (ms: number) => string;
+    scratchCardInventory?: ScratchCardInventory;
+    envelopeTotalOpened?: number;
 }
+
+const DEFAULT_INVENTORY: ScratchCardInventory = Array(SCRATCH_CARD_TIERS_V3.length).fill(0);
+const DEFAULT_FMT = (ms: number) => `${Math.ceil(ms / 1000)}s`;
 
 const SlotMachine: React.FC<SlotMachineProps> = (props) => {
     const {
@@ -62,11 +66,11 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
         handleCoinGuess,
         closeCoinFlip,
         inv,
-        openEnvelope,
-        cooldownRemaining,
-        fmtCooldown,
-        scratchCardInventory,
-        envelopeTotalOpened,
+        openEnvelope = () => {},
+        cooldownRemaining = 0,
+        fmtCooldown = DEFAULT_FMT,
+        scratchCardInventory = DEFAULT_INVENTORY,
+        envelopeTotalOpened = 0,
     } = props;
 
     return (
@@ -107,7 +111,7 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
                 </div>
             )}
 
-            {/* Container do slot - relative para os widgets laterais */}
+            {/* Container do slot */}
             <div className="w-full max-w-sm relative">
 
                 {/* ENVELOPE WIDGET (lado esquerdo) */}
