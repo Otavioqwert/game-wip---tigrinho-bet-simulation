@@ -1,11 +1,11 @@
-
 import React from 'react';
 import Reel from './Reel';
 import SlotMachineControls from './SlotMachineControls';
 import StarBonusOverlay from './StarBonusOverlay';
 import CoinFlipOverlay from './CoinFlipOverlay';
 import ProbabilityWidget from './ProbabilityWidget';
-import type { RoiSaldo, StarBonusState, CoinFlipState, Inventory } from '../../types';
+import EnvelopeWidget from './EnvelopeWidget';
+import type { RoiSaldo, StarBonusState, CoinFlipState, Inventory, ScratchCardInventory } from '../../types';
 
 interface SlotMachineProps {
     febreDocesAtivo: boolean;
@@ -22,20 +22,26 @@ interface SlotMachineProps {
     setBetVal: React.Dispatch<React.SetStateAction<number>>;
     criarEmbaixadorDoce: () => void;
     roiSaldo: RoiSaldo;
-    inv: Inventory; // Added prop for widget
+    inv: Inventory;
     isPoolInvalid: boolean;
     quickSpinQueue: number;
     handleQuickSpin: () => boolean;
     showMsg: (msg: string, duration?: number, isExtra?: boolean) => void;
     isBankrupt: boolean;
     isBettingLocked: boolean;
-    // New Props for Star Bonus
+    // Star Bonus
     starBonusState: StarBonusState;
     closeStarBonus: () => void;
-    // New Props for Coin Flip
+    // Coin Flip
     coinFlipState: CoinFlipState;
     handleCoinGuess: (guess: 'heads' | 'tails') => void;
     closeCoinFlip: () => void;
+    // Envelope
+    openEnvelope: () => void;
+    cooldownRemaining: number;
+    fmtCooldown: (ms: number) => string;
+    scratchCardInventory: ScratchCardInventory;
+    envelopeTotalOpened: number;
 }
 
 const SlotMachine: React.FC<SlotMachineProps> = (props) => {
@@ -55,23 +61,28 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
         coinFlipState,
         handleCoinGuess,
         closeCoinFlip,
-        inv
+        inv,
+        openEnvelope,
+        cooldownRemaining,
+        fmtCooldown,
+        scratchCardInventory,
+        envelopeTotalOpened,
     } = props;
-    
+
     return (
         <div className="flex flex-col items-center justify-center h-full relative">
-            {/* Overlay for Star Bonus Animation */}
+            {/* Overlay Star Bonus */}
             {starBonusState.isActive && (
-                <StarBonusOverlay 
+                <StarBonusOverlay
                     results={starBonusState.results}
                     totalWin={starBonusState.totalWin}
                     onComplete={closeStarBonus}
                 />
             )}
-            
-            {/* Overlay for Coin Flip Minigame */}
+
+            {/* Overlay Coin Flip */}
             {coinFlipState.isActive && (
-                <CoinFlipOverlay 
+                <CoinFlipOverlay
                     coinState={coinFlipState}
                     onGuess={handleCoinGuess}
                     onComplete={closeCoinFlip}
@@ -80,26 +91,35 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
 
             {febreDocesAtivo && (
                 <div className="bg-gradient-to-r from-purple-500 via-pink-600 to-purple-500 bg-[length:200%_auto] animate-shimmer text-white rounded-xl p-3 mb-3 font-black shadow-lg shadow-pink-500/40 text-center text-xl w-full max-w-sm border-2 border-yellow-300">
-                    🔥 FEBRE DOCE 🔥<br/>
+                    \uD83D\uDD25 FEBRE DOCE \uD83D\uDD25<br />
                     <span className="text-3xl text-yellow-300 drop-shadow-md">{febreDocesGiros} Giros Restantes</span>
                 </div>
             )}
-             {isPoolInvalid && (
+            {isPoolInvalid && (
                 <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg p-2 mb-3 font-bold shadow-lg shadow-red-500/40 text-center text-md w-full max-w-sm">
-                    ⚠️ Roleta travada! Adicione símbolos pela Loja.
+                    \u26A0\uFE0F Roleta travada! Adicione s\u00edmbolos pela Loja.
                 </div>
             )}
-             {(isBankrupt || isBettingLocked) && (
+            {(isBankrupt || isBettingLocked) && (
                 <div className="bg-gradient-to-r from-red-600 to-red-800 text-white rounded-lg p-2 mb-3 font-bold shadow-lg shadow-red-500/40 text-center text-md w-full max-w-sm">
-                     {isBankrupt ? 'LIMITE ATINGIDO!' : 'PAGAMENTO ATRASADO!'} Apostas bloqueadas.
-                     {isBettingLocked && ' Pague a multa para desbloquear.'}
+                    {isBankrupt ? 'LIMITE ATINGIDO!' : 'PAGAMENTO ATRASADO!'} Apostas bloqueadas.
+                    {isBettingLocked && ' Pague a multa para desbloquear.'}
                 </div>
             )}
-            
-            {/* Slot Machine Container - Added relative for widget positioning */}
+
+            {/* Container do slot - relative para os widgets laterais */}
             <div className="w-full max-w-sm relative">
-                
-                {/* PROBABILITY WIDGET (Attached to right side) */}
+
+                {/* ENVELOPE WIDGET (lado esquerdo) */}
+                <EnvelopeWidget
+                    openEnvelope={openEnvelope}
+                    cooldownRemaining={cooldownRemaining}
+                    fmtCooldown={fmtCooldown}
+                    scratchCardInventory={scratchCardInventory}
+                    totalOpened={envelopeTotalOpened}
+                />
+
+                {/* PROBABILITY WIDGET (lado direito) */}
                 <ProbabilityWidget inv={inv} />
 
                 <div className="bg-black/50 rounded-2xl p-4 sm:p-5 mb-5 inner-neon-border relative z-10">
@@ -116,7 +136,7 @@ const SlotMachine: React.FC<SlotMachineProps> = (props) => {
                     <div className="text-center text-yellow-400 min-h-[24px]">{extraMsg}</div>
                 </div>
             </div>
-            
+
             <SlotMachineControls {...props} />
             <style>{`
                 @keyframes shimmer {
